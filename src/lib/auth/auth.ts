@@ -1,7 +1,15 @@
-import NextAuth from "next-auth";
-import Credentials from 'next-auth/providers/credentials';
+import NextAuth, { DefaultSession, User } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 import { prisma } from "../db/prismadb";
+import { AdapterUser } from "next-auth/adapters";
 import { compare } from "bcryptjs";
+
+
+declare module "next-auth/jwt" {
+    interface JWT {
+        id: string;
+    }
+}
 
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -12,98 +20,56 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     providers: [
         Credentials({
             credentials: {
-                rollNo: { label: "Rollno", type: "text" },
-                password: { label: "Password", type: "password" }
+                rollNo: { label: "RollNumber", type: "text" },
+                password: { label: "Password", type: "password" },
             },
-
             async authorize(credentials) {
-                const user = await prisma.user.findFirst({
-                    where: {
-                        rollNo: credentials?.rollNo as string,
-                    },
-                    select: {
-                        rollNo: true,
-                        password: true,
-                        role: true,
-                        id: true,
-                        name: true,
-                        email: true,
-                        image: true
+                try {
+                    console.log({ credentials });
+                    if (!credentials?.rollNo || !credentials?.password) {
+                        throw new Error("Missing roll number or password");
                     }
-                })
 
-                const isCrtPassword = await compare(credentials?.password as string, user?.password as string);
+                    const user = await prisma.user.findFirst({
+                        where: { rollNo: credentials.rollNo },
+                    });
 
+                    if (!user) {
+                        throw new Error("User not found");
+                    }
 
-                if (user && isCrtPassword) {
-                    delete user?.password;
-                    // remove password from user object
-                    return user;
+                    const isPasswordValid = await compare(String(credentials.password), String(user.password));
+                    if (!isPasswordValid) {
+                        throw new Error("Invalid credentials");
+                    }
+
+                    const { password, ...safeUser } = user;
+                    return safeUser;
+                } catch (error) {
+                    if (error instanceof Error) {
+                        console.error("Authorization error:", error.message);
+                    } else {
+                        console.error("Authorization error:", error);
+                    }
+                    throw new Error("Invalid credentials");
                 }
-
-                return null;
-            }
-        })
+            },
+        }),
     ],
     callbacks: {
-        authorized({ request: { nextUrl }, auth }) {
-            const isLoggined = !!auth?.user;
-            const { pathname } = nextUrl
-            if (isLoggined && pathname === "/auth/login") {
-                return Response.redirect(new URL("/", nextUrl.origin));
-            }
-            return !!auth;
-        },
         async jwt({ token, user }) {
             if (user) {
-                token = { ...token, user }
+                token.user = user;
             }
             return token;
         },
         async session({ session, token }) {
-            session = { ...session, ...token }
+            session.user = token.user as AdapterUser & User;
             return session;
-        }
+        },
     },
     pages: {
         signIn: "/auth/login",
+        error: "/auth/error", // Redirect to error page
     },
-})
-
-
-
-
-
-
-// import AuthentikProvider from "next-auth/providers/authentik";
-
-
-
-// export const config = {
-//     providers: [
-//         AuthentikProvider({
-//             clientId: process.env.AUTHENTIK_CLIENT_ID!,
-//             clientSecret: process.env.AUTHENTIK_CLIENT_SECRET!,
-//             issuer: process.env.AUTHENTIK_ISSUER!,
-//             wellKnown: `${process.env.AUTHENTIK_ISSUER!}/.well-known/openid-configuration`,
-//             authorization: {
-//                 params: {
-//                     scope: "openid email profile",
-//                     response_type: "code",
-//                 }
-//             }
-//         }),
-//     ],
-//     pages: {
-//         signIn: "/login",
-//     },
-//     debug: process.env.NODE_ENV === "development",
-//     callbacks: {
-//         redirect({ url, baseUrl }) {
-//             return url.startsWith(baseUrl) ? url : baseUrl;
-//         }
-//     }
-// };
-
-// export const { auth, signIn, signOut } = NextAuth(config);
-
+});

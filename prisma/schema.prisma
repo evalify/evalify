@@ -8,23 +8,111 @@ datasource db {
 }
 
 model User {
-    id                 String   @id @default(cuid())
+    id                 String    @id @default(cuid())
     name               String
-    email              String   @unique
-    role               Role     @default(STUDENT)
+    email              String    @unique
+    role               Role      @default(STUDENT)
     phoneNo            String?
     rollNo             String?
     image              String?
     password           String
-    createdAt          DateTime @default(now())
-    lastPasswordChange DateTime @default(now())
-    isActive           Boolean  @default(true)
-
-    @@index([email])
+    createdAt          DateTime  @default(now())
+    lastPasswordChange DateTime  @default(now())
+    isActive           Boolean   @default(true)
+    Student            Student[]
+    Staff              Staff[]
 }
 
 enum Role {
     STUDENT
     STAFF
     ADMIN
+}
+
+model Class {
+    id         String    @id @default(cuid())
+    name       String
+    department String
+    semester   String
+    batch      String
+    students   Student[]
+    courses    Course[]
+}
+
+model Student {
+    id         String       @id @default(cuid())
+    user       User         @relation(fields: [userId], references: [id])
+    userId     String
+    class      Class?        @relation(fields: [classId], references: [id])
+    classId    String?
+    QuizResult QuizResult[]
+}
+
+model Course {
+    id         String  @id @default(cuid())
+    name       String
+    code       String
+    class      Class   @relation(fields: [classId], references: [id])
+    classId    String
+    staff      Staff?  @relation(fields: [staffId], references: [id])
+    staffId    String?
+    quizzes    Quiz[]
+    semesterId String?
+    isactive   Boolean @default(true)
+}
+
+model Staff {
+    id      String   @id @default(cuid())
+    user    User     @relation(fields: [userId], references: [id])
+    userId  String
+    courses Course[]
+}
+
+model Quiz {
+    id          String       @id @default(cuid())
+    title       String
+    description String?
+    startTime   DateTime
+    endTime     DateTime
+    duration    Int
+    settings    QuizSettings @relation(fields: [settingsId], references: [id])
+    settingsId  String
+    results     QuizResult[]
+    Course      Course?      @relation(fields: [courseId], references: [id])
+    courseId    String?
+
+    QuizReport QuizReport[]
+}
+
+model QuizSettings {
+    id         String  @id @default(cuid())
+    fullscreen Boolean @default(false)
+    copyPaste  Boolean @default(false)
+    calculator Boolean @default(false)
+    shuffle    Boolean @default(false)
+    Quiz       Quiz[]
+}
+
+model QuizResult {
+    id          String   @id @default(cuid())
+    student     Student  @relation(fields: [studentId], references: [id])
+    studentId   String
+    quiz        Quiz     @relation(fields: [quizId], references: [id])
+    quizId      String
+    score       Float
+    submittedAt DateTime @default(now())
+    responses   Json
+    violations  String?
+}
+
+model QuizReport {
+    id     String @id @default(cuid())
+    quiz   Quiz   @relation(fields: [quizId], references: [id])
+    quizId String
+
+    maxScore      Float
+    avgScore      Float
+    minScore      Float
+    totalScore    Float
+    totalStudents Int
 }

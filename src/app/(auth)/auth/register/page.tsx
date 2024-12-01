@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "@/components/hooks/use-toast"
 
 const formSchema = z.object({
     name: z.string().min(2, {

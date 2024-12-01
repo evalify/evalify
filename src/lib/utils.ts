@@ -13,3 +13,7 @@ export const languages = [
   { id: 'cpp', name: 'C++', language_id: 54 },
   { id: 'javascript', name: 'JavaScript', language_id: 63 },
 ]
+
+export function getTime(){
+  return new Date().toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata' })
+}

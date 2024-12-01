@@ -6,12 +6,13 @@ import { uploadFile } from '@/lib/db/minio';
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
-        
+        type Role = 'STUDENT' | 'ADMIN' | 'STAFF';
+
         // Input validation
         const name = formData.get('name')?.toString();
         const email = formData.get('email')?.toString();
         const password = formData.get('password')?.toString();
-        const role = formData.get('role')?.toString();
+        const role = formData.get('role')?.toString() as Role;
         const phoneNo = formData.get('phoneNo')?.toString();
         const rollNo = formData.get('rollNo')?.toString();
         const imageFile = formData.get('image') as File | null;
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
         // Required field validation
         if (!name || !email || !password) {
             return new NextResponse(
-                JSON.stringify({ error: 'Name, email, and password are required.' }), 
+                JSON.stringify({ error: 'Name, email, and password are required.' }),
                 { status: 400 }
             );
         }
@@ -53,15 +54,29 @@ export async function POST(req: NextRequest) {
 
         const newUser = await prisma.user.create({ data: userData });
 
+        if (newUser.role === 'STUDENT') {
+            await prisma.student.create({
+                data: {
+                    userId: newUser.id
+                }
+            })
+        } else if (newUser.role === 'STAFF') {
+            await prisma.staff.create({
+                data: {
+                    userId: newUser.id
+                }
+            })
+        }
+
         // Remove sensitive data before sending response
         const { password: _, ...userResponse } = newUser;
 
         return new NextResponse(
-            JSON.stringify({ 
-                message: 'User registered successfully.', 
-                user: userResponse 
-            }), 
-            { 
+            JSON.stringify({
+                message: 'User registered successfully.',
+                user: userResponse
+            }),
+            {
                 status: 201,
                 headers: { 'Content-Type': 'application/json' }
             }
@@ -69,8 +84,8 @@ export async function POST(req: NextRequest) {
     } catch (error: any) {
         if (error.code === 'P2002') {
             return new NextResponse(
-                JSON.stringify({ error: 'Email already exists.' }), 
-                { 
+                JSON.stringify({ error: 'Email already exists.' }),
+                {
                     status: 409,
                     headers: { 'Content-Type': 'application/json' }
                 }
@@ -79,8 +94,8 @@ export async function POST(req: NextRequest) {
 
         console.error('Registration error:', error);
         return new NextResponse(
-            JSON.stringify({ error: 'Internal server error' }), 
-            { 
+            JSON.stringify({ error: 'Internal server error' }),
+            {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
             }

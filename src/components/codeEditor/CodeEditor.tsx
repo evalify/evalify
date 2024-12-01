@@ -188,7 +188,7 @@ export function CodeEditor() {
                         [/\d+(\.\d+)?/, 'number'],
 
                         // Operators
-                        [/[=+\-*/^~<>]./, 'operator'],
+                        [/[=+\-.*/^~<>]/, 'operator'],
                     ],
                     string: [
                         [/[^"]+/, 'string'],

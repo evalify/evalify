@@ -8,10 +8,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Pencil, User, Upload } from 'lucide-react'
-import { useToast } from "@/components/ui/use-toast"
+import { Pencil, User, Upload, ArrowLeft } from 'lucide-react'
+import { useToast } from "@/components/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import ImageCropper from './_components/image-cropper'
+import { useRouter } from 'next/navigation'
+
 
 interface UserData {
     name: string
@@ -20,11 +22,20 @@ interface UserData {
     image: string
     email: string
     role: string
+    lastPasswordChange: string
 }
+
+
 
 export default function UserProfilePage() {
     const { data: session } = useSession()
     const { toast } = useToast()
+
+
+    // get an optional search query
+    const search = new URLSearchParams(window.location.search).get('profile')
+    const router = useRouter()
+
     const [isEditing, setIsEditing] = useState(false)
     const [user, setUser] = useState<UserData | null>(null)
     const [formData, setFormData] = useState({
@@ -45,7 +56,7 @@ export default function UserProfilePage() {
             if (!session?.user?.email) return
 
             try {
-                const response = await fetch(`/api/profile?email=${session.user.email}`)
+                const response = await fetch(`/api/profile?email=${search || session.user.email}`)
                 const data = await response.json()
                 if (response.ok) {
                     setUser(data.user)
@@ -210,7 +221,16 @@ export default function UserProfilePage() {
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">Profile Page</h1>
+                <div className="flex items-center gap-4">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => router.back()}
+                    >
+                        <ArrowLeft className="h-6 w-6" />
+                    </Button>
+                    <h1 className="text-3xl font-bold">Profile Page</h1>
+                </div>
                 <Button
                     variant="outline"
                     onClick={() => setIsEditing(!isEditing)}

@@ -21,12 +21,12 @@ export function LoginForm() {
         try {
             const result = await signIn('credentials', {
                 redirect: false,
-                username : rollno,
+                rollNo : rollno,
                 password,
             })
 
             if (result?.error) {
-                setError('Invalid email or password')
+                setError('Invalid roll no or password')
             } else {
                 router.push('/')
                 router.refresh()

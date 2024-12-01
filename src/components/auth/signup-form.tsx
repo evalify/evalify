@@ -18,7 +18,7 @@ import {
     FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/components/hooks/use-toast"
 
 const formSchema = z.object({
     name: z.string().min(2, {

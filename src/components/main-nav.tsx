@@ -3,23 +3,30 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, BookOpen, FileText, Terminal, MessageSquare } from 'lucide-react'
 import { cn } from "@/lib/utils"
+import { Home, BookOpen, FileText, Terminal, MessageSquare, LucideIcon } from 'lucide-react'
+import { useSession } from "next-auth/react"
 
-const navItems = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+const StudentnavItems: NavItem[] = [
   {
     name: "Home",
-    href: "/",
+    href: "/student",
     icon: Home
   },
   {
     name: "Quiz",
-    href: "/quiz",
+    href: "/student/quiz",
     icon: BookOpen
   },
   {
     name: "Assignments",
-    href: "/assignments",
+    href: "/student/assignments",
     icon: FileText
   },
   {
@@ -34,8 +41,83 @@ const navItems = [
   }
 ]
 
+const StaffnavItems: NavItem[] = [
+  {
+    name: "Home",
+    href: "/staff",
+    icon: Home
+  },
+  {
+    name: "Quiz",
+    href: "/staff/quiz",
+    icon: BookOpen
+  },
+  {
+    name: "Assignments",
+    href: "/staff/assignments",
+    icon: FileText
+  },
+  {
+    name: "IDE",
+    href: "/ide",
+    icon: Terminal
+  },
+  {
+    name: "Forum",
+    href: "/forum",
+    icon: MessageSquare
+  }
+]
+
+const AdminnavItems: NavItem[] = [
+  {
+    name: "Home",
+    href: "/admin",
+    icon: Home
+  },
+  {
+    name: "Class",
+    href: "/admin/class",
+    icon: BookOpen
+  },
+  {
+    name: "Course",
+    href: "/admin/course",
+    icon: FileText
+  },
+  {
+    name: "Staffs",
+    href: "/admin/staffs",
+    icon: Terminal
+  },
+  {
+    name: "Students",
+    href: "/admin/students",
+    icon: MessageSquare
+  }
+]
+
+type UserRole = 'STUDENT' | 'STAFF' | 'ADMIN';
+
+const roleToNavItems: Record<UserRole, NavItem[]> = {
+  'STUDENT': StudentnavItems,
+  'STAFF': StaffnavItems,
+  'ADMIN': AdminnavItems,
+}
+
 export function MainNav() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const [navItems, setNavItems] = React.useState<NavItem[] | null>(null)
+
+  React.useEffect(() => {
+    const role = session?.user?.role as UserRole
+    if (role && role in roleToNavItems) {
+      setNavItems(roleToNavItems[role])
+    }
+  }, [session])
+
+  if (!navItems) return null
 
   return (
     <div className="fixed top-14 left-0 flex h-[calc(100%-3.5rem)] w-[80px] flex-col z-20 bg-background border-r">

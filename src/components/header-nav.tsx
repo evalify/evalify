@@ -19,6 +19,16 @@ const HeaderNavbar = async () => {
                 </Link>
 
                 <div className="flex items-center">
+                    {
+
+                        session?.user?.role !== "STUDENT" && (
+                            <>
+                                <Button variant="ghost"  className="mr-2" disabled>
+                                    {session?.user?.role}
+                                </Button>
+                            </>
+                        )
+                    }
                     <ThemeToggler />
                     {
                         session?.user && (

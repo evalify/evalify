@@ -5,6 +5,7 @@ import HeaderNavbar from "@/components/header-nav"
 
 import { GeistSans } from "geist/font/sans"
 import "./globals.css"
+import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: "Evalify",
@@ -21,8 +22,10 @@ export default function RootLayout({
       <body className={`${GeistSans.className} flex min-h-screen `}>
         <Providers>
           <HeaderNavbar />
-          <main className="flex-1 mt-14 overscroll-contain">
+          <main className="flex-1 mt-14 h-[94vh] overscroll-contain">
             {children}
+            <Toaster />
+
           </main>
         </Providers>
       </body>
