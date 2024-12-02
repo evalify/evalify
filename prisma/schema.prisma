@@ -43,7 +43,7 @@ model Student {
     id         String       @id @default(cuid())
     user       User         @relation(fields: [userId], references: [id])
     userId     String
-    class      Class?        @relation(fields: [classId], references: [id])
+    class      Class?       @relation(fields: [classId], references: [id])
     classId    String?
     QuizResult QuizResult[]
 }
@@ -66,21 +66,23 @@ model Staff {
     user    User     @relation(fields: [userId], references: [id])
     userId  String
     courses Course[]
+    Quiz    Quiz[]
 }
 
 model Quiz {
-    id          String       @id @default(cuid())
+    id          String   @id @default(cuid())
     title       String
     description String?
     startTime   DateTime
     endTime     DateTime
     duration    Int
-    settings    QuizSettings @relation(fields: [settingsId], references: [id])
-    settingsId  String
-    results     QuizResult[]
-    Course      Course?      @relation(fields: [courseId], references: [id])
-    courseId    String?
+    createdbyId String
+    createdby   Staff    @relation(fields: [createdbyId], references: [id])
 
+    settings   QuizSettings @relation(fields: [settingsId], references: [id])
+    settingsId String
+    results    QuizResult[]
+    courses    Course[] 
     QuizReport QuizReport[]
 }
 
@@ -90,6 +92,7 @@ model QuizSettings {
     copyPaste  Boolean @default(false)
     calculator Boolean @default(false)
     shuffle    Boolean @default(false)
+    enhanced   Boolean @default(false)
     Quiz       Quiz[]
 }
 

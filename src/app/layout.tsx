@@ -1,10 +1,10 @@
-
 import type { Metadata } from "next"
 import { Providers } from "../components/providers"
 import HeaderNavbar from "@/components/header-nav"
 
 import { GeistSans } from "geist/font/sans"
 import "./globals.css"
+import { Toaster as T } from 'sonner';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
@@ -24,8 +24,8 @@ export default function RootLayout({
           <HeaderNavbar />
           <main className="flex-1 mt-14 h-[94vh] overscroll-contain">
             {children}
+            <T />
             <Toaster />
-
           </main>
         </Providers>
       </body>

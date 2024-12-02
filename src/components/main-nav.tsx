@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, BookOpen, FileText, Terminal, MessageSquare, LucideIcon } from 'lucide-react'
+import { Home, BookOpen, FileText, Terminal, MessageSquare, Users, GraduationCap, School, UserCog, LucideIcon } from 'lucide-react'
 import { useSession } from "next-auth/react"
 
 interface NavItem {
@@ -78,22 +78,22 @@ const AdminnavItems: NavItem[] = [
   {
     name: "Class",
     href: "/admin/class",
-    icon: BookOpen
+    icon: GraduationCap
   },
   {
     name: "Course",
     href: "/admin/course",
-    icon: FileText
+    icon: School
   },
   {
     name: "Staffs",
     href: "/admin/staffs",
-    icon: Terminal
+    icon: UserCog
   },
   {
     name: "Students",
     href: "/admin/students",
-    icon: MessageSquare
+    icon: Users
   }
 ]
 
@@ -107,7 +107,7 @@ const roleToNavItems: Record<UserRole, NavItem[]> = {
 
 export function MainNav() {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const [navItems, setNavItems] = React.useState<NavItem[] | null>(null)
 
   React.useEffect(() => {
@@ -116,6 +116,18 @@ export function MainNav() {
       setNavItems(roleToNavItems[role])
     }
   }, [session])
+
+  if (status === "loading") {
+    return (
+      <div className="fixed top-14 left-0 flex h-[calc(100%-3.5rem)] w-[80px] flex-col z-20 bg-background border-r">
+        <div className="flex flex-col items-center gap-2 mt-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="w-[70px] h-[70px] rounded-lg animate-pulse bg-muted" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   if (!navItems) return null
 
