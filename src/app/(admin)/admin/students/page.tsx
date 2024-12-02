@@ -63,10 +63,20 @@ export default function StudentsPage() {
     const fetchStudents = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`/api/admin/students?search=${search}`);
-            if (!res.ok) throw new Error('Failed to fetch students');
-            const data = await res.json();
+            const res = await fetch(`/api/admin/students?search=${encodeURIComponent(search)}`, {
+                cache: 'no-store'
+            });
+            
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            
+            const text = await res.text();
+            if (!text) {
+                throw new Error('No data received');
+            }
 
+            const data = JSON.parse(text);
             if (!Array.isArray(data)) {
                 throw new Error('Invalid response format');
             }
@@ -74,8 +84,9 @@ export default function StudentsPage() {
             setStudents(data);
             setError(null);
         } catch (err) {
-            console.error('Error fetching students:', err);
-            setError(err instanceof Error ? err.message : 'An error occurred');
+            const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching students';
+            console.error('Error fetching students:', errorMessage);
+            setError(errorMessage);
             setStudents([]);
         } finally {
             setLoading(false);

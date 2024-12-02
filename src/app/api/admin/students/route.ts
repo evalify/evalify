@@ -4,30 +4,61 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
+    const classId = searchParams.get("classId");
 
     try {
-        const students = await prisma.user.findMany({
-            where: {
+        const whereClause: any = {
+            user: {
                 role: "STUDENT",
                 OR: [
                     { name: { contains: search, mode: 'insensitive' } },
                     { email: { contains: search, mode: 'insensitive' } },
                     { rollNo: { contains: search, mode: 'insensitive' } },
                 ],
-            },
+            }
+        };
+
+        if (classId) {
+            whereClause.classId = classId;
+        }
+
+        const students = await prisma.student.findMany({
+            where: whereClause,
             include: {
-                Student: {
-                    include: {
-                        class: true
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        rollNo: true,
+                    }
+                },
+                class: {
+                    select: {
+                        id: true,
+                        name: true,
                     }
                 }
             }
         });
 
-        return NextResponse.json(students || []);
+        const formattedStudents = students
+            .filter(student => student.user)
+            .map(student => ({
+                id: student.user.id,
+                name: student.user.name,
+                email: student.user.email,
+                rollNo: student.user.rollNo || '',
+                Student: [{
+                    id: student.id,
+                    class: student.class
+                }]
+            }));
+
+        return NextResponse.json(formattedStudents);
     } catch (error) {
-        console.error('Error fetching students:', error);
-        return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
+        console.error('Error in students API:', error);
+        return NextResponse.json([]);
     }
 }
 

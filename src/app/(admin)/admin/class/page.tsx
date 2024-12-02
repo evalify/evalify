@@ -23,6 +23,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Pencil } from 'lucide-react';
 import { useToast } from '@/components/hooks/use-toast';
+import Link from 'next/link';
 
 interface Class {
     id: string;
@@ -30,6 +31,9 @@ interface Class {
     department: string;
     semester: string;
     batch: string;
+    _count?: {
+        students: number;
+    }
 }
 
 export default function ClassPage() {
@@ -249,6 +253,7 @@ export default function ClassPage() {
                         <TableHead>Department</TableHead>
                         <TableHead>Semester</TableHead>
                         <TableHead>Batch</TableHead>
+                        <TableHead>Students</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -264,10 +269,18 @@ export default function ClassPage() {
                                     aria-label={`Select ${cls.name}`}
                                 />
                             </TableCell>
-                            <TableCell>{cls.name}</TableCell>
+                            <TableCell>
+                                <Link 
+                                    href={`/admin/class/${cls.id}`} 
+                                    className="text-blue-600 hover:underline cursor-pointer"
+                                >
+                                    {cls.name}
+                                </Link>
+                            </TableCell>
                             <TableCell>{cls.department}</TableCell>
                             <TableCell>{cls.semester}</TableCell>
                             <TableCell>{cls.batch}</TableCell>
+                            <TableCell>{cls._count?.students || 0}</TableCell>
                             <TableCell className="text-right space-x-2">
                                 <Button
                                     variant="outline"

@@ -4,7 +4,13 @@ import { NextResponse } from "next/server";
 // GET all classes
 export async function GET() {
     try {
-        const classes = await prisma.class.findMany();
+        const classes = await prisma.class.findMany({
+            include: {
+                _count: {
+                    select: { students: true }
+                }
+            }
+        });
         return NextResponse.json(classes);
     } catch (error) {
         return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
