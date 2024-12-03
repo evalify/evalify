@@ -7,16 +7,16 @@ if (!URI) {
 
 const options: MongoClientOptions = {
     useUnifiedTopology: true,
-    // maxPoolSize: 10,
-    // minPoolSize: 5,
-    // connectTimeoutMS: 5000,
-    // socketTimeoutMS: 30000,
-    // serverSelectionTimeoutMS: 5000,
-    // retryWrites: true,
-    // retryReads: true,
-    // compression: ["snappy", "zlib"],
-    // w: "majority",
-    // wtimeoutMS: 2500
+    maxPoolSize: 10,
+    minPoolSize: 5,
+    connectTimeoutMS: 5000,
+    socketTimeoutMS: 30000,
+    serverSelectionTimeoutMS: 5000,
+    retryWrites: true,
+    retryReads: true,
+    compression: ["snappy", "zlib"],
+    w: "majority",
+    wtimeoutMS: 2500
 };
 
 let client: MongoClient = new MongoClient(
