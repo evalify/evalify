@@ -150,4 +150,18 @@ export async function downloadFolder(folderPath: string, bucketName: string): Pr
     }
 }
 
+export async function downloadFile(fileName: string, bucketName: string): Promise<Readable> {
+    try {
+        const bucketExists = await minioClient.bucketExists(bucketName);
+        if (!bucketExists) {
+            throw new Error('Bucket does not exist');
+        }
+        
+        return await minioClient.getObject(bucketName, fileName);
+    } catch (error) {
+        console.error('Error downloading file:', error);
+        throw error;
+    }
+}
+
 export default minioClient;

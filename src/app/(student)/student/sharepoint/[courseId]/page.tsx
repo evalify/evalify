@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, use } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/hooks/use-toast';
 import {
     Loader2,
@@ -13,7 +12,7 @@ import {
     Eye,
     Trash2,
 } from "lucide-react";
-import { formatBytes } from '@/lib/utils';
+import { formatBytes, formatDate } from '@/lib/utils';
 import { Card, CardContent } from "@/components/ui/card";
 import {
     Dialog,
@@ -28,23 +27,7 @@ import {
     ContextMenuItem,
     ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+
 
 interface Props {
     params: Promise<{ courseId: string }>;
@@ -97,7 +80,7 @@ export default function CourseSharePoint({ params }: Props) {
         const fetchCourseDetails = async () => {
             try {
                 setIsLoading(true);
-                const response = await fetch(`/api/staff/courses/${courseId}`);
+                const response = await fetch(`/api/student/courses/${courseId}`);
                 const contentType = response.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
                     throw new Error("Server didn't return JSON");
@@ -143,7 +126,7 @@ export default function CourseSharePoint({ params }: Props) {
 
         const fetchFiles = async () => {
             try {
-                const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
+                const response = await fetch(`/api/student/sharepoint/${courseId}`, {
                     headers: {
                         'Cache-Control': 'no-cache',
                     },
@@ -188,101 +171,6 @@ export default function CourseSharePoint({ params }: Props) {
         );
     }
 
-    const handleUpdateSharePoint = async () => {
-        try {
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sharePointUrl }),
-            });
-
-            if (!response.ok) throw new Error('Failed to update');
-
-            toast({
-                title: 'Success',
-                description: 'SharePoint URL updated successfully',
-            });
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: 'Failed to update SharePoint URL',
-                variant: 'destructive',
-            });
-        }
-    };
-
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        try {
-            setUploadingFile(file.name);
-            setUploading(true);
-            const formData = new FormData();
-            formData.append('file', file);
-
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            if (!response.ok) throw new Error('Upload failed');
-
-            toast({
-                title: 'Success',
-                description: 'File uploaded successfully',
-            });
-
-            // Refresh file list
-            const filesResponse = await fetch(`/api/staff/sharepoint/${courseId}`);
-            const data = await filesResponse.json();
-            setFiles(data.files);
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: 'Failed to upload file',
-                variant: 'destructive',
-            });
-        } finally {
-            setUploading(false);
-            setUploadingFile("");
-        }
-    };
-
-    const handleDeleteFile = async (fileName: string) => {
-        try {
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileName }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Delete failed');
-            }
-
-            toast({
-                title: 'Success',
-                description: 'File deleted successfully',
-            });
-
-            setFiles(files.filter(f => f.name !== fileName));
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: error instanceof Error ? error.message : 'Failed to delete file',
-                variant: 'destructive',
-            });
-        }
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (!fileToDelete) return;
-        await handleDeleteFile(fileToDelete.name);
-        setFileToDelete(null);
-    };
 
     const getFileIcon = (fileName: string) => {
         const ext = fileName.split('.').pop()?.toLowerCase();
@@ -309,12 +197,13 @@ export default function CourseSharePoint({ params }: Props) {
 
     const renderPreview = (file: FileInfo) => {
         const fileType = getFileType(file.name);
+        const previewUrl = file.previewUrl ? encodeURI(file.previewUrl) : '';
 
         switch (fileType) {
             case 'image':
                 return (
                     <img
-                        src={file.previewUrl}
+                        src={previewUrl}
                         alt={file.name}
                         className="max-w-full max-h-[80vh] object-contain"
                     />
@@ -322,7 +211,7 @@ export default function CourseSharePoint({ params }: Props) {
             case 'pdf':
                 return (
                     <iframe
-                        src={`${file.previewUrl}#view=FitH`}
+                        src={`${previewUrl}#view=FitH`}
                         className="w-full h-[80vh]"
                         title={file.name}
                     />
@@ -330,7 +219,7 @@ export default function CourseSharePoint({ params }: Props) {
             case 'notebook':
                 return (
                     <iframe
-                        src={`https://nbviewer.org/url/${encodeURIComponent(file.previewUrl || '')}`}
+                        src={`https://nbviewer.org/urls/${previewUrl}`}
                         className="w-full h-[80vh]"
                         title={file.name}
                     />
@@ -339,7 +228,7 @@ export default function CourseSharePoint({ params }: Props) {
             case 'excel':
                 return (
                     <iframe
-                        src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(file.previewUrl || '')}`}
+                        src={`https://view.officeapps.live.com/op/embed.aspx?src=${previewUrl}`}
                         className="w-full h-[80vh]"
                         title={file.name}
                     />
@@ -351,84 +240,19 @@ export default function CourseSharePoint({ params }: Props) {
 
     const handlePreviewFile = (file: FileInfo) => {
         const fileType = getFileType(file.name);
-        if (fileType !== 'other') {
+        if (fileType === 'other') {
+            // Direct download for non-previewable files
+            if (file.url) {
+                const link = document.createElement('a');
+                link.href = file.url;
+                link.download = file.name.split('/').pop() || file.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        } else {
             setPreviewFile(file);
             setIsPreviewOpen(true);
-        } else if (file.url) {
-            window.open(file.url, '_blank');
-        }
-    };
-
-    const handleCreateFolder = async () => {
-        try {
-            const fullPath = currentPath ? `${currentPath}/${newFolderName}` : newFolderName;
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'createFolder',
-                    folderName: fullPath
-                }),
-            });
-
-            if (!response.ok) throw new Error('Failed to create folder');
-
-            toast({
-                title: 'Success',
-                description: 'Folder created successfully',
-            });
-
-            // Refresh file list
-            const filesResponse = await fetch(`/api/staff/sharepoint/${courseId}`);
-            const data = await filesResponse.json();
-            setFiles(data.files);
-            setShowNewFolderDialog(false);
-            setNewFolderName('');
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: 'Failed to create folder',
-                variant: 'destructive',
-            });
-        }
-    };
-
-    const handleMoveFile = async (file: FileInfo, targetFolder: string) => {
-        try {
-            // Use empty string for root folder, otherwise use the target folder path
-            const newPath = targetFolder === '/' ?
-                file.name.split('/').pop() || '' :
-                `${targetFolder}/${file.name.split('/').pop()}`;
-
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'moveFile',
-                    oldPath: file.name,
-                    newPath
-                }),
-            });
-
-            if (!response.ok) throw new Error('Failed to move file');
-
-            toast({
-                title: 'Success',
-                description: 'File moved successfully',
-            });
-
-            // Refresh file list
-            const filesResponse = await fetch(`/api/staff/sharepoint/${courseId}`);
-            const data = await filesResponse.json();
-            setFiles(data.files);
-            setMovingFile(null);
-            setTargetFolder('');
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: 'Failed to move file',
-                variant: 'destructive',
-            });
         }
     };
 
@@ -437,23 +261,28 @@ export default function CourseSharePoint({ params }: Props) {
             const formData = new FormData();
             formData.append('folderPath', folderPath);
 
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
+            const response = await fetch(`/api/student/sharepoint/${courseId}`, {
                 method: 'POST',
                 body: formData,
             });
 
             if (!response.ok) throw new Error('Download failed');
 
-            // Create a blob from the response and trigger download
+            // Get the filename from the content-disposition header if available
+            const contentDisposition = response.headers.get('content-disposition');
+            const fileName = contentDisposition
+                ? contentDisposition.split('filename=')[1].replace(/"/g, '')
+                : `${folderPath.split('/').pop()}.zip`;
+
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${folderPath.split('/').pop()}.zip`;
-            document.body.appendChild(a);
-            a.click();
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
         } catch (error) {
             toast({
                 title: 'Error',
@@ -476,22 +305,24 @@ export default function CourseSharePoint({ params }: Props) {
                         <Eye className="mr-2 h-4 w-4" />
                         Preview
                     </ContextMenuItem>
-                    <ContextMenuItem onClick={() => file.url && window.open(file.url, '_blank')}>
+                        {file.url}
+                    <ContextMenuItem
+                        onClick={() => {
+                            if (file.url) {
+                                const a = document.createElement('a');
+                                a.href = file.url
+                                a.download = file.name.split('/').pop() || file.name;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                            }
+                        }}
+                    >
                         <Download className="mr-2 h-4 w-4" />
                         Download
                     </ContextMenuItem>
-                    <ContextMenuItem onClick={() => setMovingFile(file)}>
-                        Move to folder
-                    </ContextMenuItem>
                 </>
             )}
-            <ContextMenuItem
-                onClick={() => setFileToDelete(file)}
-                className="text-red-600"
-            >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-            </ContextMenuItem>
         </ContextMenuContent>
     );
 
@@ -519,35 +350,6 @@ export default function CourseSharePoint({ params }: Props) {
                 ))}
             </div>
 
-            {/* File operations buttons */}
-            <div className="flex gap-4 mb-4">
-                <Button
-                    variant="outline"
-                    disabled={uploading}
-                    onClick={() => document.getElementById('file-upload')?.click()}
-                >
-                    {uploadingFile ? (
-                        <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Uploading {uploadingFile}...
-                        </>
-                    ) : (
-                        'Upload File'
-                    )}
-                </Button>
-                <Button
-                    variant="outline"
-                    onClick={() => setShowNewFolderDialog(true)}
-                >
-                    New Folder
-                </Button>
-                <Input
-                    id="file-upload"
-                    type="file"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                />
-            </div>
 
             {/* Grid view of files and folders */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -599,40 +401,6 @@ export default function CourseSharePoint({ params }: Props) {
     );
 
 
-    const renderMoveFileDialog = () => (
-        <Dialog open={!!movingFile} onOpenChange={() => setMovingFile(null)}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Move File</DialogTitle>
-                </DialogHeader>
-                <Select
-                    value={targetFolder}
-                    onValueChange={setTargetFolder}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select destination folder" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="/">Root Folder</SelectItem>
-                        {availableFolders
-                            .filter(folder => folder !== '') // Exclude root as it's already added
-                            .map(folder => (
-                                <SelectItem key={folder} value={folder}>
-                                    {folder}
-                                </SelectItem>
-                            ))}
-                    </SelectContent>
-                </Select>
-                <DialogFooter>
-                    <Button
-                        onClick={() => movingFile && handleMoveFile(movingFile, targetFolder)}
-                    >
-                        Move
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
 
     return (
         <div className="container mx-auto p-6">
@@ -640,41 +408,6 @@ export default function CourseSharePoint({ params }: Props) {
 
             {renderFiles()}
 
-            {/* Dialogs */}
-            <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Create New Folder</DialogTitle>
-                    </DialogHeader>
-                    <Input
-                        value={newFolderName}
-                        onChange={(e) => setNewFolderName(e.target.value)}
-                        placeholder="Enter folder name"
-                    />
-                    <DialogFooter>
-                        <Button onClick={handleCreateFolder}>Create</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {renderMoveFileDialog()}
-
-            <AlertDialog open={!!fileToDelete} onOpenChange={() => setFileToDelete(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete File</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Are you sure you want to delete this file? This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteConfirm}>
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
             <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
                 <DialogContent>

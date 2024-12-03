@@ -6,6 +6,7 @@ if (!URI) {
 }
 
 const options: MongoClientOptions = {
+    useUnifiedTopology: true,
     // maxPoolSize: 10,
     // minPoolSize: 5,
     // connectTimeoutMS: 5000,

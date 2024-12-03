@@ -59,6 +59,7 @@ export default function StudentsPage() {
     const [classes, setClasses] = useState<Class[]>([]);
     const [selectedClass, setSelectedClass] = useState<string>("");
     const [open, setOpen] = useState(false);
+    const [selectAll, setSelectAll] = useState(false);
     const router = useRouter();
     const fetchStudents = async () => {
         try {
@@ -106,10 +107,29 @@ export default function StudentsPage() {
         fetchClasses();
     }, []);
 
+    useEffect(() => {
+        if (students.length === 0) {
+            setSelectAll(false);
+        } else if (selected.length === students.length) {
+            setSelectAll(true);
+        } else {
+            setSelectAll(false);
+        }
+    }, [selected, students]);
+
     const toggleStudent = (id: string) => {
         setSelected(prev =>
             prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
         );
+    };
+
+    const handleSelectAll = () => {
+        if (selectAll) {
+            setSelected([]);
+        } else {
+            setSelected(students.map(student => student.id));
+        }
+        setSelectAll(!selectAll);
     };
 
     const handleAssignClass = async () => {
@@ -183,7 +203,12 @@ export default function StudentsPage() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className="w-12"></TableHead>
+                        <TableHead className="w-12">
+                            <Checkbox
+                                checked={selectAll}
+                                onCheckedChange={handleSelectAll}
+                            />
+                        </TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Roll No</TableHead>

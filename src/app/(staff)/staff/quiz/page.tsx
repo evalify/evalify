@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Pencil, Trash2 } from 'lucide-react'; // Add this import
+import { Pencil, SquareChartGantt, Trash2 } from 'lucide-react'; // Add this import
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
+import { useRouter } from 'next/navigation';
 
 type Course = {
     id: string;
@@ -50,6 +51,7 @@ type Quiz = {
 };
 
 export default function QuizPage() {
+    const router = useRouter();
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
     const [open, setOpen] = useState(false);
     const [editMode, setEditMode] = useState(false);
@@ -393,6 +395,15 @@ export default function QuizPage() {
                                             onClick={() => handleEdit(quiz)}
                                         >
                                             <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon"
+                                            onClick={()=>{
+                                                router.push(`/staff/quiz/${quiz.id}`);
+                                            }}
+                                        >
+                                            <SquareChartGantt className="h-4 w-4" />
                                         </Button>
                                         <Button 
                                             variant="ghost" 

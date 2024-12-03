@@ -1,73 +1,57 @@
-
 import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
 
+const publicPaths = ['/ide', "/","/forum"];
 
 export async function middleware(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    const { pathname } = req.nextUrl;
+    const { pathname, origin } = req.nextUrl;
 
-    const publicPath: string[] = [
-        '/ide'
-    ]
+    // Create absolute URL helper
+    const absolute = (path: string) => `${origin}${path}`;
 
-    if (publicPath.includes(pathname)) {
+    // Handle public paths
+    if (publicPaths.includes(pathname)) {
         return NextResponse.next();
     }
 
+    // Handle auth routes
     if (pathname.startsWith('/auth')) {
-        if (!token) {
-            return NextResponse.next()
-        } else {
-            return NextResponse.redirect("/")
-        }
+        return token
+            ? NextResponse.redirect(absolute("/student"))
+            : NextResponse.next();
     }
 
-    if (pathname === '/') {
-        if (token?.user?.role === 'STUDENT') {
-            return NextResponse.redirect(new URL('/student', req.url));
-        } else if (token?.user?.role === 'STAFF') {
-            return NextResponse.redirect(new URL('/staff', req.url));
-        } else if (token?.user?.role === 'ADMIN') {
-            return NextResponse.redirect(new URL('/admin', req.url));
-        } else{
-            return NextResponse.redirect(new URL('/auth/login', req.url));
-        }
+    // Require authentication for all other routes
+    if (!token?.user) {
+        return NextResponse.redirect(absolute("/auth/login"));
     }
 
+    // Handle role-based routes
+    const roleRoutes = {
+        '/student': 'STUDENT',
+        '/admin': 'ADMIN',
+        '/staff': 'STAFF'
+    };
 
-    if (pathname.startsWith('/admin')) {
-        if (token?.user?.role === 'ADMIN') {
+    for (const [route, role] of Object.entries(roleRoutes)) {
+        if (pathname.startsWith(route) && token.user.role === role) {
             return NextResponse.next();
-        } else {
-            return NextResponse.redirect(new URL('/auth/login', req.url));
         }
     }
 
-    if (pathname.startsWith('/staff')) {
-        if (token?.user?.role === 'STAFF') {
-            return NextResponse.next();
-        } else {
-            return NextResponse.redirect(new URL('/auth/login', req.url));
-        }
-    }
-
-
-
-
-
-
-    // if (pathname.startsWith('/auth') || pathname === '/') {
-    //     if (token) {
-    //         const redirectUrl = token?.user?.role === 'ADMIN' ? '/admin' : token?.user?.role === 'STAFF' ? '/staff': '' ;
-    //         return NextResponse.redirect(new URL(redirectUrl, req.url));
-    //     }
-    //     return NextResponse.next();
-    // }
-
+    // Default: redirect to home if no access
+    return NextResponse.redirect(absolute("/"));
 }
 
-
 export const config = {
-    matcher: ["/auth/:path*", "/", "/staff/:path*", "/admin/:path*"]
+    matcher: [
+        '/',
+        '/auth/:path*',
+        '/staff/:path*',
+        '/admin/:path*',
+        '/student/:path*',
+        '/ide',
+        '/forum'
+    ]
 }

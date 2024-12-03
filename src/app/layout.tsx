@@ -4,6 +4,7 @@ import HeaderNavbar from "@/components/header-nav"
 
 import { GeistSans } from "geist/font/sans"
 import "./globals.css"
+import 'katex/dist/katex.min.css'
 import { Toaster as T } from 'sonner';
 import { Toaster } from "@/components/ui/toaster"
 

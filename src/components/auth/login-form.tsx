@@ -21,7 +21,7 @@ export function LoginForm() {
         try {
             const result = await signIn('credentials', {
                 redirect: false,
-                rollNo : rollno,
+                rollNo: rollno,
                 password,
             })
 

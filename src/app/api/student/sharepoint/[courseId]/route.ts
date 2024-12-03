@@ -1,31 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prismadb';
 import { auth } from '@/lib/auth/auth';
-import { uploadFile, deleteFile, listFiles, createFolder, moveFile, downloadFolder, downloadFile } from '@/lib/db/minio';
-
-
-export async function PUT(
-    request: NextRequest,
-    { params }: { params: { courseId: string } }
-) {
-    try {
-        const courseId = params.courseId;
-        const session = await auth();
-        if (!session || session?.user?.role !== 'STAFF') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const { sharePointUrl } = await request.json();
-        const course = await prisma.course.update({
-            where: { id: courseId },
-            data: { sharePoint: sharePointUrl },
-        });
-
-        return NextResponse.json({ course });
-    } catch (error) {
-        return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
-    }
-}
+import { uploadFile, deleteFile, listFiles, createFolder, moveFile, downloadFile, downloadFolder } from '@/lib/db/minio';
 
 export async function GET(
     request: NextRequest,
@@ -34,7 +10,7 @@ export async function GET(
     try {
         const courseId = params.courseId;
         const session = await auth();
-        if (!session || session?.user?.role !== 'STAFF') {
+        if (!session || session?.user?.role !== 'STUDENT') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -42,6 +18,10 @@ export async function GET(
             where: { id: courseId },
             select: { sharePoint: true },
         });
+
+        if (!course?.sharePoint) {
+            return NextResponse.json({ files: [], error: 'No sharepoint path configured' }, { status: 400 });
+        }
 
         const searchParams = request.nextUrl.searchParams;
         const fileToDownload = searchParams.get('file');
@@ -68,7 +48,7 @@ export async function GET(
         
         const filesWithUrls = files.map(file => ({
             ...file,
-            url: `/api/staff/sharepoint/${courseId}?file=${encodeURIComponent(file.name)}`,
+            url: `/api/student/sharepoint/${courseId}?file=${encodeURIComponent(file.name)}`,
             previewUrl: file.name.match(/\.(jpg|jpeg|png|gif|pdf)$/i) 
                 ? `${process.env.NEXT_PUBLIC_MINIO_URL}/${course?.sharePoint}/${encodeURIComponent(file.name)}`
                 : null
@@ -91,7 +71,7 @@ export async function POST(
     try {
         const courseId = params.courseId;
         const session = await auth();
-        if (!session || session?.user?.role !== 'STAFF') {
+        if (!session || session?.user?.role !== 'STUDENT') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -105,9 +85,10 @@ export async function POST(
         }
 
         const formData = await request.formData();
-        const file = formData.get('file') as File;
         const folderPath = formData.get('folderPath') as string;
+        const fileName = formData.get('fileName') as string;
 
+        // Handle folder downloads
         if (folderPath) {
             const zipStream = await downloadFolder(folderPath, course.sharePoint);
             const chunks = [];
@@ -116,7 +97,7 @@ export async function POST(
             }
             const buffer = Buffer.concat(chunks);
 
-            return new Response(buffer, {
+            return new NextResponse(buffer, {
                 headers: {
                     'Content-Type': 'application/zip',
                     'Content-Disposition': `attachment; filename="${folderPath.split('/').pop()}.zip"`,
@@ -124,17 +105,27 @@ export async function POST(
             });
         }
 
-        if (!file) {
-            return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+        // Handle file downloads
+        if (fileName) {
+            const filePath = `${course.sharePoint}/${fileName}`;
+            const fileStream = await downloadFile(fileName, course.sharePoint);
+            const chunks = [];
+            for await (const chunk of fileStream) {
+                chunks.push(chunk);
+            }
+            const buffer = Buffer.concat(chunks);
+
+            return new NextResponse(buffer, {
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'Content-Disposition': `attachment; filename="${fileName.split('/').pop()}"`,
+                },
+            });
         }
 
-        const buffer = Buffer.from(await file.arrayBuffer());
-
-        const url = await uploadFile(buffer, file.name, file.type, course.sharePoint);
-
-        return NextResponse.json({ url });
+        return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
     } catch (error) {
-        return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+        return NextResponse.json({ error: 'Operation failed' }, { status: 500 });
     }
 }
 
@@ -145,7 +136,7 @@ export async function DELETE(
     try {
         const courseId = params.courseId;
         const session = await auth();
-        if (!session || session?.user?.role !== 'STAFF') {
+        if (!session || session?.user?.role !== 'STUDENT') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -177,7 +168,7 @@ export async function PATCH(
     try {
         const courseId = params.courseId;
         const session = await auth();
-        if (!session || session?.user?.role !== 'STAFF') {
+        if (!session || session?.user?.role !== 'STUDENT') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
