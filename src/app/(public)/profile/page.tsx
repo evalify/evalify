@@ -141,6 +141,34 @@ export default function UserProfilePage() {
         setShowCropper(false)
     }
 
+    const handleRemoveImage = async () => {
+        if (!session?.user?.email) return;
+
+        try {
+            const response = await fetch(`/api/profile/image/delete?email=${session.user.email}`, {
+                method: 'DELETE',
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                setFormData(prev => ({ ...prev, image: '' }));
+                setUser(prev => prev ? { ...prev, image: '' } : null);
+                toast({
+                    title: "Success",
+                    description: "Profile image removed successfully",
+                });
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to remove image",
+            });
+        }
+    };
+
     const updateProfile = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!session?.user?.email) return
@@ -269,12 +297,39 @@ export default function UserProfilePage() {
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-muted">
                                 <User className="h-32 w-32 text-muted-foreground" />
+                                    {isEditing && (
+                                        <label htmlFor="imageUpload" className="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer">
+                                            <Upload className="h-8 w-8 text-white" />
+                                            <input
+                                                id="imageUpload"
+                                                type="file"
+                                                className="hidden"
+                                                accept="image/*"
+                                                onChange={handleImageSelect}
+                                                ref={fileInputRef}
+                                            />
+                                        </label>
+                                    )}
                             </div>
+                            
                         )}
+ 
                     </div>
-                    <div className="text-center">
-                        <h2 className="text-2xl font-semibold">{formData.name}</h2>
-                        <p className="text-muted-foreground">{user.role}</p>
+                    <div className="flex flex-col gap-2">
+                        {formData.image && isEditing && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleRemoveImage}
+                                className="w-full"
+                            >
+                                Remove Profile Picture
+                            </Button>
+                        )}
+                        <div className="text-center">
+                            <h2 className="text-2xl font-semibold">{formData.name}</h2>
+                            <p className="text-muted-foreground">{user.role}</p>
+                        </div>
                     </div>
                 </div>
 

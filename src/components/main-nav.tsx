@@ -4,7 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, BookOpen, FileText, Terminal, MessageSquare, Users, GraduationCap, School, UserCog, LucideIcon } from 'lucide-react'
+import { Home, BookOpen, FileText, Terminal, MessageSquare, Users, GraduationCap, School, UserCog, LucideIcon, Cloudy } from 'lucide-react'
 import { useSession } from "next-auth/react"
 
 interface NavItem {
@@ -28,6 +28,11 @@ const StudentnavItems: NavItem[] = [
     name: "Assignments",
     href: "/student/assignments",
     icon: FileText
+  },
+  {
+    name: "SharePoint",
+    href: "/student/sharepoint",
+    icon: Cloudy
   },
   {
     name: "IDE",
@@ -56,6 +61,11 @@ const StaffnavItems: NavItem[] = [
     name: "Assignments",
     href: "/staff/assignments",
     icon: FileText
+  },
+  {
+    name: "SharePoint",
+    href: "/staff/sharepoint",
+    icon: Cloudy
   },
   {
     name: "IDE",

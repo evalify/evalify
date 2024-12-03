@@ -37,6 +37,7 @@ model Class {
     batch      String
     students   Student[]
     courses    Course[]
+    sharePoint String
 }
 
 model Student {
@@ -59,6 +60,7 @@ model Course {
     quizzes    Quiz[]
     semesterId String?
     isactive   Boolean @default(true)
+    sharePoint String
 }
 
 model Staff {
@@ -82,17 +84,15 @@ model Quiz {
     settings   QuizSettings @relation(fields: [settingsId], references: [id])
     settingsId String
     results    QuizResult[]
-    courses    Course[] 
+    courses    Course[]
     QuizReport QuizReport[]
 }
 
 model QuizSettings {
     id         String  @id @default(cuid())
     fullscreen Boolean @default(false)
-    copyPaste  Boolean @default(false)
     calculator Boolean @default(false)
     shuffle    Boolean @default(false)
-    enhanced   Boolean @default(false)
     Quiz       Quiz[]
 }
 

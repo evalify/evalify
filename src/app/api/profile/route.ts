@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { compare, hash } from 'bcryptjs';
 import { prisma } from '@/lib/db/prismadb'; // Assuming Prisma is set up
-import { auth } from '@/lib/auth/auth';
+
 
 // Fetch user profile
 export async function GET(req: NextRequest) {

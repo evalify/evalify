@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
             try {
                 const buffer = Buffer.from(await imageFile.arrayBuffer());
                 const fileName = `${Date.now()}-${imageFile.name}`;
-                imageUrl = await uploadFile(buffer, fileName, imageFile.type);
+                imageUrl = await uploadFile(buffer, fileName, imageFile.type, 'profile-pics');
             } catch (uploadError) {
                 console.error('Image upload failed:', uploadError);
                 // Continue registration without image if upload fails

@@ -30,13 +30,13 @@ export async function POST(req: NextRequest) {
         const buffer = Buffer.from(await file.arrayBuffer());
 
         // Upload new file
-        const url = await uploadFile(buffer, fileName, file.type);
+        const url = await uploadFile(buffer, fileName, file.type, 'profile-pics');
 
         // Delete old image if exists
         if (user.image) {
             const oldFileName = user.image.split('/').pop();
             if (oldFileName) {
-                await deleteFile(oldFileName);
+                await deleteFile(oldFileName, "profile-pics");
             }
         }
 

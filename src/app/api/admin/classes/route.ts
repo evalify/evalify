@@ -1,5 +1,7 @@
+import minioClient, { sanitizeBucketName } from "@/lib/db/minio";
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
+
 
 // GET all classes
 export async function GET() {
@@ -21,16 +23,26 @@ export async function GET() {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
+        const bucketName = sanitizeBucketName(body.name);
+
+        if (!(await minioClient.bucketExists(bucketName))) {
+            await minioClient.makeBucket(bucketName);
+        }
+        const bucketUrl = `${bucketName}`;
+
         const newClass = await prisma.class.create({
             data: {
                 name: body.name,
                 department: body.department,
                 semester: body.semester,
                 batch: body.batch,
+                sharePoint: bucketUrl,
             },
         });
+
         return NextResponse.json(newClass, { status: 201 });
     } catch (error) {
+        console.error('Error creating class:', error);
         return NextResponse.json({ error: 'Failed to create class' }, { status: 500 });
     }
 }

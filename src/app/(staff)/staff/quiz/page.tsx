@@ -43,10 +43,8 @@ type Quiz = {
     settings: {
         id: string;
         fullscreen: boolean;
-        copyPaste: boolean;
         calculator: boolean;
         shuffle: boolean;
-        enhanced: boolean;
     };
     courses: Course[];
 };
@@ -63,10 +61,8 @@ export default function QuizPage() {
         duration: 0,
         settings: {
             fullscreen: false,
-            copyPaste: false,
             calculator: false,
             shuffle: false,
-            enhanced: false,
         },
         courseIds: [],
     });
@@ -144,10 +140,8 @@ export default function QuizPage() {
             duration: 0,
             settings: {
                 fullscreen: false,
-                copyPaste: false,
                 calculator: false,
                 shuffle: false,
-                enhanced: false,
             },
             courseIds: [],
         });

@@ -111,10 +111,8 @@ export async function PUT(request: NextRequest) {
             where: { id: body.settingsId },
             data: {
                 fullscreen: body.settings.fullscreen,
-                copyPaste: body.settings.copyPaste,
                 calculator: body.settings.calculator,
                 shuffle: body.settings.shuffle,
-                enhanced: body.settings.enhanced,
             }
         });
 
