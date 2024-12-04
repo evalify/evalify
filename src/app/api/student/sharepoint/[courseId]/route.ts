@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prismadb';
 import { auth } from '@/lib/auth/auth';
-import { uploadFile, deleteFile, listFiles, createFolder, moveFile, downloadFile, downloadFolder } from '@/lib/db/minio';
+import {  deleteFile, listFiles, createFolder, moveFile, downloadFile, downloadFolder } from '@/lib/db/minio';
 
 export async function GET(
     request: NextRequest,

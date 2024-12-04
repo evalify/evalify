@@ -78,25 +78,33 @@ interface CodeFile {
     content: string
 }
 
+class EditorErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props)
+        this.state = { hasError: false }
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true }
+    }
+
+    componentDidCatch() {
+        // You can log the error here
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return null // Silently recover
+        }
+
+        return this.props.children
+    }
+}
+
 export function CodeEditor() {
-    const [files, setFiles] = React.useState<CodeFile[]>([
-        { id: nanoid(), name: 'file', language: 'octave', content: '' }
-    ])
-    const [activeFileId, setActiveFileId] = React.useState(files[0].id)
-    const [showOutput, setShowOutput] = React.useState(false)
-    const [output, setOutput] = React.useState("")
-    const [isVertical, setIsVertical] = React.useState(true)
-    const { theme, systemTheme } = useTheme()
-    const [mounted, setMounted] = React.useState(false)
-    const editorRef = React.useRef(null)
-    const [isFullscreen, setIsFullscreen] = React.useState(false)
-
-    const activeFile = files.find(file => file.id === activeFileId) || files[0]
-
-    React.useEffect(() => {
-        setMounted(true)
-    }, [])
-
     const functions = [
         'abs', 'angle', 'asin', 'acos', 'atan', 'atan2', 'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'exp',
         'log', 'log10', 'sqrt', 'sum', 'prod', 'mean', 'std', 'var', 'max', 'min', 'rand', 'randn', 'round',
@@ -116,78 +124,35 @@ export function CodeEditor() {
         'uiselect', 'uifigure', 'uisetcolor', 'uigetdir'
     ];
 
+    const [files, setFiles] = React.useState<CodeFile[]>([
+        { id: nanoid(), name: 'file', language: 'octave', content: '' }
+    ])
+    const [activeFileId, setActiveFileId] = React.useState(files[0].id)
+    const [showOutput, setShowOutput] = React.useState(false)
+    const [output, setOutput] = React.useState("")
+    const [isVertical, setIsVertical] = React.useState(true)
+    const { theme, systemTheme } = useTheme()
+    const [mounted, setMounted] = React.useState(false)
+    const editorRef = React.useRef(null)
+    const [isFullscreen, setIsFullscreen] = React.useState(false)
 
-    const handleEditorDidMount = (editor: any, monaco: any) => {
-        editorRef.current = editor
+    const activeFile = files.find(file => file.id === activeFileId) || files[0]
 
-        if (mounted) {
-            // Register custom themes
-            Object.entries(monacoThemes).forEach(([themeName, themeData]) => {
-                monaco.editor.defineTheme(themeName, themeData)
-                monaco.editor.setTheme(getMonacoTheme())
-            })
-        }
-
-        monaco.languages.registerCompletionItemProvider('octave', {
-            provideCompletionItems: () => {
-                const suggestions = functions.map(func => ({
-                    label: func,
-                    kind: monaco.languages.CompletionItemKind.Function,
-                    insertText: `${func}(${func === 'rand' || func === 'randn' ? '' : '${1:arg}'}${func === 'plot' ? ', ${2:arg}' : ''})`,
-                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
-                }));
-                return { suggestions };
-            }
-        });
-
-
-
-
+    React.useEffect(() => {
+        setMounted(true)
+        
+        // Initialize Monaco editor
         loader.init().then((monaco) => {
+            // Register Octave language
             monaco.languages.register({ id: 'octave' });
-            monaco.languages.setLanguageConfiguration('octave', {
-                comments: {
-                    lineComment: '%',
-                    blockComment: ['%{', '%}']
-                },
-                brackets: [['{', '}'], ['[', ']'], ['(', ')']],
-                autoClosingPairs: [
-                    { open: '{', close: '}' },
-                    { open: '[', close: ']' },
-                    { open: '(', close: ')' },
-                    { open: "'", close: "'", notIn: ['string', 'comment'] },
-                    { open: '"', close: '"', notIn: ['string', 'comment'] },
-                ],
-            })
             monaco.languages.setMonarchTokensProvider('octave', {
                 tokenizer: {
                     root: [
-
-                        // [/[a-zA-Z_]\w*/, {
-                        //     cases: {
-                        //         '@builtin': 'builtin',
-                        //         '@default': 'identifier',
-                        //         '@keywords': 'keyword',
-                        //         '@operators': 'operator',
-                        //         '@variable': 'variable',
-                        //         '@string': 'string',
-                        //         '@comment': 'comment',
-                        //     }
-                        // }],
-                        // Octave comments
                         [/%.*$/, 'comment'],
-
-                        // Strings
                         [/"([^"\\]|\\.)*$/, 'string.invalid'],
                         [/"/, { token: 'string.quote', next: '@string' }],
-
-                        // Octave keywords
                         [/\b(function|end|if|else|elseif|while|for|end|break|continue)\b/, 'keyword'],
-
-                        // Numbers
                         [/\d+(\.\d+)?/, 'number'],
-
-                        // Operators
                         [/[=+\-.*/^~<>]/, 'operator'],
                     ],
                     string: [
@@ -198,8 +163,43 @@ export function CodeEditor() {
                 builtin: functions
             });
         });
+    }, [functions]);
 
-    }
+    const handleEditorDidMount = (editor: any, monaco: any) => {
+        editorRef.current = editor;
+
+        // Register themes and completion provider
+        Object.entries(monacoThemes).forEach(([themeName, themeData]) => {
+            monaco.editor.defineTheme(themeName, themeData);
+        });
+        monaco.editor.setTheme(getMonacoTheme());
+
+        monaco.languages.setLanguageConfiguration('octave', {
+            comments: {
+                lineComment: '%',
+                blockComment: ['%{', '%}']
+            },
+            brackets: [['{', '}'], ['[', ']'], ['(', ')']],
+            autoClosingPairs: [
+                { open: '{', close: '}' },
+                { open: '[', close: ']' },
+                { open: '(', close: ')' },
+                { open: "'", close: "'", notIn: ['string', 'comment'] },
+                { open: '"', close: '"', notIn: ['string', 'comment'] },
+            ],
+        });
+
+        monaco.languages.registerCompletionItemProvider('octave', {
+            provideCompletionItems: () => ({
+                suggestions: functions.map(func => ({
+                    label: func,
+                    kind: monaco.languages.CompletionItemKind.Function,
+                    insertText: `${func}(${func === 'rand' || func === 'randn' ? '' : '${1:arg}'}${func === 'plot' ? ', ${2:arg}' : ''})`,
+                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+                }))
+            })
+        });
+    };
 
     const runCode = async () => {
         try {
@@ -314,44 +314,44 @@ export function CodeEditor() {
                     onTabClose={handleTabClose}
                     onNewFile={handleNewFile}
                 />
-                <ResizablePanelGroup
-                    direction={isVertical ? "horizontal" : "vertical"}
-                    className="flex-1 border-t"
-                >
-                    <ResizablePanel defaultSize={75} minSize={30}>
-                        <Editor
-                            height="100%"
-                            language={activeFile.language}
-                            value={activeFile.content}
-                            onChange={(value) => {
-                                setFiles(files.map(file =>
-                                    file.id === activeFileId ? { ...file, content: value || '' } : file
-                                ))
-                            }}
-                            theme={getMonacoTheme()}
-                            options={{
-                                fontSize: 16,
-                                fontFamily: 'JetBrains Mono',
-                                minimap: { enabled: false },
-                                wordWrap: 'on',
-                                scrollBeyondLastLine: false,
-                                lineNumbers: 'on',
-                                automaticLayout: true,
-                                padding: { top: 16 },
-                                suggest: {
-                                    showKeywords: true,
-                                },
-                            }}
-                            onMount={handleEditorDidMount}
-                            loading={
-                                <div className="flex h-full items-center justify-center">
-                                    Loading...
-                                </div>
-                            }
-                        />
-                    </ResizablePanel>
-                    {/* {showOutput && ( */}
-                    <>
+                <EditorErrorBoundary>
+                    <ResizablePanelGroup
+                        key={isVertical ? 'vertical' : 'horizontal'} // Force remount when direction changes
+                        direction={isVertical ? "horizontal" : "vertical"}
+                        className="flex-1 border-t"
+                    >
+                        <ResizablePanel defaultSize={75} minSize={30}>
+                            <Editor
+                                height="100%"
+                                language={activeFile.language}
+                                value={activeFile.content}
+                                onChange={(value) => {
+                                    setFiles(files.map(file =>
+                                        file.id === activeFileId ? { ...file, content: value || '' } : file
+                                    ))
+                                }}
+                                theme={getMonacoTheme()}
+                                options={{
+                                    fontSize: 16,
+                                    fontFamily: 'JetBrains Mono',
+                                    minimap: { enabled: false },
+                                    wordWrap: 'on',
+                                    scrollBeyondLastLine: false,
+                                    lineNumbers: 'on',
+                                    automaticLayout: true,
+                                    padding: { top: 16 },
+                                    suggest: {
+                                        showKeywords: true,
+                                    },
+                                }}
+                                onMount={handleEditorDidMount}
+                                loading={
+                                    <div className="flex h-full items-center justify-center">
+                                        Loading...
+                                    </div>
+                                }
+                            />
+                        </ResizablePanel>
                         <ResizableHandle withHandle />
                         <ResizablePanel defaultSize={25} minSize={20} >
                             <div className="h-full overflow-auto p-4 border-l">
@@ -360,9 +360,8 @@ export function CodeEditor() {
                                 </pre>
                             </div>
                         </ResizablePanel>
-                    </>
-                    {/* )} */}
-                </ResizablePanelGroup>
+                    </ResizablePanelGroup>
+                </EditorErrorBoundary>
             </div>
         </div>
     )
