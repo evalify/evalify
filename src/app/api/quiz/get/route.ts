@@ -19,16 +19,16 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "QuizID not found" }, { status: 404 });
         }
 
-        // check if the student completed the quiz
-        const studentQuiz = await prisma.quizResult.findFirst({
-            where: {
-                quizId: quizId
-            }
-        });
-        
-        if (studentQuiz) {
-            return NextResponse.json({ error: "Quiz already completed" }, { status: 400 });
-        }
+        // // check if the student completed the quiz
+        // const studentQuiz = await prisma.quizResult.findFirst({
+        //     where: {
+        //         quizId: quizId
+        //     }
+        // });
+
+        // if (studentQuiz) {
+        //     return NextResponse.json({ error: "Quiz already completed" }, { status: 400 });
+        // }
 
         const quiz = await prisma.quiz.findUnique({
             where: {
