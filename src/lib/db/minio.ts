@@ -98,14 +98,34 @@ export function sanitizeBucketName(name: string): string {
         .substring(0, 63);
 }
 
+export function sanitizeFolderName(name: string): string {
+    // Remove leading/trailing slashes and spaces
+    name = name.trim().replace(/^\/+|\/+$/g, '');
+    // Replace multiple slashes with single slash
+    name = name.replace(/\/+/g, '/');
+    // Replace invalid characters with dash
+    name = name.replace(/[^a-zA-Z0-9-._/]/g, '-');
+    return name;
+}
+
 export async function createFolder(folderName: string, bucketName: string) {
     try {
         const bucketExists = await minioClient.bucketExists(bucketName);
         if (!bucketExists) {
             throw new Error('Bucket does not exist');
         }
-        // Create an empty object with folder name ending with /
-        await minioClient.putObject(bucketName, `${folderName}/`, Buffer.from(''));
+        
+        // Sanitize folder name
+        const sanitizedName = sanitizeFolderName(folderName);
+        if (!sanitizedName) {
+            throw new Error('Invalid folder name');
+        }
+
+        // Ensure folder name ends with slash
+        const folderPath = sanitizedName.endsWith('/') ? sanitizedName : `${sanitizedName}/`;
+        
+        // Create an empty object with folder name
+        await minioClient.putObject(bucketName, folderPath, Buffer.from(''));
         return true;
     } catch (error) {
         console.log('Error creating folder:', error);
@@ -115,8 +135,8 @@ export async function createFolder(folderName: string, bucketName: string) {
 
 export async function moveFile(oldPath: string, newPath: string, bucketName: string) {
     try {
-        // Copy to new location
-        await minioClient.copyObject(bucketName, newPath, `${bucketName}/${oldPath}`);
+        // Use the correct source format (just oldPath instead of bucketName/oldPath)
+        await minioClient.copyObject(bucketName, newPath, `/${bucketName}/${oldPath}`);
         // Delete from old location
         await minioClient.removeObject(bucketName, oldPath);
         return true;

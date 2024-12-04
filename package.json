@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "next dev -H 172.17.9.74 -p 80",
+    "test": "next dev --no-hot -H 172.17.9.74 -p 80 ",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

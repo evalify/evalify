@@ -11,7 +11,6 @@ export async function GET(req: Request) {
             return NextResponse.json({ status: 401, message: "Unauthorized" });
         }
 
-
         const queryParams = new URLSearchParams(req.url.split('?')[1]);
         const quizId = await queryParams.get('quizId');
 

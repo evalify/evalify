@@ -93,6 +93,25 @@ export default function CourseSharePoint({ params }: Props) {
     const [targetFolder, setTargetFolder] = useState('');
     const [availableFolders, setAvailableFolders] = useState<string[]>([]);
 
+    const updateAvailableFolders = (files: FileInfo[]) => {
+        const folders = new Set<string>();
+        folders.add('/'); // Root folder with special value
+
+        files.forEach(file => {
+            if (file.isFolder) {
+                folders.add(file.name);
+            } else {
+                const parts = file.name.split('/');
+                parts.pop();
+                if (parts.length > 0) {
+                    folders.add(parts.join('/'));
+                }
+            }
+        });
+
+        setAvailableFolders(Array.from(folders));
+    };
+
     useEffect(() => {
         const fetchCourseDetails = async () => {
             try {
@@ -143,11 +162,12 @@ export default function CourseSharePoint({ params }: Props) {
 
         const fetchFiles = async () => {
             try {
-                const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
-                    headers: {
-                        'Cache-Control': 'no-cache',
-                    },
-                });
+                const response = await fetch(
+                    `/api/staff/sharepoint/course?courseId=${courseId}`,
+                    {
+                        headers: { 'Cache-Control': 'no-cache' },
+                    }
+                );
 
                 if (!response.ok) {
                     throw new Error(response.statusText || 'Failed to fetch files');
@@ -190,10 +210,10 @@ export default function CourseSharePoint({ params }: Props) {
 
     const handleUpdateSharePoint = async () => {
         try {
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
+            const response = await fetch(`/api/staff/sharepoint/course`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sharePointUrl }),
+                body: JSON.stringify({ courseId, sharePointUrl }),
             });
 
             if (!response.ok) throw new Error('Failed to update');
@@ -220,23 +240,21 @@ export default function CourseSharePoint({ params }: Props) {
             setUploading(true);
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('courseId', courseId);
 
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
+            const response = await fetch(`/api/staff/sharepoint/course`, {
                 method: 'POST',
                 body: formData,
             });
 
             if (!response.ok) throw new Error('Upload failed');
 
+            // Refresh file list
+            await refreshFiles();
             toast({
                 title: 'Success',
                 description: 'File uploaded successfully',
             });
-
-            // Refresh file list
-            const filesResponse = await fetch(`/api/staff/sharepoint/${courseId}`);
-            const data = await filesResponse.json();
-            setFiles(data.files);
         } catch (error) {
             toast({
                 title: 'Error',
@@ -249,18 +267,43 @@ export default function CourseSharePoint({ params }: Props) {
         }
     };
 
-    const handleDeleteFile = async (fileName: string) => {
+    const refreshFiles = async () => {
         try {
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fileName }),
+            const response = await fetch(`/api/staff/sharepoint/course?courseId=${courseId}`, {
+                headers: { 'Cache-Control': 'no-cache' },
             });
 
+            if (!response.ok) throw new Error('Failed to fetch files');
+
             const data = await response.json();
+            const filesList = Array.isArray(data.files) ? data.files : [];
+            setFiles(filesList);
+            updateAvailableFolders(filesList);
+        } catch (error) {
+            console.log('Error fetching files:', error);
+            setFiles([]);
+            toast({
+                title: 'Error',
+                description: error instanceof Error ? error.message : 'Failed to load files',
+                variant: 'destructive',
+            });
+        }
+    };
+
+    const handleDeleteFile = async (fileName: string) => {
+        try {
+            const response = await fetch(`/api/staff/sharepoint/course`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileName,
+                    courseId
+                }),
+            });
 
             if (!response.ok) {
-                throw new Error(data.error || 'Delete failed');
+                const error = await response.json();
+                throw new Error(error.error || 'Delete failed');
             }
 
             toast({
@@ -268,8 +311,10 @@ export default function CourseSharePoint({ params }: Props) {
                 description: 'File deleted successfully',
             });
 
-            setFiles(files.filter(f => f.name !== fileName));
+            // Refresh file list instead of client-side filtering
+            await refreshFiles();
         } catch (error) {
+            console.log('Delete error:', error);
             toast({
                 title: 'Error',
                 description: error instanceof Error ? error.message : 'Failed to delete file',
@@ -362,16 +407,20 @@ export default function CourseSharePoint({ params }: Props) {
     const handleCreateFolder = async () => {
         try {
             const fullPath = currentPath ? `${currentPath}/${newFolderName}` : newFolderName;
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
+            const response = await fetch(`/api/staff/sharepoint/course`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    courseId,
                     action: 'createFolder',
                     folderName: fullPath
                 }),
             });
 
-            if (!response.ok) throw new Error('Failed to create folder');
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to create folder');
+            }
 
             toast({
                 title: 'Success',
@@ -379,15 +428,14 @@ export default function CourseSharePoint({ params }: Props) {
             });
 
             // Refresh file list
-            const filesResponse = await fetch(`/api/staff/sharepoint/${courseId}`);
-            const data = await filesResponse.json();
-            setFiles(data.files);
+            await refreshFiles();
             setShowNewFolderDialog(false);
             setNewFolderName('');
         } catch (error) {
+            console.log('Create folder error:', error);
             toast({
                 title: 'Error',
-                description: 'Failed to create folder',
+                description: error instanceof Error ? error.message : 'Failed to create folder',
                 variant: 'destructive',
             });
         }
@@ -396,37 +444,40 @@ export default function CourseSharePoint({ params }: Props) {
     const handleMoveFile = async (file: FileInfo, targetFolder: string) => {
         try {
             // Use empty string for root folder, otherwise use the target folder path
-            const newPath = targetFolder === '/' ?
-                file.name.split('/').pop() || '' :
+            const newPath = targetFolder === '/' ? 
+                file.name.split('/').pop() || '' : 
                 `${targetFolder}/${file.name.split('/').pop()}`;
 
-            const response = await fetch(`/api/staff/sharepoint/${courseId}`, {
+            const response = await fetch(`/api/staff/sharepoint/course`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    courseId,
                     action: 'moveFile',
                     oldPath: file.name,
-                    newPath
+                    newPath: newPath
                 }),
             });
 
-            if (!response.ok) throw new Error('Failed to move file');
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to move file');
+            }
 
             toast({
                 title: 'Success',
                 description: 'File moved successfully',
             });
 
-            // Refresh file list
-            const filesResponse = await fetch(`/api/staff/sharepoint/${courseId}`);
-            const data = await filesResponse.json();
-            setFiles(data.files);
+            // Refresh files list
+            await refreshFiles();
             setMovingFile(null);
             setTargetFolder('');
         } catch (error) {
+            console.error('Move error:', error);
             toast({
                 title: 'Error',
-                description: 'Failed to move file',
+                description: error instanceof Error ? error.message : 'Failed to move file',
                 variant: 'destructive',
             });
         }

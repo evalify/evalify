@@ -7,7 +7,7 @@ import { prisma } from '@/lib/db/prismadb'; // Assuming Prisma is set up
 export async function GET(req: NextRequest) {
     try {
         const email = req.nextUrl.searchParams.get('email');
-        console.log(email);
+
         if (!email) {
             return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
         }

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/hooks/use-toast';
 import {
@@ -96,11 +96,11 @@ export default function CourseSharePoint({ params }: Props) {
             try {
                 setIsLoading(true);
                 const response = await fetch(`/api/student/courses/course`, {
-                    method: 'POST', // Changed to POST
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ courseId }), // Ensure courseId is sent in the body
+                    body: JSON.stringify({ courseId }),
                 });
                 const contentType = response.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
@@ -127,14 +127,16 @@ export default function CourseSharePoint({ params }: Props) {
 
         const fetchFiles = async () => {
             try {
-                const response = await fetch(`/api/student/sharepoint/${courseId}`, {
+                const response = await fetch(`/api/student/sharepoint/course?courseId=${courseId}`, {
                     headers: {
                         'Cache-Control': 'no-cache',
                     },
+                    method: 'GET',
                 });
-                console.log
+
                 if (!response.ok) {
-                    throw new Error(response.statusText || 'Failed to fetch files');
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch files');
                 }
 
                 const data = await response.json();
@@ -156,10 +158,8 @@ export default function CourseSharePoint({ params }: Props) {
     }, [courseId, toast]);
 
     if (!resolvedParams) {
-        // Show a loading state while resolving params
         return <div>Loading...</div>;
     }
-
 
     if (isLoading) {
         return (
@@ -176,7 +176,6 @@ export default function CourseSharePoint({ params }: Props) {
             </div>
         );
     }
-
 
     const getFileIcon = (fileName: string) => {
         const ext = fileName.split('.').pop()?.toLowerCase();
@@ -247,7 +246,6 @@ export default function CourseSharePoint({ params }: Props) {
     const handlePreviewFile = (file: FileInfo) => {
         const fileType = getFileType(file.name);
         if (fileType === 'other') {
-            // Direct download for non-previewable files
             if (file.url) {
                 const link = document.createElement('a');
                 link.href = file.url;
@@ -266,10 +264,12 @@ export default function CourseSharePoint({ params }: Props) {
         try {
             const formData = new FormData();
             formData.append('folderPath', folderPath);
+            formData.append('courseId', courseId);
 
-            const response = await fetch(`/api/student/sharepoint/${courseId}`, {
+            const response = await fetch(`/api/student/sharepoint/course`, {
                 method: 'POST',
-                body: formData,
+                body: formData
+                // Content-Type header is automatically set by the browser
             });
 
             if (!response.ok) throw new Error('Download failed');
@@ -311,7 +311,6 @@ export default function CourseSharePoint({ params }: Props) {
                         <Eye className="mr-2 h-4 w-4" />
                         Preview
                     </ContextMenuItem>
-                    {file.url}
                     <ContextMenuItem
                         onClick={() => {
                             if (file.url) {

@@ -12,7 +12,6 @@ export async function POST(request: Request) {
         source_code: source_code,
         language_id: languages.find((lang) => lang.id == language)?.language_id,
     }
-    console.log(message);
 
     const res = await fetch(
         `${JUDGE}/submissions?base64_encoded=false&wait=true`,
