@@ -23,6 +23,28 @@ type QuizInfo = {
     }
 }
 
+
+
+/**
+ * Triggers the download of a file from the public directory.
+ *
+ * @param filePath - The relative path to the file in the public directory (e.g., "/files/sample.pdf").
+ */
+const downloadFileFromPublicDir = (filePath: string) => {
+    const anchor = document.createElement("a");
+    anchor.href = filePath;
+    anchor.download = filePath.split("/").pop() || "file";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+};
+
+
+const handleDownload = () => {
+    downloadFileFromPublicDir("/LA_TEST1.pdf");
+};
+
+
 function Page() {
     const [quizInfo, setQuizInfo] = useState<QuizInfo[] | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -107,6 +129,9 @@ function Page() {
                     ))}
                 </div>
             )}
+            <div className="p-6">
+                <Button onClick={handleDownload}>Download Exam File</Button>
+            </div>
         </div>
     )
 }
