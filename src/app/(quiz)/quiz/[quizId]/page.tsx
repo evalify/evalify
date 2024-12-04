@@ -1,74 +1,7 @@
-// "use client"
-
-// import React, { use, useEffect, useState } from 'react'
-
-// type Props = {
-//     params: {
-//         quizId: Promise<{ quizId: string }>
-//     }
-// }
-
-// function page({ params }: Props) {
-//     const [quizId, setQuizId] = useState<string | null>(null);
-//     const [quiz, setQuiz] = useState<any | null>(null);
-
-//     useEffect(() => {
-//         async function resolveParams() {
-//             const param = await params;
-//             const { quizId: temp_quizId } = param;
-//             setQuizId(temp_quizId);
-//             if (temp_quizId) {
-//                 fetchQuiz();
-//             }
-//         }
-//         resolveParams();
-//     }, [])
-
-//     const fetchQuiz = async () => {
-//         try {
-//             if (!quizId) {
-//                 return;
-//             }
-//             const res = await fetch(`/api/quiz/get?quizId=${quizId}`,
-//             );
-//             if (!res.ok) {
-//                 throw new Error(`HTTP error! status: ${res.status}`);
-//             }
-//             const data = await res.json();
-//             console.log(data);
-//             setQuiz(data);
-//         } catch (error) {
-//             console.log('Error fetching quiz:', error);
-//         }
-//     }
-
-
-//     useEffect(() => {
-//         fetchQuiz();
-//     }, [quizId])
-
-
-//     return (
-//         <div>
-//             {
-//                 quizId
-//             }
-//             <pre>
-
-//                 {
-//                     JSON.stringify(quiz, null, 4)
-//                 }
-//             </pre>
-//         </div>
-//     )
-// }
-
-// export default page
-
 "use client"
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -108,28 +41,14 @@ const QuizPage = () => {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
     const [userAnswers, setUserAnswers] = useState<Record<string, string[]>>({})
     const [timeLeft, setTimeLeft] = useState<number | null>(null)
-
-
-
-    // useEffect(() => {
-    //     async function resolveParams() {
-    //         const param = await params;
-    //         const { quizId: temp_quizId } = param;
-    //         setQuizId(temp_quizId);
-    //         if (temp_quizId) {
-    //             fetchQuiz();
-    //         }
-    //     }
-    //     resolveParams();
-    // }, [])
+    const router = useRouter();
 
     const fetchQuiz = async () => {
         try {
             if (!quizId) {
                 return;
             }
-            const res = await fetch(`/api/quiz/get?quizId=${quizId}`,
-            );
+            const res = await fetch(`/api/quiz/get?quizId=${quizId}`);
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
@@ -137,108 +56,70 @@ const QuizPage = () => {
             console.log(data);
             setQuiz(data.quiz);
             setQuestions(data.questions);
+            localStorage.setItem(`quiz_${quizId}`, JSON.stringify(data.quiz));
+            localStorage.setItem(`questions_${quizId}`, JSON.stringify(data.questions));
         } catch (error) {
             console.log('Error fetching quiz:', error);
         }
     }
 
+    useEffect(() => {
+        const storedQuiz = localStorage.getItem(`quiz_${quizId}`);
+        const storedQuestions = localStorage.getItem(`questions_${quizId}`);
+        const storedUserAnswers = localStorage.getItem(`userAnswers_${quizId}`);
+        const storedTimeLeft = localStorage.getItem(`timeLeft_${quizId}`);
+
+        if (storedQuiz && storedQuestions) {
+            setQuiz(JSON.parse(storedQuiz));
+            setQuestions(JSON.parse(storedQuestions));
+        } else {
+            fetchQuiz();
+        }
+
+        if (storedUserAnswers) {
+            setUserAnswers(JSON.parse(storedUserAnswers));
+        }
+
+        if (storedTimeLeft) {
+            setTimeLeft(Number(storedTimeLeft));
+        }
+    }, [quizId]);
 
     useEffect(() => {
-        fetchQuiz();
-    }, [quizId])
-
-
-
-
-    // useEffect(() => {
-    //     // In a real application, fetch the quiz data from an API
-    //     // For this example, we'll use the provided data
-    //     const quizData = {
-    //         "quiz": {
-    //             "id": "cm48hbtqc000n7ke782lhlx0q",
-    //             "title": "Math + ML : Exam 1",
-    //             "description": "Math + ML Common Exam",
-    //             "startTime": "2024-12-04T10:30:00.000Z",
-    //             "endTime": "2024-12-04T11:15:00.000Z",
-    //             "duration": 45,
-    //         },
-    //         "questions": [
-    //             {
-    //                 "id": "674fe49a44e143e768cc53ce",
-    //                 "question": "what is the color of the moon ?",
-    //                 "options": [
-    //                     { "option": "Yellow", "optionId": "1" },
-    //                     { "option": "Red", "optionId": "2" },
-    //                     { "option": "black", "optionId": "1733289097923" },
-    //                     { "option": "Blue", "optionId": "1733289106505" }
-    //                 ],
-    //                 "answer": ["1", "2"],
-    //                 "marks": 1,
-    //                 "type": "MMCQ",
-    //             },
-    //             {
-    //                 "id": "674fe54144e143e768cc53cf",
-    //                 "question": "What is Water?",
-    //                 "options": [
-    //                     { "option": "H30", "optionId": "1" },
-    //                     { "option": "O2H", "optionId": "2" },
-    //                     { "option": "OO2", "optionId": "1733289271253" },
-    //                     { "option": "CC2", "optionId": "1733289275670" }
-    //                 ],
-    //                 "answer": ["2", "1733289271253"],
-    //                 "marks": 1,
-    //                 "type": "MMCQ",
-    //             },
-    //             {
-    //                 "id": "674fe78a44e143e768cc53d0",
-    //                 "question": "What is $x^2 $?\n",
-    //                 "options": [
-    //                     { "option": "Square of x", "optionId": "1" },
-    //                     { "option": "x multiplied by 2", "optionId": "2" }
-    //                 ],
-    //                 "answer": ["1"],
-    //                 "marks": 1,
-    //                 "type": "MCQ",
-    //             }
-    //         ]
-    //     }
-    //     setQuiz(quizData.quiz)
-    //     setQuestions(quizData.questions)
-    //     setTimeLeft(quizData.quiz.duration * 60) // Convert minutes to seconds
-    // }, [quizId])
-
-    useEffect(() => {
-        if (timeLeft === null) return
+        if (timeLeft === null) return;
 
         const timer = setInterval(() => {
             setTimeLeft((prevTime) => {
                 if (prevTime === null || prevTime <= 0) {
-                    clearInterval(timer)
-                    return 0
+                    clearInterval(timer);
+                    return 0;
                 }
-                return prevTime - 1
-            })
-        }, 1000)
+                const newTimeLeft = prevTime - 1;
+                localStorage.setItem(`timeLeft_${quizId}`, newTimeLeft.toString());
+                return newTimeLeft;
+            });
+        }, 1000);
 
-        return () => clearInterval(timer)
-    }, [timeLeft])
+        return () => clearInterval(timer);
+    }, [timeLeft]);
 
     const handleAnswerChange = (questionId: string, optionId: string, isChecked: boolean) => {
         setUserAnswers((prevAnswers) => {
-            const currentAnswers = prevAnswers[questionId] || []
-            if (isChecked) {
-                return { ...prevAnswers, [questionId]: [...currentAnswers, optionId] }
-            } else {
-                return { ...prevAnswers, [questionId]: currentAnswers.filter(id => id !== optionId) }
-            }
-        })
+            const currentAnswers = prevAnswers[questionId] || [];
+            const newAnswers = isChecked
+                ? { ...prevAnswers, [questionId]: [...currentAnswers, optionId] }
+                : { ...prevAnswers, [questionId]: currentAnswers.filter(id => id !== optionId) };
+            localStorage.setItem(`userAnswers_${quizId}`, JSON.stringify(newAnswers));
+            return newAnswers;
+        });
     }
 
     const handleRadioChange = (questionId: string, optionId: string) => {
-        setUserAnswers((prevAnswers) => ({
-            ...prevAnswers,
-            [questionId]: [optionId]
-        }))
+        setUserAnswers((prevAnswers) => {
+            const newAnswers = { ...prevAnswers, [questionId]: [optionId] };
+            localStorage.setItem(`userAnswers_${quizId}`, JSON.stringify(newAnswers));
+            return newAnswers;
+        });
     }
 
     const handleNextQuestion = () => {
@@ -253,10 +134,33 @@ const QuizPage = () => {
         }
     }
 
+    const saveAnswers = async () => {
+        try {
+            const res = await fetch('/api/quiz/save', {
+                method: 'POST',
+                body: JSON.stringify({
+                    quizId,
+                    responses: userAnswers,
+                    voilations: 0
+                })
+            })
+            if (!res.ok) {
+                console.log('Failed to save quiz')
+                return
+            }
+            const data = await res.json()
+            router.push('/student/quiz')
+            console.log(data)
+            localStorage.clear();
+        } catch (error) {
+            console.log('Error saving quiz:', error)
+        }
+    }
+
     const handleSubmitQuiz = () => {
         // In a real application, you would send the userAnswers to the server here
         console.log('Quiz submitted:', userAnswers)
-        // You could also navigate to a results page or show a completion message
+        saveAnswers()
     }
 
     if (!quiz || questions.length === 0) {

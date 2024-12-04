@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prismadb";
 import { auth } from "@/lib/auth/auth";
 
+
 export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user?.email) {
@@ -40,6 +41,16 @@ export async function POST(request: NextRequest) {
                 }
             }
         });
+
+        // body.courseIds.forEach(async (id: string) => {
+        //     const classId = await prisma.course.findUnique({
+        //         where: { id },
+        //         select: { classId: true }
+        //     })
+        //     await redis.set(`QUIZ_${classId?.classId}`, JSON.stringify(quiz));
+        // })
+
+
         return NextResponse.json(quiz);
     } catch (error) {
         console.log('API Error:', error);
@@ -89,6 +100,7 @@ export async function GET() {
         return NextResponse.json(quizzes, {
             status: 200,
         });
+
     } catch (error) {
         console.log('API Error:', error);
         return NextResponse.json({ error: "Failed to fetch quizzes" }, {
