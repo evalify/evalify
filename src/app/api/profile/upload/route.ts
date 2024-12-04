@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
         const formData = await req.formData();
         const file = formData.get('file') as File;
         const email = formData.get('email') as string;
-        
+
         if (!file || !email) {
             return NextResponse.json(
                 { error: 'File and email are required' },
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ url });
     } catch (error) {
-        console.error('Error handling image upload:', error);
+        console.log('Error handling image upload:', error);
         return NextResponse.json(
             { error: 'Error uploading image' },
             { status: 500 }

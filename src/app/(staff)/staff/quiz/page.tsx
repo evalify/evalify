@@ -99,7 +99,7 @@ export default function QuizPage() {
                 endTime: new Date(quiz.endTime)
             })));
         } catch (error) {
-            console.error('Error fetching quizzes:', error);
+            console.log('Error fetching quizzes:', error);
             toast.error(error instanceof Error ? error.message : 'Failed to fetch quizzes');
             setQuizzes([]);
         }
@@ -127,7 +127,7 @@ export default function QuizPage() {
             const data = responseData ? JSON.parse(responseData) : [];
             setCourses(Array.isArray(data) ? data : []);
         } catch (error) {
-            console.error('Error fetching courses:', error);
+            console.log('Error fetching courses:', error);
             toast.error(error instanceof Error ? error.message : 'Failed to fetch courses');
             setCourses([]);
         }
@@ -212,7 +212,7 @@ export default function QuizPage() {
             resetForm();
             fetchQuizzes();
         } catch (error) {
-            console.error(`Error ${editMode ? 'updating' : 'creating'} quiz:`, error);
+            console.log(`Error ${editMode ? 'updating' : 'creating'} quiz:`, error);
             toast.error(error instanceof Error ? error.message : `Failed to ${editMode ? 'update' : 'create'} quiz`);
         }
     };
@@ -232,7 +232,7 @@ export default function QuizPage() {
             }
 
             const result = await response.json();
-            
+
             if (result.success) {
                 toast.success(result.message || 'Quiz deleted successfully');
                 fetchQuizzes();
@@ -240,7 +240,7 @@ export default function QuizPage() {
                 throw new Error(result.error || 'Failed to delete quiz');
             }
         } catch (error) {
-            console.error('Delete error:', error);
+            console.log('Delete error:', error);
             toast.error(error instanceof Error ? error.message : 'Failed to delete quiz');
         }
     };
@@ -258,8 +258,8 @@ export default function QuizPage() {
         <div className="p-6">
             <div className="flex justify-between mb-6">
                 <h1 className="text-2xl font-bold">Quizzes</h1>
-                <Dialog 
-                    open={open} 
+                <Dialog
+                    open={open}
                     onOpenChange={(open) => {
                         setOpen(open);
                         if (!open) resetForm();
@@ -389,24 +389,24 @@ export default function QuizPage() {
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex gap-2">
-                                        <Button 
-                                            variant="ghost" 
+                                        <Button
+                                            variant="ghost"
                                             size="icon"
                                             onClick={() => handleEdit(quiz)}
                                         >
                                             <Pencil className="h-4 w-4" />
                                         </Button>
-                                        <Button 
-                                            variant="ghost" 
+                                        <Button
+                                            variant="ghost"
                                             size="icon"
-                                            onClick={()=>{
+                                            onClick={() => {
                                                 router.push(`/staff/quiz/${quiz.id}`);
                                             }}
                                         >
                                             <SquareChartGantt className="h-4 w-4" />
                                         </Button>
-                                        <Button 
-                                            variant="ghost" 
+                                        <Button
+                                            variant="ghost"
                                             size="icon"
                                             onClick={() => handleDelete(quiz.id)}
                                             className="text-destructive"

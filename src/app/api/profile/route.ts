@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ user });
     } catch (error) {
-        console.error('Error fetching user profile:', error);
+        console.log('Error fetching user profile:', error);
         return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
     }
 }
@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest) {
 
         return NextResponse.json({ message: 'Profile updated successfully.', user: updatedUser });
     } catch (error) {
-        console.error('Error updating user profile:', error);
+        console.log('Error updating user profile:', error);
         return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
     }
 }
@@ -88,7 +88,7 @@ export async function PATCH(req: NextRequest) {
 
         return NextResponse.json({ message: 'Password changed successfully.' });
     } catch (error) {
-        console.error('Error changing password:', error);
+        console.log('Error changing password:', error);
         return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
     }
 }

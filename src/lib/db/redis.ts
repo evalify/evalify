@@ -1,5 +1,10 @@
 import Redis, { Redis as RedisType } from 'ioredis';
 
+interface Question {
+    id: string;
+    // Add other question properties based on your actual data structure
+}
+
 class RedisClient {
     private static instance: RedisType;
 
@@ -16,21 +21,21 @@ class RedisClient {
         return RedisClient.instance;
     }
 
-    public static async getCachedQuestions(key: string): Promise<any | null> {
+    public static async getCachedQuestions(key: string): Promise<Question[] | null> {
         try {
             const cached = await RedisClient.instance.get(key);
             return cached ? JSON.parse(cached) : null;
         } catch (error) {
-            console.error('Redis cache error:', error);
+            console.log('Redis cache error:', error);
             return null;
         }
     }
 
-    public static async setCachedQuestions(key: string, questions: any, expiryInSeconds: number = 3600): Promise<void> {
+    public static async setCachedQuestions(key: string, questions: Question[], expiryInSeconds: number = 3600): Promise<void> {
         try {
             await RedisClient.instance.setex(key, expiryInSeconds, JSON.stringify(questions));
         } catch (error) {
-            console.error('Redis cache error:', error);
+            console.log('Redis cache error:', error);
         }
     }
 }

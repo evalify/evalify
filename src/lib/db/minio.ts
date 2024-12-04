@@ -33,7 +33,7 @@ export async function uploadFile(file: Buffer, fileName: string, fileType?: stri
         const url = `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}/${bucketName || ''}/${fileName}`;
         return url;
     } catch (error) {
-        console.error('Error uploading to MinIO:', error);
+        console.log('Error uploading to MinIO:', error);
         throw error;
     }
 }
@@ -72,7 +72,7 @@ export async function listFiles(bucketName: string, prefix: string = '') {
         }
         return files;
     } catch (error) {
-        console.error('Error listing files:', error);
+        console.log('Error listing files:', error);
         throw error;
     }
 }
@@ -85,7 +85,7 @@ export async function deleteFile(fileName: string, bucketName: string) {
         }
         await minioClient.removeObject(bucketName, fileName);
     } catch (error) {
-        console.error('Error deleting from MinIO:', error);
+        console.log('Error deleting from MinIO:', error);
         throw error;
     }
 }
@@ -108,7 +108,7 @@ export async function createFolder(folderName: string, bucketName: string) {
         await minioClient.putObject(bucketName, `${folderName}/`, Buffer.from(''));
         return true;
     } catch (error) {
-        console.error('Error creating folder:', error);
+        console.log('Error creating folder:', error);
         throw error;
     }
 }
@@ -121,7 +121,7 @@ export async function moveFile(oldPath: string, newPath: string, bucketName: str
         await minioClient.removeObject(bucketName, oldPath);
         return true;
     } catch (error) {
-        console.error('Error moving file:', error);
+        console.log('Error moving file:', error);
         throw error;
     }
 }
@@ -131,9 +131,9 @@ export async function downloadFolder(folderPath: string, bucketName: string): Pr
         const archive = archiver('zip', {
             zlib: { level: 9 }
         });
-        
+
         const stream = minioClient.listObjects(bucketName, folderPath, true);
-        
+
         for await (const file of stream) {
             if (!file.name.endsWith('/')) {  // Skip folder objects
                 const fileData = await minioClient.getObject(bucketName, file.name);
@@ -141,11 +141,11 @@ export async function downloadFolder(folderPath: string, bucketName: string): Pr
                 archive.append(fileData, { name: relativePath });
             }
         }
-        
+
         archive.finalize();
         return archive;
     } catch (error) {
-        console.error('Error creating folder zip:', error);
+        console.log('Error creating folder zip:', error);
         throw error;
     }
 }
@@ -156,10 +156,10 @@ export async function downloadFile(fileName: string, bucketName: string): Promis
         if (!bucketExists) {
             throw new Error('Bucket does not exist');
         }
-        
+
         return await minioClient.getObject(bucketName, fileName);
     } catch (error) {
-        console.error('Error downloading file:', error);
+        console.log('Error downloading file:', error);
         throw error;
     }
 }

@@ -37,7 +37,7 @@ export default function AdminDashboard() {
                     classCount: classes.length
                 });
             } catch (error) {
-                console.error('Error fetching stats:', error);
+                console.log('Error fetching stats:', error);
             }
         };
 
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
     return (
         <div className="container p-6">
             <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
-            
+
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 {dashboardItems.map((item) => {
                     const IconComponent = item.icon;
@@ -120,20 +120,20 @@ export default function AdminDashboard() {
                         <CardTitle>Quick Actions</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-2">
-                        <Link 
-                            href="/admin/students" 
+                        <Link
+                            href="/admin/students"
                             className="text-sm text-blue-600 hover:underline"
                         >
                             Assign Students to Class
                         </Link>
-                        <Link 
-                            href="/admin/course" 
+                        <Link
+                            href="/admin/course"
                             className="text-sm text-blue-600 hover:underline"
                         >
                             Create New Course
                         </Link>
-                        <Link 
-                            href="/admin/class" 
+                        <Link
+                            href="/admin/class"
                             className="text-sm text-blue-600 hover:underline"
                         >
                             Add New Class

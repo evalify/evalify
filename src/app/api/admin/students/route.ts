@@ -57,7 +57,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json(formattedStudents);
     } catch (error) {
-        console.error('Error in students API:', error);
+        console.log('Error in students API:', error);
         return NextResponse.json([]);
     }
 }

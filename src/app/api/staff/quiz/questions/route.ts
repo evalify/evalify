@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
             .toArray();
         return NextResponse.json(questions);
     } catch (error) {
-        console.error('GET Questions Error:', error);
+        console.log('GET Questions Error:', error);
         return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 }
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: true, _id: result.insertedId });
     } catch (error) {
-        console.error('POST Question Error:', error);
+        console.log('POST Question Error:', error);
         return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 }
@@ -102,7 +102,7 @@ export async function PUT(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('PUT Question Error:', error);
+        console.log('PUT Question Error:', error);
         return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 }
@@ -130,7 +130,7 @@ export async function DELETE(request: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('DELETE Question Error:', error);
+        console.log('DELETE Question Error:', error);
         return NextResponse.json({ error: "Server error" }, { status: 500 });
     }
 }

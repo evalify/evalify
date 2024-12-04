@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
                 const fileName = `${Date.now()}-${imageFile.name}`;
                 imageUrl = await uploadFile(buffer, fileName, imageFile.type, 'profile-pics');
             } catch (uploadError) {
-                console.error('Image upload failed:', uploadError);
+                console.log('Image upload failed:', uploadError);
                 // Continue registration without image if upload fails
             }
         }
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        console.error('Registration error:', error);
+        console.log('Registration error:', error);
         return new NextResponse(
             JSON.stringify({ error: 'Internal server error' }),
             {

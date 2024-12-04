@@ -32,7 +32,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({ image, onCropComplete, onCa
             const croppedImage = await getCroppedImg(image, croppedAreaPixels)
             onCropComplete(croppedImage)
         } catch (e) {
-            console.error(e)
+            console.log(e)
         }
     }, [croppedAreaPixels, image, onCropComplete])
 

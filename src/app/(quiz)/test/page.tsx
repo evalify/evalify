@@ -21,7 +21,7 @@ const PermissionRequest = ({ onGranted }: { onGranted: () => void }) => {
             globalState.hasPermission = true;
             onGranted();
         } catch (err) {
-            console.error("Permission denied:", err);
+            console.log("Permission denied:", err);
             setIsRequestingFullscreen(false);
         }
     };

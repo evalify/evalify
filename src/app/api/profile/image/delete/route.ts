@@ -7,7 +7,7 @@ export async function DELETE(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
         const email = searchParams.get('email');
-        
+
         if (!email) {
             return NextResponse.json(
                 { error: 'Email is required' },
@@ -35,7 +35,7 @@ export async function DELETE(req: NextRequest) {
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error('Error deleting image:', error);
+        console.log('Error deleting image:', error);
         return NextResponse.json(
             { error: 'Error deleting image' },
             { status: 500 }

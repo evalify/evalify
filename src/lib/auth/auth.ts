@@ -59,12 +59,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     }
 
                     const { password, ...safeUser } = user;
+
+                    if (safeUser.role === "STUDENT") {
+                        const classId = await prisma.student.findFirst({
+                            where: { userId: safeUser.id },
+                            select: { classId: true },
+                        })
+                        safeUser.classId = classId?.classId;
+                    }
+
                     return safeUser;
                 } catch (error) {
                     if (error instanceof Error) {
-                        console.error("Authorization error:", error.message);
+                        console.log("Authorization error:", error.message);
                     } else {
-                        console.error("Authorization error:", error);
+                        console.log("Authorization error:", error);
                     }
                     throw new Error("Invalid credentials");
                 }

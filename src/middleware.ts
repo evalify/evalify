@@ -7,6 +7,9 @@ export async function middleware(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     const { pathname, origin } = req.nextUrl;
 
+    if (pathname.startsWith("/quiz") && token?.user.role === "STUDENT") {
+        return NextResponse.next();
+    }
 
     // Handle role-based routes
     const roleRoutes = {

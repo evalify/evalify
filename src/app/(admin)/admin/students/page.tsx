@@ -67,11 +67,11 @@ export default function StudentsPage() {
             const res = await fetch(`/api/admin/students?search=${encodeURIComponent(search)}`, {
                 cache: 'no-store'
             });
-            
+
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
-            
+
             const text = await res.text();
             if (!text) {
                 throw new Error('No data received');
@@ -86,7 +86,7 @@ export default function StudentsPage() {
             setError(null);
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching students';
-            console.error('Error fetching students:', errorMessage);
+            console.log('Error fetching students:', errorMessage);
             setError(errorMessage);
             setStudents([]);
         } finally {
@@ -155,7 +155,7 @@ export default function StudentsPage() {
                 fetchStudents();
             }
         } catch (error) {
-            console.error('Failed to assign class:', error);
+            console.log('Failed to assign class:', error);
         }
     };
 

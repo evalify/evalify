@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json(newClass, { status: 201 });
     } catch (error) {
-        console.error('Error creating class:', error);
+        console.log('Error creating class:', error);
         return NextResponse.json({ error: 'Failed to create class' }, { status: 500 });
     }
 }

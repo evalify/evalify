@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prismadb';
 import { auth } from '@/lib/auth/auth';
-import {  deleteFile, listFiles, createFolder, moveFile, downloadFile, downloadFolder } from '@/lib/db/minio';
+import { deleteFile, listFiles, createFolder, moveFile, downloadFile, downloadFolder } from '@/lib/db/minio';
 
 export async function GET(
     request: NextRequest,
@@ -47,18 +47,18 @@ export async function GET(
 
         // Regular file listing
         const files = await listFiles(course?.sharePoint || '');
-        
+
         const filesWithUrls = files.map(file => ({
             ...file,
             url: `/api/student/sharepoint/${courseId}?file=${encodeURIComponent(file.name)}`,
-            previewUrl: file.name.match(/\.(jpg|jpeg|png|gif|pdf)$/i) 
+            previewUrl: file.name.match(/\.(jpg|jpeg|png|gif|pdf)$/i)
                 ? `${process.env.NEXT_PUBLIC_MINIO_URL}/${course?.sharePoint}/${encodeURIComponent(file.name)}`
                 : null
         }));
 
         return NextResponse.json({ files: filesWithUrls || [] });
     } catch (error) {
-        console.error('Error in GET:', error);
+        console.log('Error in GET:', error);
         return NextResponse.json(
             { files: [], error: error instanceof Error ? error.message : 'Failed to list files' },
             { status: 500 }

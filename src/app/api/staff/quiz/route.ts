@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json(quiz);
     } catch (error) {
-        console.error('API Error:', error);
+        console.log('API Error:', error);
         return NextResponse.json({ error: "Failed to create quiz" }, { status: 500 });
     }
 }
@@ -51,7 +51,7 @@ export async function GET() {
     try {
         const session = await auth();
         if (!session?.user?.email) {
-            return NextResponse.json({ error: "Unauthorized" }, { 
+            return NextResponse.json({ error: "Unauthorized" }, {
                 status: 401,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -66,14 +66,14 @@ export async function GET() {
         });
 
         if (!staff) {
-            return NextResponse.json({ error: "Staff not found" }, { 
+            return NextResponse.json({ error: "Staff not found" }, {
                 status: 404,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
 
         const quizzes = await prisma.quiz.findMany({
-            where:{
+            where: {
                 createdbyId: staff.id
             },
             include: {
@@ -86,12 +86,12 @@ export async function GET() {
             }
         })
 
-        return NextResponse.json(quizzes, { 
+        return NextResponse.json(quizzes, {
             status: 200,
         });
     } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json({ error: "Failed to fetch quizzes" }, { 
+        console.log('API Error:', error);
+        return NextResponse.json({ error: "Failed to fetch quizzes" }, {
             status: 500,
         });
     }
@@ -102,7 +102,7 @@ export async function PUT(request: NextRequest) {
     try {
         if (!body.id || !body.settingsId) {
             return NextResponse.json(
-                { error: "Quiz ID and settings ID are required" }, 
+                { error: "Quiz ID and settings ID are required" },
                 { status: 400 }
             );
         }
@@ -139,7 +139,7 @@ export async function PUT(request: NextRequest) {
 
         return NextResponse.json(
             { success: true, data: quiz },
-            { 
+            {
                 status: 200,
                 headers: {
                     'Content-Type': 'application/json'
@@ -147,13 +147,13 @@ export async function PUT(request: NextRequest) {
             }
         );
     } catch (error) {
-        console.error('Update error:', error);
+        console.log('Update error:', error);
         return NextResponse.json(
-            { 
-                success: false, 
-                error: "Failed to update quiz" 
-            }, 
-            { 
+            {
+                success: false,
+                error: "Failed to update quiz"
+            },
+            {
                 status: 500,
                 headers: {
                     'Content-Type': 'application/json'
@@ -166,7 +166,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    
+
     if (!id) {
         return NextResponse.json({ error: "Quiz ID is required" }, { status: 400 });
     }
@@ -194,10 +194,10 @@ export async function DELETE(request: NextRequest) {
 
         return NextResponse.json({ success: true, message: "Quiz deleted successfully" });
     } catch (error) {
-        console.error('Delete error:', error);
-        return NextResponse.json({ 
-            success: false, 
-            error: "Failed to delete quiz" 
+        console.log('Delete error:', error);
+        return NextResponse.json({
+            success: false,
+            error: "Failed to delete quiz"
         }, { status: 500 });
     }
 }

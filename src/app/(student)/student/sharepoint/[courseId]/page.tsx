@@ -68,8 +68,17 @@ export default function CourseSharePoint({ params }: Props) {
 
     useEffect(() => {
         async function resolveParams() {
-            const resolved = await params; // Await params
-            setResolvedParams(resolved);
+            try {
+                const resolved = await params;
+                if (resolved) {
+                    setResolvedParams(resolved);
+                } else {
+                    throw new Error('Params are null');
+                }
+            } catch (error) {
+                setError('Failed to resolve params');
+                console.log('Error resolving params:', error);
+            }
         }
         resolveParams();
     }, [params]);
@@ -110,7 +119,7 @@ export default function CourseSharePoint({ params }: Props) {
                 setCourse(data.course);
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load course');
-                console.error('Fetch error:', err);
+                console.log('Fetch error:', err);
             } finally {
                 setIsLoading(false);
             }
@@ -123,7 +132,7 @@ export default function CourseSharePoint({ params }: Props) {
                         'Cache-Control': 'no-cache',
                     },
                 });
-
+                console.log
                 if (!response.ok) {
                     throw new Error(response.statusText || 'Failed to fetch files');
                 }
@@ -132,7 +141,7 @@ export default function CourseSharePoint({ params }: Props) {
                 const filesList = Array.isArray(data.files) ? data.files : [];
                 setFiles(filesList);
             } catch (error) {
-                console.error('Error fetching files:', error);
+                console.log('Error fetching files:', error);
                 setFiles([]);
                 toast({
                     title: 'Error',

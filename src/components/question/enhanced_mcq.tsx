@@ -43,7 +43,7 @@ export function EnhancedMcq({ id, question, options, onAnswerSelected }: Props) 
     }
 
     return (
-        <div className="mx-auto  sm:p-8">
+        <div key={id} className="mx-auto sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold mb-6 break-words text-pretty">{question}</h2>
             <RadioGroup.Root onValueChange={handleOptionChange} value={selectedOption}>
                 <div className="space-y-4">
@@ -71,11 +71,6 @@ const EnhancedAnswer: React.FC<EnhancedRadioGroupProps> = ({ options, value, onV
     const [isDialogOpen, setIsDialogOpen] = useState(false); // Manage dialog state
     const [isAnswerUpdating, setIsAnswerUpdating] = useState(false); // Track user interaction
 
-    // Handle input value change
-    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setIsAnswerUpdating(true); // User is interacting
-        onValueChange(event.target.value);
-    };
 
     // Handle select option change
     const handleSelect = (selectedValue: string | null) => {

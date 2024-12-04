@@ -18,7 +18,6 @@ export default function DashboardPage() {
         <main className="flex-1">
           <div className="flex flex-col gap-8">
             <h1 className="text-3xl font-bold tracking-tight">Hello {session?.user?.name}!!</h1>
-
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
               <Card className="col-span-4">
                 <CardHeader>

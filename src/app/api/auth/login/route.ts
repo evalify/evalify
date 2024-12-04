@@ -38,7 +38,7 @@ export async function POST(request: Request) {
         // Optionally set tokens in cookies
         return NextResponse.json({ accessToken: data.access_token });
     } catch (error: any) {
-        console.error("Error in login API:", error.message);
+        console.log("Error in login API:", error.message);
         return NextResponse.json({ error: error.message || "Something went wrong" }, { status: 500 });
     }
 }

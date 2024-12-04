@@ -47,7 +47,7 @@ export default function ClassStudentsPage({ params }: { params: Promise<{ classI
             const data = await response.json();
             setClassDetails(data);
         } catch (error) {
-            console.error('Error fetching class details:', error);
+            console.log('Error fetching class details:', error);
         } finally {
             setIsLoading(false);
         }
@@ -61,10 +61,10 @@ export default function ClassStudentsPage({ params }: { params: Promise<{ classI
                     'Cache-Control': 'no-cache'
                 }
             });
-            
+
             const text = await response.text();
             const data = text ? JSON.parse(text) : [];
-            
+
             if (Array.isArray(data)) {
                 setStudents(data);
             } else {
@@ -72,7 +72,7 @@ export default function ClassStudentsPage({ params }: { params: Promise<{ classI
                 throw new Error('Invalid data format');
             }
         } catch (error) {
-            console.error('Error fetching students:', error);
+            console.log('Error fetching students:', error);
             setStudents([]);
             toast({
                 variant: "destructive",
@@ -84,7 +84,7 @@ export default function ClassStudentsPage({ params }: { params: Promise<{ classI
 
     useEffect(() => {
         Promise.all([fetchClassDetails(), fetchStudents()]).catch(error => {
-            console.error('Error loading page data:', error);
+            console.log('Error loading page data:', error);
             toast({
                 variant: "destructive",
                 title: "Error",
@@ -111,7 +111,7 @@ export default function ClassStudentsPage({ params }: { params: Promise<{ classI
                 <div className="mb-6">
                     <h1 className="text-2xl font-bold mb-2">{classDetails.name}</h1>
                     <p className="text-gray-600">
-                        Department: {classDetails.department} | Semester: {classDetails.semester} | 
+                        Department: {classDetails.department} | Semester: {classDetails.semester} |
                         Batch: {classDetails.batch} | Students: {students.length}
                     </p>
                 </div>
@@ -142,7 +142,7 @@ export default function ClassStudentsPage({ params }: { params: Promise<{ classI
                         <TableRow key={student.id}>
                             <TableCell>{student.rollNo}</TableCell>
                             <TableCell>
-                                <Link 
+                                <Link
                                     href={`/profile?profile=${student.email}`}
                                     className="text-blue-600 hover:underline cursor-pointer"
                                 >

@@ -116,7 +116,7 @@ export default function CourseSharePoint({ params }: Props) {
                 setSharePointUrl(data.course.sharePoint || data.course.class.sharePoint || '');
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load course');
-                console.error('Fetch error:', err);
+                console.log('Fetch error:', err);
             } finally {
                 setIsLoading(false);
             }
@@ -158,7 +158,7 @@ export default function CourseSharePoint({ params }: Props) {
                 setFiles(filesList);
                 updateAvailableFolders(filesList);
             } catch (error) {
-                console.error('Error fetching files:', error);
+                console.log('Error fetching files:', error);
                 setFiles([]);
                 toast({
                     title: 'Error',

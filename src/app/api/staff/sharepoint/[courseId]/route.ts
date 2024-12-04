@@ -79,7 +79,7 @@ export async function GET(
 
         return NextResponse.json({ files: filesWithUrls || [] });
     } catch (error) {
-        console.error('Error in GET:', error);
+        console.log('Error in GET:', error);
         return NextResponse.json(
             { files: [], error: error instanceof Error ? error.message : 'Failed to list files' },
             { status: 500 }
