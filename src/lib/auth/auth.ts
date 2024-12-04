@@ -1,4 +1,4 @@
-import NextAuth, { DefaultSession, User } from "next-auth";
+import NextAuth, { User } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "../db/prismadb";
 import { AdapterUser } from "next-auth/adapters";
@@ -85,6 +85,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     pages: {
         signIn: "/auth/login",
-        error: "/auth/error", // Redirect to error page
+        error: "/auth/error",
     },
 });

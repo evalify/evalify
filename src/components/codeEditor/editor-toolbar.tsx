@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { languages } from '@/lib/utils'
-import { Maximize2, Share2, LayoutGridIcon, Plus } from 'lucide-react'
+import { Maximize2, LayoutGridIcon } from 'lucide-react'
 import {
     Select,
     SelectContent,
@@ -21,15 +21,11 @@ interface EditorToolbarProps {
     onToggleOrientation: () => void
     language: string
     onLanguageChange: (language: string) => void
-    // onNewFile: () => void
 }
 
 export function EditorToolbar({
     onRun,
-    onShare,
     onFullscreen,
-    showOutput,
-    onToggleOutput,
     onClear,
     isVertical,
     onToggleOrientation,
@@ -42,18 +38,6 @@ export function EditorToolbar({
                 <Button variant="ghost" size="icon" onClick={onFullscreen}>
                     <Maximize2 className="h-4 w-4" />
                 </Button>
-                {/* <Button variant="ghost" size="icon" onClick={onShare}>
-                    <Share2 className="h-4 w-4" />
-                </Button> */}
-                {/* {showOutput && (
-                    <Button variant="ghost" size="icon" onClick={onToggleOrientation}>
-                        {isVertical ? (
-                            <LayoutGridIcon className="h-4 w-4" />
-                        ) : (
-                            <LayoutGridIcon className="h-4 w-4" />
-                        )}
-                    </Button>
-                )} */}
                 <Select value={language} onValueChange={onLanguageChange}>
                     <SelectTrigger className="w-[180px]">
                         <SelectValue placeholder="Select Language" />
@@ -71,13 +55,6 @@ export function EditorToolbar({
                 <Button onClick={onRun} className="bg-blue-600 hover:bg-blue-700 dark:text-white">
                     Run
                 </Button>
-                {/* <Button
-                    variant="ghost"
-                    onClick={onToggleOutput}
-                    className={showOutput ? "bg-muted" : ""}
-                >
-                    Output
-                </Button> */}
                 <Button variant="ghost" size="icon" onClick={onToggleOrientation}>
                     {isVertical ? (
                         <LayoutGridIcon className="h-4 w-4" />

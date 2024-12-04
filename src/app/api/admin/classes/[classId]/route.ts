@@ -6,8 +6,10 @@ export async function GET(
     { params }: { params: { classId: string } }
 ) {
     try {
+        const param = await params;
+        const { classId } = param;
         const classDetails = await prisma.class.findUnique({
-            where: { id: params.classId },
+            where: { id: classId },
             include: {
                 _count: {
                     select: { students: true }

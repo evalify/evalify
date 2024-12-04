@@ -8,10 +8,10 @@ const QUIZ_COLLECTION = "QUIZZES";
 export async function GET(request: NextRequest) {
     try {
         const quizId = request.nextUrl.searchParams.get('quizId');
-        
+
         if (!quizId) {
             return NextResponse.json(
-                { error: "Quiz ID is required" }, 
+                { error: "Quiz ID is required" },
                 { status: 400 }
             );
         }
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         }
 
         const client = await clientPromise;
-        
+
         const result = await client
             .db()
             .collection(QUESTIONS_COLLECTION)
@@ -84,11 +84,11 @@ export async function PUT(request: NextRequest) {
             .db()
             .collection(QUESTIONS_COLLECTION)
             .updateOne(
-                { 
+                {
                     _id: questionId,
                     quizId
                 },
-                { 
+                {
                     $set: {
                         ...question,
                         updatedAt: new Date()
@@ -119,7 +119,7 @@ export async function DELETE(request: NextRequest) {
         const result = await client
             .db()
             .collection(QUESTIONS_COLLECTION)
-            .deleteOne({ 
+            .deleteOne({
                 _id: questionId,
                 quizId
             });

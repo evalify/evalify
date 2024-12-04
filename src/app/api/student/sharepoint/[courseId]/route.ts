@@ -7,8 +7,10 @@ export async function GET(
     request: NextRequest,
     { params }: { params: { courseId: string } }
 ) {
+
     try {
-        const courseId = params.courseId;
+        const param = await params;
+        const { courseId } = param;
         const session = await auth();
         if (!session || session?.user?.role !== 'STUDENT') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

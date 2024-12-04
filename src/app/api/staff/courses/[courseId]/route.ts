@@ -6,7 +6,9 @@ export async function GET(
     request: Request,
     { params }: { params: { courseId: string } }
 ) {
-    if (!params.courseId) {
+    const param = await params;
+    const { courseId } = param;
+    if (!courseId) {
         return NextResponse.json({ error: "Course ID is required" }, { status: 400 });
     }
 
@@ -18,7 +20,7 @@ export async function GET(
 
         const course = await prisma.course.findFirst({
             where: {
-                id: params.courseId,
+                id: courseId,
                 staff: {
                     user: {
                         email: session.user.email

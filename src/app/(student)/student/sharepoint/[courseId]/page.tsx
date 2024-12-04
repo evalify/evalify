@@ -10,16 +10,14 @@ import {
     FileText as LucideFileText,
     FileCode,
     Eye,
-    Trash2,
 } from "lucide-react";
-import { formatBytes, formatDate } from '@/lib/utils';
+import { formatBytes } from '@/lib/utils';
 import { Card, CardContent } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/ui/dialog";
 import {
     ContextMenu,
@@ -56,31 +54,45 @@ interface FileInfo {
 }
 
 export default function CourseSharePoint({ params }: Props) {
-    const resolvedParams = use(params);
-    const courseId = resolvedParams.courseId;
+    const [resolvedParams, setResolvedParams] = useState<{ courseId: string } | null>(null);
+
     const [course, setCourse] = useState<Course | null>(null);
-    const [sharePointUrl, setSharePointUrl] = useState('');
+    const [courseId, setCourseId] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
     const [files, setFiles] = useState<FileInfo[]>([]);
-    const [uploading, setUploading] = useState(false);
-    const [uploadingFile, setUploadingFile] = useState<string>("");
     const [previewFile, setPreviewFile] = useState<FileInfo | null>(null);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const [fileToDelete, setFileToDelete] = useState<FileInfo | null>(null);
     const [currentPath, setCurrentPath] = useState('');
-    const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
-    const [newFolderName, setNewFolderName] = useState('');
-    const [movingFile, setMovingFile] = useState<FileInfo | null>(null);
-    const [targetFolder, setTargetFolder] = useState('');
-    const [availableFolders, setAvailableFolders] = useState<string[]>([]);
 
     useEffect(() => {
+        async function resolveParams() {
+            const resolved = await params; // Await params
+            setResolvedParams(resolved);
+        }
+        resolveParams();
+    }, [params]);
+
+    useEffect(() => {
+        if (resolvedParams) {
+            setCourseId(resolvedParams.courseId);
+        }
+    }, [resolvedParams]);
+
+    useEffect(() => {
+        if (!courseId) return;
+
         const fetchCourseDetails = async () => {
             try {
                 setIsLoading(true);
-                const response = await fetch(`/api/student/courses/${courseId}`);
+                const response = await fetch(`/api/student/courses/course`, {
+                    method: 'POST', // Changed to POST
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ courseId }), // Ensure courseId is sent in the body
+                });
                 const contentType = response.headers.get("content-type");
                 if (!contentType || !contentType.includes("application/json")) {
                     throw new Error("Server didn't return JSON");
@@ -96,32 +108,12 @@ export default function CourseSharePoint({ params }: Props) {
                 }
 
                 setCourse(data.course);
-                setSharePointUrl(data.course.sharePoint || data.course.class.sharePoint || '');
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load course');
                 console.error('Fetch error:', err);
             } finally {
                 setIsLoading(false);
             }
-        };
-
-        const updateAvailableFolders = (files: FileInfo[]) => {
-            const folders = new Set<string>();
-            folders.add('/'); // Root folder with special value
-
-            files.forEach(file => {
-                if (file.isFolder) {
-                    folders.add(file.name);
-                } else {
-                    const parts = file.name.split('/');
-                    parts.pop();
-                    if (parts.length > 0) {
-                        folders.add(parts.join('/'));
-                    }
-                }
-            });
-
-            setAvailableFolders(Array.from(folders));
         };
 
         const fetchFiles = async () => {
@@ -139,7 +131,6 @@ export default function CourseSharePoint({ params }: Props) {
                 const data = await response.json();
                 const filesList = Array.isArray(data.files) ? data.files : [];
                 setFiles(filesList);
-                updateAvailableFolders(filesList);
             } catch (error) {
                 console.error('Error fetching files:', error);
                 setFiles([]);
@@ -154,6 +145,12 @@ export default function CourseSharePoint({ params }: Props) {
         fetchCourseDetails();
         fetchFiles();
     }, [courseId, toast]);
+
+    if (!resolvedParams) {
+        // Show a loading state while resolving params
+        return <div>Loading...</div>;
+    }
+
 
     if (isLoading) {
         return (
@@ -305,7 +302,7 @@ export default function CourseSharePoint({ params }: Props) {
                         <Eye className="mr-2 h-4 w-4" />
                         Preview
                     </ContextMenuItem>
-                        {file.url}
+                    {file.url}
                     <ContextMenuItem
                         onClick={() => {
                             if (file.url) {

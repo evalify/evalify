@@ -6,7 +6,8 @@ export async function GET(
     request: Request,
     { params }: { params: { courseId: string } }
 ) {
-    if (!params.courseId) {
+    const { courseId } = await request.json();
+    if (!courseId) {
         return NextResponse.json({ error: "Course ID is required" }, { status: 400 });
     }
 
@@ -33,7 +34,7 @@ export async function GET(
 
         const course = await prisma.course.findFirst({
             where: {
-                id: params.courseId,
+                id: courseId,
                 classId: student.classId,
             },
             include: {
@@ -49,7 +50,7 @@ export async function GET(
     } catch (error) {
         console.error('Error fetching course:', error);
         return NextResponse.json(
-            { error: "Failed to fetch course" }, 
+            { error: "Failed to fetch course" },
             { status: 500 }
         );
     }

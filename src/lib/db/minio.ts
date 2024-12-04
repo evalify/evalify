@@ -48,7 +48,7 @@ export async function listFiles(bucketName: string, prefix: string = '') {
 
         const stream = minioClient.listObjects(bucketName, prefix, true);
         const files: { name: string; size: number; lastModified: Date; isFolder: boolean }[] = [];
-        const folders = new Set<string>();
+
 
         for await (const item of stream) {
             // Handle folders (objects ending with /)

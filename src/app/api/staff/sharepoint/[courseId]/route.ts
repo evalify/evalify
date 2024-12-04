@@ -9,7 +9,8 @@ export async function PUT(
     { params }: { params: { courseId: string } }
 ) {
     try {
-        const courseId = params.courseId;
+        const param = await params;
+        const { courseId } = param;
         const session = await auth();
         if (!session || session?.user?.role !== 'STAFF') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -32,7 +33,9 @@ export async function GET(
     { params }: { params: { courseId: string } }
 ) {
     try {
-        const courseId = params.courseId;
+
+        const param = await params;
+        const { courseId } = param;
         const session = await auth();
         if (!session || session?.user?.role !== 'STAFF') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -65,11 +68,11 @@ export async function GET(
 
         // Regular file listing
         const files = await listFiles(course?.sharePoint || '');
-        
+
         const filesWithUrls = files.map(file => ({
             ...file,
             url: `/api/staff/sharepoint/${courseId}?file=${encodeURIComponent(file.name)}`,
-            previewUrl: file.name.match(/\.(jpg|jpeg|png|gif|pdf)$/i) 
+            previewUrl: file.name.match(/\.(jpg|jpeg|png|gif|pdf)$/i)
                 ? `${process.env.NEXT_PUBLIC_MINIO_URL}/${course?.sharePoint}/${encodeURIComponent(file.name)}`
                 : null
         }));
@@ -89,7 +92,8 @@ export async function POST(
     { params }: { params: { courseId: string } }
 ) {
     try {
-        const courseId = params.courseId;
+        const param = await params;
+        const { courseId } = param;
         const session = await auth();
         if (!session || session?.user?.role !== 'STAFF') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -143,7 +147,8 @@ export async function DELETE(
     { params }: { params: { courseId: string } }
 ) {
     try {
-        const courseId = params.courseId;
+        const param = await params;
+        const { courseId } = param;
         const session = await auth();
         if (!session || session?.user?.role !== 'STAFF') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -175,7 +180,8 @@ export async function PATCH(
     { params }: { params: { courseId: string } }
 ) {
     try {
-        const courseId = params.courseId;
+        const param = await params;
+        const { courseId } = param;
         const session = await auth();
         if (!session || session?.user?.role !== 'STAFF') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

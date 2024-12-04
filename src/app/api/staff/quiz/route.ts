@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
         });
         return NextResponse.json(quiz);
     } catch (error) {
+        console.error('API Error:', error);
         return NextResponse.json({ error: "Failed to create quiz" }, { status: 500 });
     }
 }
