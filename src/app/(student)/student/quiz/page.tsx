@@ -129,9 +129,6 @@ function Page() {
                     ))}
                 </div>
             )}
-            <div className="p-6">
-                <Button onClick={handleDownload}>Download Exam File</Button>
-            </div>
         </div>
     )
 }
@@ -176,6 +173,13 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff 
                 </div>
             </CardContent>
             <Separator />
+            <CardFooter className="pt-4">
+                <Button className="w-full"
+                    onClick={() => router.push(`/quiz/${id}`)}>
+                    <AlarmClock className="mr-2 h-4 w-4" />
+                    Start Quiz
+                </Button>
+            </CardFooter>
         </Card>
     )
 }

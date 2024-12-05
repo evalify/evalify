@@ -1,7 +1,7 @@
 import * as z from "zod"
 
-export const questionSchema = z.object({
-    type: z.string().min(1, "Question type is required"),
+const mcqSchema = z.object({
+    type: z.literal("MCQ"),
     difficulty: z.enum(["easy", "medium", "hard"]),
     marks: z.number().min(1, "Marks must be at least 1"),
     question: z.string().min(1, "Question is required"),
@@ -13,16 +13,16 @@ export const questionSchema = z.object({
     answer: z.array(z.string()).min(1, "At least one answer is required")
 })
 
-export type Question = {
-    _id?: string
-    type: string
-    difficulty: 'easy' | 'medium' | 'hard'
-    marks: number
-    question: string
-    explanation: string
-    options: Array<{ option: string; optionId: string }>
-    answer: string[]
-}
+const descriptiveSchema = z.object({
+    type: z.literal("DESCRIPTIVE"),
+    difficulty: z.enum(["easy", "medium", "hard"]),
+    marks: z.number().min(1, "Marks must be at least 1"),
+    question: z.string().min(1, "Question is required"),
+    explanation: z.string().optional(),
+})
 
+export const questionSchema = z.discriminatedUnion("type", [mcqSchema, descriptiveSchema])
+
+export type Question = z.infer<typeof questionSchema>
 export type QuestionFormValues = z.infer<typeof questionSchema>
 

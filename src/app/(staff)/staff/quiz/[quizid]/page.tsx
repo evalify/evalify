@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { isValidQuizId } from '@/utils/validation'
 import { MCQCard } from './_component/mcq-card'
+import { DescriptiveCard } from './_component/descriptive-card'
 import { fetchQuestions, createQuestion, updateQuestion, deleteQuestion } from './_component/api'
 import { Question } from './_component/types'
 import { Button } from "@/components/ui/button"
@@ -72,20 +73,30 @@ export default function QuizPage() {
         }
     }
 
-    const addNewQuestion = () => {
-        const newQuestion: Question = {
+    const addNewQuestion = (type: 'MCQ' | 'DESCRIPTIVE') => {
+        const baseQuestion = {
             _id: `new-${Date.now()}`,
-            type: 'MCQ',
-            difficulty: 'easy',
+            difficulty: 'easy' as const,
             marks: 1,
             question: '',
             explanation: '',
-            options: [
-                { option: '', optionId: '1' },
-                { option: '', optionId: '2' }
-            ],
-            answer: []
         }
+
+        const newQuestion: Question = type === 'MCQ' 
+            ? {
+                ...baseQuestion,
+                type: 'MCQ',
+                options: [
+                    { option: '', optionId: '1' },
+                    { option: '', optionId: '2' }
+                ],
+                answer: []
+            }
+            : {
+                ...baseQuestion,
+                type: 'DESCRIPTIVE'
+            }
+
         setQuestions([...questions, newQuestion])
     }
 
@@ -110,20 +121,35 @@ export default function QuizPage() {
                 <h1 className="text-2xl font-bold">Quiz Questions</h1>
             </div>
             <div className='flex flex-col gap-4'>
-
                 {questions.map((q) => (
-                    <MCQCard
-                        key={q._id}
-                        question={q}
-                        onSave={handleSave}
-                        onDelete={handleDelete}
-                        isNew={q._id?.startsWith('new-')}
-                    />
+                    q.type === 'MCQ' ? (
+                        <MCQCard
+                            key={q._id}
+                            question={q}
+                            onSave={handleSave}
+                            onDelete={handleDelete}
+                            isNew={q._id?.startsWith('new-')}
+                        />
+                    ) : (
+                        <DescriptiveCard
+                            key={q._id}
+                            question={q}
+                            onSave={handleSave}
+                            onDelete={handleDelete}
+                            isNew={q._id?.startsWith('new-')}
+                        />
+                    )
                 ))}
-                <Button onClick={addNewQuestion}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Question
-                </Button>
+                <div className="flex gap-2 ">
+                    <Button onClick={() => addNewQuestion('MCQ')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add MCQ
+                    </Button>
+                    <Button onClick={() => addNewQuestion('DESCRIPTIVE')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Descriptive
+                    </Button>
+                </div>
             </div>
         </div>
     )
