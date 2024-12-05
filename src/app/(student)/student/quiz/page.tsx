@@ -41,7 +41,7 @@ const downloadFileFromPublicDir = (filePath: string) => {
 
 
 const handleDownload = () => {
-    downloadFileFromPublicDir("/LA_TEST1.pdf");
+    downloadFileFromPublicDir("/questions.pdf");
 };
 
 
@@ -129,6 +129,9 @@ function Page() {
                     ))}
                 </div>
             )}
+            <div className="p-6">
+                <Button onClick={handleDownload}>Download Exam File</Button>
+            </div>
         </div>
     )
 }
