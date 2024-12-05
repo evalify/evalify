@@ -7,8 +7,13 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
     try {
         const session = await auth();
-        if (!session.user?.email?.startsWith("cb.ai.u4aid23003")){
-            return NextResponse.json({ status: 401, message: "Unauthorized" });
+        if (!session.user?.email?.startsWith("cb.ai.u4aid23003")) {
+            return NextResponse.json(
+                {
+                    status: 401,
+                    message: "Unauthorized"
+                }
+            );
         }
 
         const queryParams = new URLSearchParams(req.url.split('?')[1]);
@@ -43,7 +48,16 @@ export async function GET(req: Request) {
         // get questions from MONGODB
         const questions = await (await clientPromise).db().collection('NEW_QUESTIONS').find({ quizId: quizId }).toArray();
 
-        const safeQuestion = questions.map((question) => {
+        const safeQuestion = questions.map((question:any) => {
+            if (question.type === 'DESCRIPTIVE') {
+                return {
+                    id: question._id,
+                    question: question.question,
+                    marks: question.marks,
+                    type: 'DESCRIPTIVE',
+                    quizId: question.quizId
+                }
+            }
             return {
                 id: question._id,
                 question: question.question,

@@ -19,10 +19,9 @@ interface Option {
 interface Question {
     id: string
     question: string
-    options: Option[]
-    answer: string[]
+    options?: Option[]  // Make options optional
     marks: number
-    type: string
+    type: string       // Can be 'MCQ', 'MMCQ', or 'DESCRIPTIVE'
 }
 
 interface Quiz {
@@ -122,6 +121,14 @@ const QuizPage = () => {
         });
     }
 
+    const handleDescriptiveAnswer = (questionId: string, answer: string) => {
+        setUserAnswers((prevAnswers) => {
+            const newAnswers = { ...prevAnswers, [questionId]: [answer] };
+            localStorage.setItem(`userAnswers_${quizId}`, JSON.stringify(newAnswers));
+            return newAnswers;
+        });
+    }
+
     const handleNextQuestion = () => {
         if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex(currentQuestionIndex + 1)
@@ -196,12 +203,23 @@ const QuizPage = () => {
                     <h2 className="text-xl font-semibold mb-4">
                         <LatexPreview content={currentQuestion.question} />
                     </h2>
-                    {currentQuestion.type === 'MCQ' ? (
+                    {currentQuestion.type === 'DESCRIPTIVE' ? (
+                        <div className="space-y-2">
+                            <Label htmlFor="answer">Your Answer</Label>
+                            <textarea
+                                id="answer"
+                                className="w-full min-h-[200px] p-2 border rounded-md"
+                                value={userAnswers[currentQuestion.id]?.[0] || ''}
+                                onChange={(e) => handleDescriptiveAnswer(currentQuestion.id, e.target.value)}
+                                placeholder="Type your answer here..."
+                            />
+                        </div>
+                    ) : currentQuestion.type === 'MCQ' ? (
                         <RadioGroup
                             onValueChange={(value) => handleRadioChange(currentQuestion.id, value)}
                             value={userAnswers[currentQuestion.id]?.[0] || ''}
                         >
-                            {currentQuestion.options.map((option) => (
+                            {currentQuestion.options?.map((option) => (
                                 <div key={option.optionId} className="flex items-center space-x-2 mb-2">
                                     <RadioGroupItem value={option.optionId} id={option.optionId} />
                                     <Label htmlFor={option.optionId}>
@@ -211,7 +229,7 @@ const QuizPage = () => {
                             ))}
                         </RadioGroup>
                     ) : (
-                        currentQuestion.options.map((option) => (
+                        currentQuestion.options?.map((option) => (
                             <div key={option.optionId} className="flex items-center space-x-2 mb-2">
                                 <Checkbox
                                     id={option.optionId}
