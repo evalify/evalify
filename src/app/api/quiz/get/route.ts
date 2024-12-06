@@ -1,19 +1,17 @@
 import { auth } from "@/lib/auth/auth";
 import clientPromise from "@/lib/db/mongo";
 import { prisma } from "@/lib/db/prismadb";
+import { redis } from "@/lib/db/redis";
 import { NextResponse } from "next/server";
 
 
 export async function GET(req: Request) {
     try {
         const session = await auth();
-        if (!session.user?.email?.startsWith("cb.ai.u4aid23003")) {
-            return NextResponse.json(
-                {
-                    status: 401,
-                    message: "Unauthorized"
-                }
-            );
+        const id = session?.user?.id;
+
+        if (session?.user?.role !== 'STUDENT' || !id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const queryParams = new URLSearchParams(req.url.split('?')[1]);
@@ -23,16 +21,19 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "QuizID not found" }, { status: 404 });
         }
 
-        // // check if the student completed the quiz
-        // const studentQuiz = await prisma.quizResult.findFirst({
-        //     where: {
-        //         quizId: quizId
-        //     }
-        // });
+        // check if the student completed the quiz
+        const studentQuiz = await prisma.quizResult.findFirst({
+            where: {
+                quizId: quizId,
+                student: {
+                    userId: id
+                }
+            }
+        });
 
-        // if (studentQuiz) {
-        //     return NextResponse.json({ error: "Quiz already completed" }, { status: 400 });
-        // }
+        if (studentQuiz) {
+            return NextResponse.json({ message: "Quiz already completed" }, { status: 400 });
+        }
 
         const quiz = await prisma.quiz.findUnique({
             where: {
@@ -44,11 +45,16 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
         }
 
+        const cache = await redis.get(`QUIZ_${quizId}`);
+
+        if (cache) {
+            return NextResponse.json({ quiz, questions: JSON.parse(cache) }, { status: 200 });
+        }
 
         // get questions from MONGODB
         const questions = await (await clientPromise).db().collection('NEW_QUESTIONS').find({ quizId: quizId }).toArray();
 
-        const safeQuestion = questions.map((question:any) => {
+        const safeQuestion = questions.map((question: any) => {
             if (question.type === 'DESCRIPTIVE') {
                 return {
                     id: question._id,
@@ -62,14 +68,15 @@ export async function GET(req: Request) {
                 id: question._id,
                 question: question.question,
                 options: question.options,
-                // answer: question.answer,
                 marks: question.marks,
                 type: (question.answer.length > 1) ? 'MMCQ' : 'MCQ',
                 quizId: question.quizId
             }
         })
 
-        return NextResponse.json({ quiz, questions: safeQuestion });
+        await redis.set(`QUIZ_${quizId}`, JSON.stringify(safeQuestion), 'EX', 2 * 60 * 60);
+
+        return NextResponse.json({ quiz, questions: safeQuestion }, { status: 200 });
 
     } catch (error) {
         console.log('Error fetching quiz:', error);

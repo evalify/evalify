@@ -56,7 +56,7 @@ export const defaultQuestion: Question = {
 // Modify PreviewCard to preserve line breaks
 function PreviewCard({ question }: { question: Question }) {
     return (
-        <div className="w-[400px] bg-white rounded-lg shadow-lg p-4 border">
+        <div className="w-[400px] rounded-lg shadow-lg p-4 border">
             <div className="mb-4 whitespace-pre-wrap">
                 <LatexPreview content={question.question} />
             </div>
@@ -66,8 +66,8 @@ function PreviewCard({ question }: { question: Question }) {
                         key={idx}
                         className={`p-2 rounded ${
                             question.answer.includes(opt.optionId)
-                                ? "bg-green-100 border-green-500 border"
-                                : "bg-gray-50"
+                                ? "bg-green-100 border-green-500 border  dark:bg-green-800"
+                                : ""
                         }`}
                     >
                         <LatexPreview content={opt.option} />

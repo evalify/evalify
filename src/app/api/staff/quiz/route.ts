@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prismadb";
 import { auth } from "@/lib/auth/auth";
+import { redis } from "@/lib/db/redis";
 
+
+async function resetQuizCache(classId: string) {
+    await redis.del(`QUIZ_${classId}`);
+}
 
 export async function POST(request: NextRequest) {
     const session = await auth();
@@ -42,13 +47,14 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        // body.courseIds.forEach(async (id: string) => {
-        //     const classId = await prisma.course.findUnique({
-        //         where: { id },
-        //         select: { classId: true }
-        //     })
-        //     await redis.set(`QUIZ_${classId?.classId}`, JSON.stringify(quiz));
-        // })
+        body.courseIds.forEach(async (id: string) => {
+            const classId = await prisma.course.findUnique({
+                where: { id },
+                select: { classId: true }
+            })
+            await redis.del(`QUIZ_${classId?.classId}`);
+        })
+
 
 
         return NextResponse.json(quiz);
@@ -149,6 +155,14 @@ export async function PUT(request: NextRequest) {
             }
         });
 
+        body.courseIds.forEach(async (id: string) => {
+            const classId = await prisma.course.findUnique({
+                where: { id },
+                select: { classId: true }
+            })
+            await redis.del(`QUIZ_${classId?.classId}`);
+        })
+
         return NextResponse.json(
             { success: true, data: quiz },
             {
@@ -187,7 +201,15 @@ export async function DELETE(request: NextRequest) {
         // First delete the quiz settings
         const quiz = await prisma.quiz.findUnique({
             where: { id },
-            select: { settingsId: true }
+            select: { settingsId: true , courses: {
+                select: {
+                    class: {
+                        select: {
+                            id: true
+                        }
+                    }
+                }
+            } }
         });
 
         if (!quiz) {
@@ -203,6 +225,11 @@ export async function DELETE(request: NextRequest) {
         await prisma.quizSettings.delete({
             where: { id: quiz.settingsId }
         });
+
+        quiz.courses.forEach(async (course: any) => {
+            await resetQuizCache(course.class.id);
+        });
+
 
         return NextResponse.json({ success: true, message: "Quiz deleted successfully" });
     } catch (error) {

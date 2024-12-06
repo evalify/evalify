@@ -43,7 +43,7 @@ export async function POST(req: Request) {
                 responses: response.responses,
                 // submittedAt: getTime(),
                 submittedAt: new Date(),
-                violations: "",
+                violations: response.violations,
             }
         })
 

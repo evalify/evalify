@@ -11,13 +11,14 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { DateTimePicker } from '@/components/ui/date-time-picker';
 import { useRouter } from 'next/navigation';
+
 
 type Course = {
     id: string;
@@ -405,14 +406,26 @@ export default function QuizPage() {
                                         >
                                             <SquareChartGantt className="h-4 w-4" />
                                         </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDelete(quiz.id)}
-                                            className="text-destructive"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                        <Dialog>
+                                            <DialogTrigger className="text-destructive">
+                                                <Trash2 className="h-4 w-4" />
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Are you absolutely sure?</DialogTitle>
+                                                    <DialogDescription>
+                                                        This action cannot be undone. This will permanently delete the quiz.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <Button
+                                                    variant="ghost"
+                                                    onClick={() => handleDelete(quiz.id)}
+                                                    className="text-destructive"
+                                                >
+                                                    <Trash2 className="h-4 w-4" /> Delete Quiz
+                                                </Button>
+                                            </DialogContent>
+                                        </Dialog>
                                     </div>
                                 </TableCell>
                             </TableRow>

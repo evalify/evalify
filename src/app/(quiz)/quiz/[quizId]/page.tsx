@@ -10,6 +10,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { LatexPreview } from '@/components/latex-preview'
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+
+
 
 interface Option {
     option: string
@@ -53,11 +65,20 @@ const QuizPage = () => {
             }
             const data = await res.json();
             console.log(data);
+            if (data.status === 404 || data.status === 400 || data.message === "Quiz already completed") {
+                router.push('/student/quiz')
+                alert("Quiz already completed")
+                return
+            }
             setQuiz(data.quiz);
             setQuestions(data.questions);
             localStorage.setItem(`quiz_${quizId}`, JSON.stringify(data.quiz));
             localStorage.setItem(`questions_${quizId}`, JSON.stringify(data.questions));
-        } catch (error) {
+        } catch (error : any) {
+            if (error.status === 404 || error.status === 400 || error.message === "Quiz already completed") {
+                router.push('/student/quiz')
+                alert("Quiz already completed")
+            }
             console.log('Error fetching quiz:', error);
         }
     }
@@ -67,6 +88,7 @@ const QuizPage = () => {
         const storedQuestions = localStorage.getItem(`questions_${quizId}`);
         const storedUserAnswers = localStorage.getItem(`userAnswers_${quizId}`);
         const storedTimeLeft = localStorage.getItem(`timeLeft_${quizId}`);
+        const storedViolations = localStorage.getItem(`violations_${quizId}`);
 
         if (storedQuiz && storedQuestions) {
             setQuiz(JSON.parse(storedQuiz));
@@ -82,6 +104,29 @@ const QuizPage = () => {
         if (storedTimeLeft) {
             setTimeLeft(Number(storedTimeLeft));
         }
+
+        // Set violations in window object if they exist in localStorage
+        if (storedViolations) {
+            (window as any).globalState = {
+                violations: JSON.parse(storedViolations)
+            };
+        }
+    }, [quizId]);
+
+    useEffect(() => {
+        const storedViolations = localStorage.getItem(`violations_${quizId}`);
+        
+        // Initialize globalState if it doesn't exist
+        if (!(window as any).globalState) {
+            (window as any).globalState = { violations: [] };
+        }
+
+        // Load stored violations if they exist
+        if (storedViolations) {
+            (window as any).globalState.violations = JSON.parse(storedViolations);
+        }
+
+        // ...rest of your existing useEffect code...
     }, [quizId]);
 
     useEffect(() => {
@@ -143,26 +188,38 @@ const QuizPage = () => {
 
     const saveAnswers = async () => {
         try {
+            const violations = (window as any).globalState?.violations || [];
+            const violationsString = violations
+                .map((v: { message: string; timestamp: Date }) => 
+                    `${new Date(v.timestamp).toLocaleString()}: ${v.message}`)
+                .join('\n');
+
             const res = await fetch('/api/quiz/save', {
                 method: 'POST',
                 body: JSON.stringify({
                     quizId,
                     responses: userAnswers,
-                    voilations: 0
+                    violations: violationsString
                 })
-            })
+            });
+
             if (!res.ok) {
-                console.log('Failed to save quiz')
-                return
+                console.log('Failed to save quiz');
+                return;
             }
-            const data = await res.json()
-            router.push('/student/quiz')
-            console.log(data)
-            localStorage.clear();
+
+            // Clear all quiz-related data from localStorage
+            localStorage.removeItem(`quiz_${quizId}`);
+            localStorage.removeItem(`questions_${quizId}`);
+            localStorage.removeItem(`userAnswers_${quizId}`);
+            localStorage.removeItem(`timeLeft_${quizId}`);
+            localStorage.removeItem(`violations_${quizId}`);
+
+            router.push('/student/quiz');
         } catch (error) {
-            console.log('Error saving quiz:', error)
+            console.log('Error saving quiz:', error);
         }
-    }
+    };
 
     const handleSubmitQuiz = () => {
         // In a real application, you would send the userAnswers to the server here
@@ -250,7 +307,18 @@ const QuizPage = () => {
                         <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                     </Button>
                     {currentQuestionIndex === questions.length - 1 ? (
-                        <Button onClick={handleSubmitQuiz}>Submit Quiz</Button>
+                        <Dialog>
+                            <DialogTrigger className='border-2 p-2 px-4 rounded-lg bg-black text-white dark:bg-white dark:text-black '>Submit</DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Are you absolutely sure?</DialogTitle>
+                                    <DialogDescription>
+                                        This action cannot be undone. This will submit your response.
+                                    </DialogDescription>
+                                    <Button onClick={handleSubmitQuiz}>Submit Quiz</Button>
+                                </DialogHeader>
+                            </DialogContent>
+                        </Dialog>
                     ) : (
                         <Button onClick={handleNextQuestion}>
                             Next <ChevronRight className="ml-2 h-4 w-4" />

@@ -1,14 +1,24 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
-import { RefreshCw, ClipboardList, Calendar, Clock, User, AlarmClock, BookOpen } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { RefreshCw, ClipboardList, Calendar, Clock, User, AlarmClock, CheckCircle2, BookOpen, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
-import { useRouter } from 'next/navigation'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
 
 type QuizInfo = {
     id: string
@@ -17,19 +27,13 @@ type QuizInfo = {
     startTime: string
     endTime: string
     duration: string
+    status: 'live' | 'upcoming' | 'completed' | 'missed'
     staff: {
         name: string
         id: string
     }
 }
 
-
-
-/**
- * Triggers the download of a file from the public directory.
- *
- * @param filePath - The relative path to the file in the public directory (e.g., "/files/sample.pdf").
- */
 const downloadFileFromPublicDir = (filePath: string) => {
     const anchor = document.createElement("a");
     anchor.href = filePath;
@@ -39,17 +43,14 @@ const downloadFileFromPublicDir = (filePath: string) => {
     document.body.removeChild(anchor);
 };
 
-
 const handleDownload = () => {
     downloadFileFromPublicDir("/questions.pdf");
 };
 
-
-function Page() {
+function QuizManagement() {
     const [quizInfo, setQuizInfo] = useState<QuizInfo[] | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-
 
     async function getQuiz() {
         try {
@@ -78,73 +79,88 @@ function Page() {
     }, [])
 
     if (isLoading) {
-        return (
-            <div className="container mx-auto p-4 space-y-4">
-                <Skeleton className="h-12 w-[250px]" />
-                {[...Array(3)].map((_, i) => (
-                    <Card key={i} className="w-full mb-4">
-                        <CardHeader>
-                            <Skeleton className="h-6 w-[250px]" />
-                            <Skeleton className="h-4 w-[200px]" />
-                        </CardHeader>
-                        <CardContent>
-                            <Skeleton className="h-4 w-full mb-2" />
-                            <Skeleton className="h-4 w-full mb-2" />
-                            <Skeleton className="h-4 w-full" />
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        )
+        return <LoadingSkeleton />
     }
 
     if (error) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                <p className="text-red-500">Failed to load quizzes</p>
-                <Button onClick={() => getQuiz()} variant="outline">
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Retry
-                </Button>
-            </div>
-        )
+        return <ErrorState onRetry={getQuiz} />
     }
 
     return (
-        <div className="container mx-auto p-4 space-y-4">
+        <div className="container mx-auto p-4 space-y-8">
             <h1 className="text-3xl font-bold flex items-center">
                 <ClipboardList className="mr-2 h-8 w-8" />
-                Available Quizzes
+                Quizzes
             </h1>
             {quizInfo?.length === 0 ? (
-                <Card>
-                    <CardContent className="flex items-center justify-center h-32">
-                        <p className="text-center text-gray-500">No quizzes available</p>
-                    </CardContent>
-                </Card>
+                <EmptyState />
             ) : (
-                <div className="space-y-4">
-                    {quizInfo?.map((quiz) => (
-                        <QuizCard key={quiz.id} {...quiz} />
-                    ))}
-                </div>
+                <Tabs defaultValue="live" className="w-full">
+                    <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="live">Live</TabsTrigger>
+                        <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+                        <TabsTrigger value="completed">Completed</TabsTrigger>
+                        <TabsTrigger value="missed">Missed</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="live">
+                        <QuizList quizzes={quizInfo?.filter(q => q.status === 'live')} status="live" />
+                    </TabsContent>
+                    <TabsContent value="upcoming">
+                        <QuizList quizzes={quizInfo?.filter(q => q.status === 'upcoming')} status="upcoming" />
+                    </TabsContent>
+                    <TabsContent value="completed">
+                        <QuizList quizzes={quizInfo?.filter(q => q.status === 'completed')} status="completed" />
+                    </TabsContent>
+                    <TabsContent value="missed">
+                        <QuizList quizzes={quizInfo?.filter(q => q.status === 'missed')} status="missed" />
+                    </TabsContent>
+                </Tabs>
             )}
-            <div className="p-6">
-                <Button onClick={handleDownload}>Download Exam File</Button>
-            </div>
         </div>
     )
 }
 
-function QuizCard({ id, title, description, startTime, endTime, duration, staff }: QuizInfo) {
-    const router = useRouter()
+function QuizList({ quizzes, status }: { quizzes: QuizInfo[] | undefined, status: string }) {
+    if (!quizzes || quizzes.length === 0) {
+        return <div className="text-gray-500 text-center py-4">No {status} quizzes available</div>
+    }
     return (
-        <Card className="w-full">
+        <div className="space-y-4 mt-4">
+            {quizzes.map((quiz) => (
+                <QuizCard key={quiz.id} {...quiz} />
+            ))}
+        </div>
+    )
+}
+
+function QuizCard({ id, title, description, startTime, endTime, duration, staff, status }: QuizInfo) {
+    const router = useRouter()
+
+    const getStatusBadge = (status: string) => {
+        switch (status) {
+            case 'live':
+                return <Badge variant="default" className="bg-green-500"><AlertCircle className="mr-1 h-3 w-3" /> Live</Badge>
+            case 'upcoming':
+                return <Badge variant="secondary"><Clock className="mr-1 h-3 w-3" /> Upcoming</Badge>
+            case 'completed':
+                return <Badge variant="outline"><CheckCircle className="mr-1 h-3 w-3" /> Completed</Badge>
+            case 'missed':
+                return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" /> Missed</Badge>
+            default:
+                return null
+        }
+    }
+
+    return (
+        <Card className="w-full hover:shadow-md transition-shadow duration-200">
             <CardHeader>
-                <CardTitle className="flex items-center">
-                    <BookOpen className="mr-2 h-5 w-5" />
-                    {title}
-                </CardTitle>
+                <div className="flex justify-between items-center">
+                    <CardTitle className="flex items-center">
+                        <BookOpen className="mr-2 h-5 w-5" />
+                        {title}
+                    </CardTitle>
+                    {getStatusBadge(status)}
+                </div>
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -152,12 +168,12 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff 
                     <div className="space-y-2">
                         <div className="flex items-center">
                             <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Start Time:</span>
+                            <span className="text-sm font-medium">Start:</span>
                             <span className="ml-2 text-sm">{new Date(startTime).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center">
                             <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">End Time:</span>
+                            <span className="text-sm font-medium">End:</span>
                             <span className="ml-2 text-sm">{new Date(endTime).toLocaleString()}</span>
                         </div>
                     </div>
@@ -177,15 +193,94 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff 
             </CardContent>
             <Separator />
             <CardFooter className="pt-4">
-                <Button className="w-full"
-                    onClick={() => router.push(`/quiz/${id}`)}>
-                    <AlarmClock className="mr-2 h-4 w-4" />
-                    Start Quiz
-                </Button>
+                {status === 'live' ? (
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button className="w-full">
+                                <AlarmClock className="mr-2 h-4 w-4" />
+                                Start Quiz
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold text-center">
+                                    Ready to Begin?
+                                </DialogTitle>
+                                <div className="my-4 text-center">
+                                    <CheckCircle2 className="mx-auto h-16 w-16 text-green-500" />
+                                </div>
+                                <div className="text-lg font-semibold mb-4 text-center">
+                                    You're about to start the quiz: {title}
+                                </div>
+                                <DialogDescription className="text-center">
+                                    Are you ready to proceed?
+                                </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row sm:space-x-2">
+                                <Button variant="outline" className="w-full sm:w-auto">Not Yet</Button>
+                                <Button
+                                    onClick={() => router.push(`/quiz/${id}`)}
+                                    className="w-full sm:w-auto bg-green-500 hover:bg-green-600"
+                                >
+                                    Start Now
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                ) : (
+                    <Button className="w-full" disabled>
+                        <AlarmClock className="mr-2 h-4 w-4" />
+                        View Details
+                    </Button>
+                )}
             </CardFooter>
         </Card>
     )
 }
 
-export default Page
+
+function LoadingSkeleton() {
+    return (
+        <div className="container mx-auto p-4 space-y-4">
+            <Skeleton className="h-12 w-[250px]" />
+            {[...Array(3)].map((_, i) => (
+                <Card key={i} className="w-full mb-4">
+                    <CardHeader>
+                        <Skeleton className="h-6 w-[250px]" />
+                        <Skeleton className="h-4 w-[200px]" />
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-4 w-full mb-2" />
+                        <Skeleton className="h-4 w-full mb-2" />
+                        <Skeleton className="h-4 w-full" />
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    )
+}
+
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <div className="text-red-500">Failed to load quizzes</div>
+            <Button onClick={onRetry} variant="outline">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Retry
+            </Button>
+        </div>
+    )
+}
+
+function EmptyState() {
+    return (
+        <Card>
+            <CardContent className="flex items-center justify-center h-32">
+                <div className="text-center text-gray-500">No quizzes available</div>
+            </CardContent>
+        </Card>
+    )
+}
+
+export default QuizManagement
 
