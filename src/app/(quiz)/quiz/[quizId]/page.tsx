@@ -12,10 +12,8 @@ import { LatexPreview } from '@/components/latex-preview'
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import {
     Dialog,
-    DialogClose,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,

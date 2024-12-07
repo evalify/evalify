@@ -20,6 +20,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 
+// Update QuizInfo type to include settings
 type QuizInfo = {
     id: string
     title: string
@@ -31,6 +32,9 @@ type QuizInfo = {
     staff: {
         name: string
         id: string
+    }
+    settings?: {
+        showResult: boolean
     }
 }
 
@@ -133,7 +137,7 @@ function QuizList({ quizzes, status }: { quizzes: QuizInfo[] | undefined, status
     )
 }
 
-function QuizCard({ id, title, description, startTime, endTime, duration, staff, status }: QuizInfo) {
+function QuizCard({ id, title, description, startTime, endTime, duration, staff, status, settings }: QuizInfo) {
     const router = useRouter()
 
     const getStatusBadge = (status: string) => {
@@ -227,6 +231,14 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff,
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                ) : status === 'completed' && settings?.showResult ? (
+                    <Button 
+                        className="w-full" 
+                        onClick={() => router.push(`/student/quiz/result/${id}`)}
+                    >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        View Results
+                    </Button>
                 ) : (
                     <Button className="w-full" disabled>
                         <AlarmClock className="mr-2 h-4 w-4" />

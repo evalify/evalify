@@ -93,6 +93,7 @@ model QuizSettings {
     fullscreen Boolean @default(false)
     calculator Boolean @default(false)
     shuffle    Boolean @default(false)
+    showResult Boolean @default(false)
     Quiz       Quiz[]
 }
 
@@ -105,17 +106,20 @@ model QuizResult {
     score       Float
     submittedAt DateTime @default(now())
     responses   Json
+    questionMarks Json?
     violations  String?
 }
 
 model QuizReport {
-    id     String @id @default(cuid())
-    quiz   Quiz   @relation(fields: [quizId], references: [id])
-    quizId String
+    id            String @id @default(cuid())
+    quiz          Quiz   @relation(fields: [quizId], references: [id])
+    quizId        String @unique
 
     maxScore      Float
     avgScore      Float
     minScore      Float
     totalScore    Float
     totalStudents Int
+    questionStats Json
+    markDistribution Json
 }

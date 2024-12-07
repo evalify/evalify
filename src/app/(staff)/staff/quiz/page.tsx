@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Pencil, SquareChartGantt, Trash2 } from 'lucide-react'; // Add this import
+import { Pencil, SquareChartGantt, Trash2, FileBadge2 } from 'lucide-react'; // Add this import
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -47,6 +47,7 @@ type Quiz = {
         fullscreen: boolean;
         calculator: boolean;
         shuffle: boolean;
+        showResult: boolean;
     };
     courses: Course[];
 };
@@ -66,6 +67,7 @@ export default function QuizPage() {
             fullscreen: false,
             calculator: false,
             shuffle: false,
+            showResult: false,
         },
         courseIds: [],
     });
@@ -145,6 +147,7 @@ export default function QuizPage() {
                 fullscreen: false,
                 calculator: false,
                 shuffle: false,
+                showResult: false,
             },
             courseIds: [],
         });
@@ -405,6 +408,15 @@ export default function QuizPage() {
                                             }}
                                         >
                                             <SquareChartGantt className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => {
+                                                router.push(`/staff/quiz/result/${quiz.id}`);
+                                            }}
+                                        >
+                                            <FileBadge2 className="h-4 w-4" />
                                         </Button>
                                         <Dialog>
                                             <DialogTrigger className="text-destructive">

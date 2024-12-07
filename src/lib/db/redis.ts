@@ -68,5 +68,29 @@ class RedisClient {
     }
 }
 
+const CACHE_TTL = 3600; // 1 hour in seconds
+
+export const CACHE_KEYS = {
+    quizResults: (quizId: string) => `quiz:${quizId}:results`,
+    studentResult: (studentId: string) => `student:${studentId}:result`,
+    quizReport: (quizId: string) => `quiz:${quizId}:report`,
+};
+
+export const clearQuizCache = async (quizId: string) => {
+    const redis = RedisClient.getInstance();
+    await Promise.all([
+        redis.del(CACHE_KEYS.quizResults(quizId)),
+        redis.del(CACHE_KEYS.quizReport(quizId))
+    ]);
+};
+
+export const clearStudentResultCache = async (studentId: string, quizId: string) => {
+    const redis = RedisClient.getInstance();
+    await Promise.all([
+        redis.del(CACHE_KEYS.studentResult(studentId)),
+        redis.del(CACHE_KEYS.quizResults(quizId))
+    ]);
+};
+
 export const redis = RedisClient.getInstance();
 export const { getCachedQuestions, setCachedQuestions } = RedisClient;
