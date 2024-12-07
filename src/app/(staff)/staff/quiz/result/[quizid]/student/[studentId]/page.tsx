@@ -71,27 +71,33 @@ export default function StudentResultPage() {
     }
 
     const handleMarkUpdate = async (questionId: string, marks: number) => {
-        const updatedResponses = { ...responses };
-        const updatedQuestionMarks = { 
-            ...(data?.result.questionMarks || {}), 
-            [questionId]: marks 
+        if (!data) return;
+        
+        // Update questionMarks
+        const updatedQuestionMarks = {
+            ...data.result.questionMarks,
+            [questionId]: marks
         };
-        const totalScore = Object.values(updatedQuestionMarks).reduce((sum, mark) => sum + mark, 0);
+
+        // Calculate new total score
+        const totalScore = Object.values(updatedQuestionMarks).reduce(
+            (sum, mark) => sum + Number(mark), 0
+        );
 
         try {
             const response = await fetch(`/api/staff/result/${studentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    responses: updatedResponses,
+                body: JSON.stringify({
+                    responses,
                     questionMarks: updatedQuestionMarks,
-                    totalScore 
+                    totalScore
                 })
             });
 
             if (response.ok) {
                 toast.success('Marks updated successfully');
-                fetchData(); // Refresh data
+                fetchData(); // Refresh data to get updated totals
             } else {
                 toast.error('Failed to update marks');
             }
@@ -101,29 +107,8 @@ export default function StudentResultPage() {
     };
 
     const handleEditQuestion = (questionId: string) => {
-        setEditingQuestion(questionId)
-    }
-
-    const handleSaveQuestion = async (questionId: string) => {
-        try {
-            const totalScore = Object.values(responses).reduce((sum, resp) => sum + (resp.marks || 0), 0)
-
-            const response = await fetch(`/api/staff/result/${studentId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ responses, totalScore })
-            })
-
-            if (response.ok) {
-                toast.success('Question marks updated')
-                setEditingQuestion(null)
-            } else {
-                toast.error('Failed to update marks')
-            }
-        } catch (error) {
-            toast.error('Failed to update marks')
-        }
-    }
+        setEditingQuestion(questionId === editingQuestion ? null : questionId);
+    };
 
     const renderOptions = (question: Question, studentResponses: Response) => {
         if (!question.options) return (
@@ -254,7 +239,6 @@ export default function StudentResultPage() {
                         responses={responses}
                         editingQuestion={editingQuestion}
                         handleEditQuestion={handleEditQuestion}
-                        handleSaveQuestion={handleSaveQuestion}
                         handleMarkUpdate={handleMarkUpdate}
                         renderOptions={renderOptions}
                         data={data}  // Pass data prop
@@ -267,7 +251,6 @@ export default function StudentResultPage() {
                         responses={responses}
                         editingQuestion={editingQuestion}
                         handleEditQuestion={handleEditQuestion}
-                        handleSaveQuestion={handleSaveQuestion}
                         handleMarkUpdate={handleMarkUpdate}
                         renderOptions={renderOptions}
                         data={data}  // Pass data prop
@@ -284,7 +267,6 @@ function QuestionList({
     responses,
     editingQuestion,
     handleEditQuestion,
-    handleSaveQuestion,
     handleMarkUpdate,
     renderOptions,
     data  // Add data to props
@@ -294,7 +276,6 @@ function QuestionList({
     responses: Record<string, Response>
     editingQuestion: string | null
     handleEditQuestion: (questionId: string) => void
-    handleSaveQuestion: (questionId: string) => void
     handleMarkUpdate: (questionId: string, marks: number) => void
     renderOptions: (question: Question, studentAnswer: string) => React.ReactNode
     data: { result: StudentResult; questions: Question[] }  // Add type definition
@@ -325,20 +306,13 @@ function QuestionList({
                             <div className="flex justify-between items-start">
                                 <CardTitle>Question {questionMap[question._id]}</CardTitle>
                                 <div className="flex items-center gap-2">
-                                    {editingQuestion === question._id ? (
-                                        <>
-                                            <Button size="sm" variant="ghost" onClick={() => handleEditQuestion('')}>
-                                                <X className="w-4 h-4" />
-                                            </Button>
-                                            <Button size="sm" onClick={() => handleSaveQuestion(question._id)}>
-                                                <Check className="w-4 h-4" />
-                                            </Button>
-                                        </>
-                                    ) : (
-                                        <Button size="sm" variant="ghost" onClick={() => handleEditQuestion(question._id)}>
-                                            <Pencil className="w-4 h-4" />
-                                        </Button>
-                                    )}
+                                    <Button
+                                        size="sm"
+                                        variant={editingQuestion === question._id ? "default" : "ghost"}
+                                        onClick={() => handleEditQuestion(question._id)}
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </Button>
                                 </div>
                             </div>
                         </CardHeader>
@@ -350,43 +324,50 @@ function QuestionList({
                                         <LatexPreview content={question.question} />
                                     </p>
                                 </div>
-                                {renderOptions(question, responses[question._id] || [])}
-                                <div className="mt-4">
+
+                                {/* Render the options and student responses */}
+                                {renderOptions(question, responses[question._id])}
+
+                                {/* Show explanation if available */}
+                                {question.explanation && (
+                                    <div className="mt-4 pt-4 border-t">
+                                        <strong>Explanation:</strong>
+                                        <div className="mt-2">
+                                            <LatexPreview content={question.explanation} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Marks section */}
+                                <div className="mt-4 pt-4 border-t">
                                     <div className="flex items-center gap-2">
                                         <strong>Marks:</strong>
-                                        {
-                                            editingQuestion === question._id ? (
-                                                <Input
-                                                    type="number"
-                                                    value={data.result.questionMarks?.[question._id] || 0}
-                                                    onChange={(e) => handleMarkUpdate(question._id, parseFloat(e.target.value))}
-                                                    className="w-24"
-                                                    min={0}
-                                                    max={question.marks}
-                                                />
-                                            ) : (
-                                                <span>{data.result.questionMarks?.[question._id] || 0}</span>
-                                            )
-                                        }
+                                        {editingQuestion === question._id ? (
+                                            <Input
+                                                type="number"
+                                                value={data.result.questionMarks?.[question._id] || 0}
+                                                onChange={(e) => handleMarkUpdate(question._id, parseFloat(e.target.value))}
+                                                className="w-24"
+                                                min={0}
+                                                max={question.marks}
+                                                onBlur={() => handleEditQuestion(null)}
+                                            />
+                                        ) : (
+                                            <span>{data.result.questionMarks?.[question._id] || 0}</span>
+                                        )}
                                         <span>/ {question.marks}</span>
                                     </div>
                                 </div>
                             </div>
                         </CardContent>
-                        {
-                            !isQuestionCorrect(question, responses[question._id]) && (
-                                <div className="absolute top-0 right-0 m-4">
-                                    <AlertCircle className="w-5 h-5 text-red-500" />
-                                </div>
-                            )
-                        }
+                        {!isQuestionCorrect(question, responses[question._id]) && (
+                            <div className="absolute top-0 right-0 m-4">
+                                <AlertCircle className="w-5 h-5 text-red-500" />
+                            </div>
+                        )}
                     </Card>
                 ))}
-                {questions.length === 0 && (
-                    <div className="text-center py-4 text-muted-foreground">
-                        No questions found
-                    </div>
-                )}
+                {/* ...existing empty state... */}
             </div>
         </ScrollArea>
     )

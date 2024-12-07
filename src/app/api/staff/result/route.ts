@@ -94,10 +94,9 @@ export async function PUT(req: Request) {
 
         // Evaluate each result
         const evaluatedResults = await Promise.all(quizResults.map(async (result) => {
-            let totalScore = 0;
             const responses = result.responses as Record<string, string[]> || {};
             const questionMarks: Record<string, number> = {};
-
+            
             questions.forEach(question => {
                 // Safely handle missing responses
                 const questionId = question._id.toString();
@@ -119,15 +118,18 @@ export async function PUT(req: Request) {
                 const isCorrect = JSON.stringify(sortedStudentAnswer) === JSON.stringify(sortedCorrectAnswer);
                 const marks = isCorrect ? question.marks : 0;
                 questionMarks[questionId] = marks;
-                totalScore += marks;
             });
+
+            // Calculate total score from questionMarks
+            const totalScore = Object.values(questionMarks).reduce((sum, mark) => sum + (Number(mark) || 0), 0);
 
             // Update the result in database with question-wise marks
             return prisma.quizResult.update({
                 where: { id: result.id },
                 data: {
-                    score: totalScore,
-                    questionMarks
+                    responses,
+                    questionMarks,
+                    score: totalScore // Update score based on questionMarks total
                 }
             });
         }));

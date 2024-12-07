@@ -67,14 +67,17 @@ export async function PUT(req: Request, { params }: { params: { studentId: strin
         }
 
         const body = await req.json();
-        const { responses, questionMarks, totalScore } = body;
+        const { responses, questionMarks } = body;
+
+        // Calculate total score from questionMarks
+        const totalScore = Object.values(questionMarks).reduce((sum, mark) => sum + (Number(mark) || 0), 0);
 
         const result = await prisma.quizResult.update({
             where: { id: param.studentId },
             data: {
                 responses,
                 questionMarks,
-                score: totalScore
+                score: totalScore // Update score based on questionMarks total
             }
         });
 
