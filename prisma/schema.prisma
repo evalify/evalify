@@ -63,12 +63,27 @@ model Course {
     sharePoint String
 }
 
+model Bank {
+    id          String   @id @default(cuid())
+    name        String
+    createdAt   DateTime
+    description String?
+    semester    String?
+
+    topics String[]
+
+    bankOwners Staff[] @relation("BankOwners")
+    staffs     Staff[] @relation("BankStaffs")
+}
+
 model Staff {
-    id      String   @id @default(cuid())
-    user    User     @relation(fields: [userId], references: [id])
-    userId  String
-    courses Course[]
-    Quiz    Quiz[]
+    id         String   @id @default(cuid())
+    user       User     @relation(fields: [userId], references: [id])
+    userId     String
+    bank       Bank[]   @relation("BankOwners")
+    bankStaffs Bank[]   @relation("BankStaffs")
+    courses    Course[]
+    Quiz       Quiz[]
 }
 
 model Quiz {
@@ -98,28 +113,28 @@ model QuizSettings {
 }
 
 model QuizResult {
-    id          String   @id @default(cuid())
-    student     Student  @relation(fields: [studentId], references: [id])
-    studentId   String
-    quiz        Quiz     @relation(fields: [quizId], references: [id])
-    quizId      String
-    score       Float
-    submittedAt DateTime @default(now())
-    responses   Json
+    id            String   @id @default(cuid())
+    student       Student  @relation(fields: [studentId], references: [id])
+    studentId     String
+    quiz          Quiz     @relation(fields: [quizId], references: [id])
+    quizId        String
+    score         Float
+    submittedAt   DateTime @default(now())
+    responses     Json
     questionMarks Json?
-    violations  String?
+    violations    String?
 }
 
 model QuizReport {
-    id            String @id @default(cuid())
-    quiz          Quiz   @relation(fields: [quizId], references: [id])
-    quizId        String @unique
+    id     String @id @default(cuid())
+    quiz   Quiz   @relation(fields: [quizId], references: [id])
+    quizId String @unique
 
-    maxScore      Float
-    avgScore      Float
-    minScore      Float
-    totalScore    Float
-    totalStudents Int
-    questionStats Json
+    maxScore         Float
+    avgScore         Float
+    minScore         Float
+    totalScore       Float
+    totalStudents    Int
+    questionStats    Json
     markDistribution Json
 }

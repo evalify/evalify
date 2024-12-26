@@ -7,10 +7,7 @@ import {
     FileQuestion, 
     Calendar,
     Clock,
-    ChevronRight
 } from "lucide-react";
-import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
 import QuickActions from "./_components/QuickActions";
 import StatsCard from "./_components/StatsCard";
 import RecentQuizCard from "./_components/RecentQuizCard";
@@ -110,6 +107,7 @@ export default async function StaffDashboard() {
                 </div>
                 {/* Add Calendar Component Here */}
             </Card>
+
         </div>
     );
 }

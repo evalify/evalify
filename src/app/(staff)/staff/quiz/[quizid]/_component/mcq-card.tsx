@@ -64,11 +64,10 @@ function PreviewCard({ question }: { question: Question }) {
                 {question.options.map((opt, idx) => (
                     <div
                         key={idx}
-                        className={`p-2 rounded ${
-                            question.answer.includes(opt.optionId)
+                        className={`p-2 rounded ${question.answer.includes(opt.optionId)
                                 ? "bg-green-100 border-green-500 border  dark:bg-green-800"
                                 : ""
-                        }`}
+                            }`}
                     >
                         <LatexPreview content={opt.option} />
                     </div>
@@ -245,9 +244,8 @@ export function MCQCard({ question, onSave, onDelete, isNew = false }: MCQCardPr
                                         <TextareaAutosize
                                             value={o.option}
                                             onChange={(e) => handleOptionChange(i, e.target.value)}
-                                            className={`w-[80vw] min-h-[38px] p-2 rounded-md border whitespace-pre-wrap ${
-                                                editedQuestion.answer.includes(o.optionId) ? "border-green-500" : ""
-                                            }`}
+                                            className={`w-[80vw] min-h-[38px] p-2 rounded-md border whitespace-pre-wrap ${editedQuestion.answer.includes(o.optionId) ? "border-green-500" : ""
+                                                }`}
                                             placeholder={`Option ${i + 1} (Use $ for LaTeX, e.g. $x^2$)`}
                                             minRows={1}
                                         />

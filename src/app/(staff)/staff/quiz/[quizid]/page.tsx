@@ -10,6 +10,7 @@ import { fetchQuestions, createQuestion, updateQuestion, deleteQuestion } from '
 import { Question } from './_component/types'
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Plus } from 'lucide-react'
+import CodeCard from './_component/code-card'
 
 export default function QuizPage() {
     const { quizid } = useParams()
@@ -73,7 +74,7 @@ export default function QuizPage() {
         }
     }
 
-    const addNewQuestion = (type: 'MCQ' | 'DESCRIPTIVE') => {
+    const addNewQuestion = (type: 'MCQ' | 'DESCRIPTIVE' | 'CODING') => {
         const baseQuestion = {
             _id: `new-${Date.now()}`,
             difficulty: 'easy' as const,
@@ -82,20 +83,28 @@ export default function QuizPage() {
             explanation: '',
         }
 
-        const newQuestion: Question = type === 'MCQ' 
+        const newQuestion: Question = type === 'MCQ'
             ? {
                 ...baseQuestion,
                 type: 'MCQ',
                 options: [
                     { option: '', optionId: '1' },
-                    { option: '', optionId: '2' }
+                    { option: '', optionId: '2' },
+                    { option: '', optionId: '3' },
+                    { option: '', optionId: '4' }
                 ],
                 answer: []
-            }
-            : {
-                ...baseQuestion,
-                type: 'DESCRIPTIVE'
-            }
+            } : (type === 'DESCRIPTIVE') ?
+                {
+                    ...baseQuestion,
+                    type: 'DESCRIPTIVE'
+                } : {
+                    ...baseQuestion,
+                    type: 'CODING',
+                    testCases: [],
+                    language: '',
+                    functionName: '',
+                }
 
         setQuestions([...questions, newQuestion])
     }
@@ -121,25 +130,35 @@ export default function QuizPage() {
                 <h1 className="text-2xl font-bold">Quiz Questions</h1>
             </div>
             <div className='flex flex-col gap-4'>
-                {questions.map((q) => (
-                    q.type === 'MCQ' ? (
-                        <MCQCard
-                            key={q._id}
-                            question={q}
-                            onSave={handleSave}
-                            onDelete={handleDelete}
-                            isNew={q._id?.startsWith('new-')}
-                        />
-                    ) : (
-                        <DescriptiveCard
-                            key={q._id}
-                            question={q}
-                            onSave={handleSave}
-                            onDelete={handleDelete}
-                            isNew={q._id?.startsWith('new-')}
-                        />
-                    )
-                ))}
+                {
+                    questions.map((q,index) => (
+                        q.type === 'MCQ' ? (
+                            <MCQCard
+                                key={q._id}
+                                question={q}
+                                onSave={handleSave}
+                                onDelete={handleDelete}
+                                isNew={q._id?.startsWith('new-')}
+                            />
+                        ) : (q.type === 'DESCRIPTIVE') ? (
+                            <DescriptiveCard
+                                key={q._id}
+                                question={q}
+                                onSave={handleSave}
+                                onDelete={handleDelete}
+                                isNew={q._id?.startsWith('new-')}
+                            />
+                        ) : (
+                            <CodeCard
+                                key={q._id}
+                                question={q}
+                                onSave={handleSave}
+                                onDelete={handleDelete}
+                                isNew={q._id?.startsWith('new-')}
+                            />
+                        )
+                    ))
+                }
                 <div className="flex gap-2 ">
                     <Button onClick={() => addNewQuestion('MCQ')}>
                         <Plus className="h-4 w-4 mr-2" />
@@ -148,6 +167,10 @@ export default function QuizPage() {
                     <Button onClick={() => addNewQuestion('DESCRIPTIVE')}>
                         <Plus className="h-4 w-4 mr-2" />
                         Add Descriptive
+                    </Button>
+                    <Button onClick={() => addNewQuestion('CODING')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Coding Question
                     </Button>
                 </div>
             </div>

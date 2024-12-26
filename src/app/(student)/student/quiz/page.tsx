@@ -163,7 +163,9 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff,
                         <BookOpen className="mr-2 h-5 w-5" />
                         {title}
                     </CardTitle>
-                    {getStatusBadge(status)}
+                    {
+                        getStatusBadge(status)
+                    }
                 </div>
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
@@ -232,8 +234,8 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff,
                         </DialogContent>
                     </Dialog>
                 ) : status === 'completed' && settings?.showResult ? (
-                    <Button 
-                        className="w-full" 
+                    <Button
+                        className="w-full"
                         onClick={() => router.push(`/student/quiz/result/${id}`)}
                     >
                         <CheckCircle className="mr-2 h-4 w-4" />

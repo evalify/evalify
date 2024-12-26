@@ -21,13 +21,11 @@ const nextConfig = {
   // Optimize production settings
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
-  optimizeFonts: true,
+
   compress: true,
 
   // Disable font preloading
   experimental: {
-    optimizeFonts: true,
-    preloadFonts: false,
     optimizePackageImports: ['@mantine/core', '@mantine/hooks'],
   },
 
@@ -61,7 +59,7 @@ const nextConfig = {
   },
 
   // Disable WebSocket in production
-  webSocketServer: false,
+  // webSocketServer: false,
 };
 
 export default nextConfig;

@@ -120,7 +120,7 @@ export async function DELETE(request: NextRequest) {
             .db()
             .collection(QUESTIONS_COLLECTION)
             .deleteOne({
-                _id: questionId,
+                _id: ObjectId(questionId),
                 quizId
             });
 

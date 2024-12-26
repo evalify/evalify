@@ -23,6 +23,25 @@ const descriptiveSchema = z.object({
 
 export const questionSchema = z.discriminatedUnion("type", [mcqSchema, descriptiveSchema])
 
-export type Question = z.infer<typeof questionSchema>
+export type Question = {
+    _id?: string;
+    type: 'MCQ' | 'DESCRIPTIVE' | 'CODING' | 'TRUE_FALSE' | 'FILL_BLANKS';
+    difficulty: 'easy' | 'medium' | 'hard';
+    marks: number;
+    question: string;
+    explanation: string;
+    // MCQ specific
+    options?: { option: string; optionId: string; }[];
+    answer?: string[];
+    // True/False specific
+    correctAnswer?: boolean;
+    // Fill in the blanks specific
+    blanksAnswer?: string[];
+    // Coding specific
+    testCases?: any[];
+    language?: string;
+    functionName?: string;
+}
+
 export type QuestionFormValues = z.infer<typeof questionSchema>
 

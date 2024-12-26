@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/dialog"
 
 
-
 interface Option {
     option: string
     optionId: string
@@ -29,9 +28,9 @@ interface Option {
 interface Question {
     id: string
     question: string
-    options?: Option[]  // Make options optional
+    options?: Option[]
     marks: number
-    type: string       // Can be 'MCQ', 'MMCQ', or 'DESCRIPTIVE'
+    type: string
 }
 
 interface Quiz {
@@ -72,7 +71,7 @@ const QuizPage = () => {
             setQuestions(data.questions);
             localStorage.setItem(`quiz_${quizId}`, JSON.stringify(data.quiz));
             localStorage.setItem(`questions_${quizId}`, JSON.stringify(data.questions));
-        } catch (error : any) {
+        } catch (error: any) {
             if (error.status === 404 || error.status === 400 || error.message === "Quiz already completed") {
                 router.push('/student/quiz')
                 alert("Quiz already completed")
@@ -103,7 +102,6 @@ const QuizPage = () => {
             setTimeLeft(Number(storedTimeLeft));
         }
 
-        // Set violations in window object if they exist in localStorage
         if (storedViolations) {
             (window as any).globalState = {
                 violations: JSON.parse(storedViolations)
@@ -113,18 +111,15 @@ const QuizPage = () => {
 
     useEffect(() => {
         const storedViolations = localStorage.getItem(`violations_${quizId}`);
-        
-        // Initialize globalState if it doesn't exist
+
         if (!(window as any).globalState) {
             (window as any).globalState = { violations: [] };
         }
 
-        // Load stored violations if they exist
         if (storedViolations) {
             (window as any).globalState.violations = JSON.parse(storedViolations);
         }
 
-        // ...rest of your existing useEffect code...
     }, [quizId]);
 
     useEffect(() => {
@@ -141,7 +136,6 @@ const QuizPage = () => {
                 return newTimeLeft;
             });
         }, 1000);
-
         return () => clearInterval(timer);
     }, [timeLeft]);
 
@@ -188,7 +182,7 @@ const QuizPage = () => {
         try {
             const violations = (window as any).globalState?.violations || [];
             const violationsString = violations
-                .map((v: { message: string; timestamp: Date }) => 
+                .map((v: { message: string; timestamp: Date }) =>
                     `${new Date(v.timestamp).toLocaleString()}: ${v.message}`)
                 .join('\n');
 
@@ -206,7 +200,6 @@ const QuizPage = () => {
                 return;
             }
 
-            // Clear all quiz-related data from localStorage
             localStorage.removeItem(`quiz_${quizId}`);
             localStorage.removeItem(`questions_${quizId}`);
             localStorage.removeItem(`userAnswers_${quizId}`);
@@ -220,7 +213,6 @@ const QuizPage = () => {
     };
 
     const handleSubmitQuiz = () => {
-        // In a real application, you would send the userAnswers to the server here
         console.log('Quiz submitted:', userAnswers)
         saveAnswers()
     }
@@ -258,70 +250,74 @@ const QuizPage = () => {
                     <h2 className="text-xl font-semibold mb-4">
                         <LatexPreview content={currentQuestion.question} />
                     </h2>
-                    {currentQuestion.type === 'DESCRIPTIVE' ? (
-                        <div className="space-y-2">
-                            <Label htmlFor="answer">Your Answer</Label>
-                            <textarea
-                                id="answer"
-                                className="w-full min-h-[200px] p-2 border rounded-md"
+                    {
+                        currentQuestion.type === 'DESCRIPTIVE' ? (
+                            <div className="space-y-2">
+                                <Label htmlFor="answer">Your Answer</Label>
+                                <textarea
+                                    id="answer"
+                                    className="w-full min-h-[200px] p-2 border rounded-md"
+                                    value={userAnswers[currentQuestion.id]?.[0] || ''}
+                                    onChange={(e) => handleDescriptiveAnswer(currentQuestion.id, e.target.value)}
+                                    placeholder="Type your answer here..."
+                                />
+                            </div>
+                        ) : currentQuestion.type === 'MCQ' ? (
+                            <RadioGroup
+                                onValueChange={(value) => handleRadioChange(currentQuestion.id, value)}
                                 value={userAnswers[currentQuestion.id]?.[0] || ''}
-                                onChange={(e) => handleDescriptiveAnswer(currentQuestion.id, e.target.value)}
-                                placeholder="Type your answer here..."
-                            />
-                        </div>
-                    ) : currentQuestion.type === 'MCQ' ? (
-                        <RadioGroup
-                            onValueChange={(value) => handleRadioChange(currentQuestion.id, value)}
-                            value={userAnswers[currentQuestion.id]?.[0] || ''}
-                        >
-                            {currentQuestion.options?.map((option) => (
+                            >
+                                {currentQuestion.options?.map((option) => (
+                                    <div key={option.optionId} className="flex items-center space-x-2 mb-2">
+                                        <RadioGroupItem value={option.optionId} id={option.optionId} />
+                                        <Label htmlFor={option.optionId}>
+                                            <LatexPreview content={option.option} />
+                                        </Label>
+                                    </div>
+                                ))}
+                            </RadioGroup>
+                        ) : (
+                            currentQuestion.options?.map((option) => (
                                 <div key={option.optionId} className="flex items-center space-x-2 mb-2">
-                                    <RadioGroupItem value={option.optionId} id={option.optionId} />
+                                    <Checkbox
+                                        id={option.optionId}
+                                        checked={userAnswers[currentQuestion.id]?.includes(option.optionId)}
+                                        onCheckedChange={(checked) =>
+                                            handleAnswerChange(currentQuestion.id, option.optionId, checked as boolean)
+                                        }
+                                    />
                                     <Label htmlFor={option.optionId}>
                                         <LatexPreview content={option.option} />
                                     </Label>
                                 </div>
-                            ))}
-                        </RadioGroup>
-                    ) : (
-                        currentQuestion.options?.map((option) => (
-                            <div key={option.optionId} className="flex items-center space-x-2 mb-2">
-                                <Checkbox
-                                    id={option.optionId}
-                                    checked={userAnswers[currentQuestion.id]?.includes(option.optionId)}
-                                    onCheckedChange={(checked) =>
-                                        handleAnswerChange(currentQuestion.id, option.optionId, checked as boolean)
-                                    }
-                                />
-                                <Label htmlFor={option.optionId}>
-                                    <LatexPreview content={option.option} />
-                                </Label>
-                            </div>
-                        ))
-                    )}
+                            ))
+                        )
+                    }
                 </CardContent>
                 <CardFooter className="flex justify-between">
                     <Button onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
                         <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                     </Button>
-                    {currentQuestionIndex === questions.length - 1 ? (
-                        <Dialog>
-                            <DialogTrigger className='border-2 p-2 px-4 rounded-lg bg-black text-white dark:bg-white dark:text-black '>Submit</DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Are you absolutely sure?</DialogTitle>
-                                    <DialogDescription>
-                                        This action cannot be undone. This will submit your response.
-                                    </DialogDescription>
-                                    <Button onClick={handleSubmitQuiz}>Submit Quiz</Button>
-                                </DialogHeader>
-                            </DialogContent>
-                        </Dialog>
-                    ) : (
-                        <Button onClick={handleNextQuestion}>
-                            Next <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    )}
+                    {
+                        currentQuestionIndex === questions.length - 1 ? (
+                            <Dialog>
+                                <DialogTrigger className='border-2 p-2 px-4 rounded-lg bg-black text-white dark:bg-white dark:text-black '>Submit</DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Are you absolutely sure?</DialogTitle>
+                                        <DialogDescription>
+                                            This action cannot be undone. This will submit your response.
+                                        </DialogDescription>
+                                        <Button onClick={handleSubmitQuiz}>Submit Quiz</Button>
+                                    </DialogHeader>
+                                </DialogContent>
+                            </Dialog>
+                        ) : (
+                            <Button onClick={handleNextQuestion}>
+                                Next <ChevronRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        )
+                    }
                 </CardFooter>
             </Card>
         </div>
