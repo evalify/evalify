@@ -1,7 +1,5 @@
 import { auth } from "@/lib/auth/auth";
-import clientPromise from "@/lib/db/mongo";
 import { prisma } from "@/lib/db/prismadb";
-import { redis } from "@/lib/db/redis";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
@@ -66,9 +64,19 @@ export async function GET(req: Request) {
                 }
             },
             select: {
-                quizId: true
+                quizId: true,
+                quiz: {
+                    select: {
+                        settings: {
+                            select: {
+                                showResult: true
+                            }
+                        }
+                    }
+                }
             }
         })
+
 
         const quizData = quiz.map((q) => {
             const now = new Date();
@@ -76,10 +84,11 @@ export async function GET(req: Request) {
             const end = new Date(q.endTime);
 
             let status;
+            let showResult = false;
 
-            // Check if the quiz is completed first
             if (completedQuiz.some(cq => cq.quizId === q.id)) {
                 status = "completed";
+                showResult = completedQuiz.find((cq) => cq.quizId === q.id)?.quiz.settings.showResult || false;
             } else if (now >= start && now <= end) {
                 status = "live";
             } else if (now > end) {
@@ -96,13 +105,13 @@ export async function GET(req: Request) {
                 endTime: q.endTime,
                 duration: q.duration,
                 status,
+                showResult,
                 staff: {
                     name: q.courses[0].staff.user.name,
                     id: q.courses[0].staff.user.id
                 }
             };
         });
-
 
         // await redis.set(`QUIZ_${classId}`, JSON.stringify(quizData), 'EX', 60 * 60 * 4);
 

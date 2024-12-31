@@ -15,6 +15,7 @@ declare module "next-auth/jwt" {
 export const { handlers, auth, signIn, signOut } = NextAuth({
     session: {
         strategy: "jwt",
+        maxAge: 3 * 60 * 60,
     },
     secret: process.env.NEXTAUTH_SECRET,
     providers: [
@@ -69,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     }
 
                     return safeUser;
+
                 } catch (error) {
                     if (error instanceof Error) {
                         console.log("Authorization error:", error.message);

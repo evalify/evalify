@@ -30,15 +30,11 @@ export async function GET(
             }
         }
 
-        console.log('MongoDB Query:', query); // Debug log
-
         const questions = await (await clientPromise)
             .db()
             .collection('QUESTION_BANK')
             .find(query)
             .toArray();
-
-        console.log('Found questions:', questions.length); // Debug log
 
         return NextResponse.json({ questions }, { status: 200 });
     } catch (error) {
@@ -60,7 +56,6 @@ export async function POST(
 
         const question = await req.json();
         
-        // Ensure topics is always an array
         const topics = Array.isArray(question.topics) ? question.topics : [question.topics].filter(Boolean);
         
         const { _id, ...questionData } = question;
@@ -70,7 +65,7 @@ export async function POST(
             .collection('QUESTION_BANK')
             .insertOne({
                 ...questionData,
-                topics,  // Store as array
+                topics, 
                 bankId: id,
             });
 

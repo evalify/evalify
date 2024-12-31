@@ -32,7 +32,7 @@ const QuestionsPage = () => {
     const [editingTopic, setEditingTopic] = useState<{ index: number, name: string } | null>(null);
     const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
     const [questions, setQuestions] = useState<Question[]>([]);
-    const [isAddingQuestion, setIsAddingQuestion] = useState(false); // Add this line
+    const [isAddingQuestion, setIsAddingQuestion] = useState(false); 
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
     const [allTopics, setAllTopics] = useState<string[]>([]);
 
@@ -44,7 +44,7 @@ const QuestionsPage = () => {
         if (selectedTopics.length > 0) {
             fetchQuestions(selectedTopics);
         } else {
-            setQuestions([]); // Reset questions when no topic is selected
+            setQuestions([]); 
         }
     }, [selectedTopics]);
 
@@ -59,7 +59,7 @@ const QuestionsPage = () => {
 
             const topicsArray = (data.topics || []).map((topic: string) => topic);
             setTopics((data.topics || []).map((topic: string) => ({ name: topic })));
-            setAllTopics(topicsArray); // Store all topics for the MultiSelect
+            setAllTopics(topicsArray); 
         } catch (error) {
             console.error('Error fetching topics:', error);
             setTopics([]);
@@ -80,7 +80,7 @@ const QuestionsPage = () => {
             });
 
             const data = await response.json();
-            console.log('Fetched questions:', data); // Add this for debugging
+            console.log('Fetched questions:', data); 
             setQuestions(Array.isArray(data.questions) ? data.questions : []);
         } catch (error) {
             console.error('Error fetching questions:', error);
@@ -166,7 +166,7 @@ const QuestionsPage = () => {
     };
 
     const handleQuestionUpdate = (topics: string[]) => {
-        // Make sure topics is an array before calling fetchQuestions
+        
         if (Array.isArray(topics) && topics.length > 0) {
             fetchQuestions(topics);
         }
@@ -294,7 +294,7 @@ const QuestionsPage = () => {
 
                         {isAddingQuestion && (
                             <QuestionForm
-                                topic={selectedTopics} // Already an array, no need to split
+                                topic={selectedTopics} 
                                 bankId={params.id}
                                 onCancel={() => {
                                     setIsAddingQuestion(false);
@@ -306,7 +306,7 @@ const QuestionsPage = () => {
                                     fetchQuestions(selectedTopics);
                                 }}
                                 editingQuestion={editingQuestion}
-                                allTopics={allTopics} // Add this prop
+                                allTopics={allTopics} 
                             />
                         )}
                         <ScrollArea>
@@ -328,7 +328,7 @@ const QuestionsPage = () => {
                                         bankId={params.id}
                                         topic={selectedTopics}
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} // Add this prop
+                                        allTopics={allTopics} 
                                     />
                                 </TabsContent>
                                 <TabsContent value="mcq">
@@ -338,7 +338,7 @@ const QuestionsPage = () => {
                                         bankId={params.id}
                                         topic={selectedTopics}
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} // Make sure this is included
+                                        allTopics={allTopics} 
                                     />
                                 </TabsContent>
                                 <TabsContent value="true_false">
@@ -346,9 +346,9 @@ const QuestionsPage = () => {
                                         questions={getFilteredQuestions('true_false')}
                                         onQuestionUpdate={fetchQuestions}
                                         bankId={params.id}
-                                        topic={selectedTopics} // Remove .join(', ')
+                                        topic={selectedTopics} 
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} // Add this prop
+                                        allTopics={allTopics} 
                                     />
                                 </TabsContent>
                                 <TabsContent value="fill_in_blank">
@@ -356,9 +356,9 @@ const QuestionsPage = () => {
                                         questions={getFilteredQuestions('fill_in_blank')}
                                         onQuestionUpdate={fetchQuestions}
                                         bankId={params.id}
-                                        topic={selectedTopics} // Remove .join(', ')
+                                        topic={selectedTopics} 
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} // Add this prop
+                                        allTopics={allTopics} 
                                     />
                                 </TabsContent>
                                 <TabsContent value="descriptive">
@@ -366,9 +366,9 @@ const QuestionsPage = () => {
                                         questions={getFilteredQuestions('descriptive')}
                                         onQuestionUpdate={fetchQuestions}
                                         bankId={params.id}
-                                        topic={selectedTopics} // Remove .join(', ')
+                                        topic={selectedTopics} 
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} // Add this prop
+                                        allTopics={allTopics} 
                                     />
                                 </TabsContent>
                                 <TabsContent value="coding">
@@ -376,9 +376,9 @@ const QuestionsPage = () => {
                                         questions={getFilteredQuestions('coding')}
                                         onQuestionUpdate={fetchQuestions}
                                         bankId={params.id}
-                                        topic={selectedTopics} // Remove .join(', ')
+                                        topic={selectedTopics} 
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} // Add this prop
+                                        allTopics={allTopics} 
                                     />
                                 </TabsContent>
                             </Tabs>
@@ -393,7 +393,7 @@ const QuestionsPage = () => {
 
                 {isAddingQuestion && (
                     <AddQuestionDialog
-                        topic={selectedTopics} // Remove .join(', ')
+                        topic={selectedTopics} 
                         bankId={params.id}
                         open={isAddingQuestion}
                         onClose={() => {

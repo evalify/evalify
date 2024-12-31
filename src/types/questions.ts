@@ -2,22 +2,22 @@ export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'DESCRIPTIVE
 export type DifficultyLevel = 'EASY' | 'MEDIUM' | 'HARD';
 
 export interface BaseQuestion {
-    _id?: string;    // MongoDB's _id
-    id?: string;     // Keep old id for compatibility
+    _id?: string; 
+    id?: string;     
     type: QuestionType;
     content: string;
     difficulty: DifficultyLevel;
     marks: number;
     topic: string;
     bankId: string;
-    topics: string[];   // Allow multiple topics
-    explanation?: string; // Add optional explanation field
+    topics: string[];  
+    explanation?: string; 
 }
 
 export interface MCQQuestion extends BaseQuestion {
     type: 'MCQ';
     options: string[];
-    correctOptions: number[]; // Changed from correctOption to correctOptions array
+    correctOptions: number[]; 
 }
 
 export interface FillInBlankQuestion extends BaseQuestion {

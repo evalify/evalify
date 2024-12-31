@@ -20,7 +20,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 
-// Update QuizInfo type to include settings
+
 type QuizInfo = {
     id: string
     title: string
@@ -37,19 +37,6 @@ type QuizInfo = {
         showResult: boolean
     }
 }
-
-const downloadFileFromPublicDir = (filePath: string) => {
-    const anchor = document.createElement("a");
-    anchor.href = filePath;
-    anchor.download = filePath.split("/").pop() || "file";
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-};
-
-const handleDownload = () => {
-    downloadFileFromPublicDir("/questions.pdf");
-};
 
 function QuizManagement() {
     const [quizInfo, setQuizInfo] = useState<QuizInfo[] | null>(null)
@@ -137,8 +124,14 @@ function QuizList({ quizzes, status }: { quizzes: QuizInfo[] | undefined, status
     )
 }
 
-function QuizCard({ id, title, description, startTime, endTime, duration, staff, status, settings }: QuizInfo) {
+
+
+function QuizCard({ id, title, description, startTime, endTime, duration, staff, status, showResult }: QuizInfo) {
     const router = useRouter()
+
+    function getScore(quizId: string) {
+
+    }
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -233,7 +226,7 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff,
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
-                ) : status === 'completed' && settings?.showResult ? (
+                ) : status === 'completed' && showResult ? (
                     <Button
                         className="w-full"
                         onClick={() => router.push(`/student/quiz/result/${id}`)}
@@ -242,9 +235,9 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff,
                         View Results
                     </Button>
                 ) : (
-                    <Button className="w-full" disabled>
+                    <Button className="w-full" onClick={() => { getScore(id) }} disabled>
                         <AlarmClock className="mr-2 h-4 w-4" />
-                        View Details
+                        View Score
                     </Button>
                 )}
             </CardFooter>

@@ -24,7 +24,7 @@ export function MCQ({ id, question, options, onAnswerSelected }: Props) {
     }
 
     return (
-        <div className="mx-auto  sm:p-8">
+        <div className="mx-auto sm:p-8">
             <h2 className="text-xl sm:text-2xl font-semibold mb-6 break-words text-pretty">{question}</h2>
             <RadioGroup.Root onValueChange={handleOptionChange} value={selectedOption}>
                 <div className="space-y-4">

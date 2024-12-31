@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "react-day-picker";
 import { Label } from "recharts";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface QuestionFormProps {
     topic: string[]; // Changed from string to string[]
@@ -179,12 +180,11 @@ export default function QuestionForm({
                     <div className="grid grid-cols-3 gap-6">
                         <div className="col-span-2 space-y-4">
                             <div className="space-y-2">
-                                <Label>Question</Label>
-                                <Textarea
-                                    value={content}
-                                    onChange={(e) => setContent(e.target.value)}
+                                <Label>Question Content</Label>
+                                <RichTextEditor
+                                    content={content}
+                                    onChange={setContent}
                                     placeholder="Enter your question here..."
-                                    className="min-h-[120px]"
                                 />
                             </div>
 

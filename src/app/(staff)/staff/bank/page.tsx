@@ -2,7 +2,6 @@
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,7 +12,7 @@ import { useToast } from '@/components/hooks/use-toast'
 import { Bank } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
-import { Search, Plus, ChevronDown } from 'lucide-react'
+import { Search, Plus, ChevronDown, LayoutGrid, Table as TableIcon } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import debounce from 'lodash/debounce'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +23,14 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useSession } from "next-auth/react"
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
 
 type BankWithOwnership = Bank & {
     isOwner: boolean;
@@ -63,6 +70,7 @@ function BankPage() {
         title: "",
         description: ""
     });
+    const [viewMode, setViewMode] = useState<'grid' | 'table'>('table')
 
     const fetchBanks = async () => {
         const params = new URLSearchParams({
@@ -206,8 +214,8 @@ function BankPage() {
 
     const fetchSharedStaff = async (bankId: string) => {
         const res = await fetch(`/api/staff/bank/${bankId}/shared`, {
-            cache: 'no-store',  // Add this line
-            next: { revalidate: 0 }  // Add this line
+            cache: 'no-store', 
+            next: { revalidate: 0 } 
         })
         const data = await res.json()
         setSharedStaff(data)
@@ -459,104 +467,198 @@ function BankPage() {
                         ))}
                     </SelectContent>
                 </Select>
-                <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="name">Name A-Z</SelectItem>
-                        <SelectItem value="name_desc">Name Z-A</SelectItem>
-                        <SelectItem value="createdAt">Newest First</SelectItem>
-                        <SelectItem value="createdAt_asc">Oldest First</SelectItem>
-                        <SelectItem value="semester_asc">Semester (Low to High)</SelectItem>
-                        <SelectItem value="semester_desc">Semester (High to Low)</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                    <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="name">Name A-Z</SelectItem>
+                            <SelectItem value="name_desc">Name Z-A</SelectItem>
+                            <SelectItem value="createdAt">Newest First</SelectItem>
+                            <SelectItem value="createdAt_asc">Oldest First</SelectItem>
+                            <SelectItem value="semester_asc">Semester (Low to High)</SelectItem>
+                            <SelectItem value="semester_desc">Semester (High to Low)</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setViewMode(viewMode === 'grid' ? 'table' : 'grid')}
+                        className="flex-shrink-0"
+                    >
+                        {viewMode === 'grid' ? (
+                            <TableIcon className="h-4 w-4" />
+                        ) : (
+                            <LayoutGrid className="h-4 w-4" />
+                        )}
+                    </Button>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {Array.isArray(banks) && banks.length > 0 ? (
-                    banks.map((bank) => (
-                        <Card key={bank.id}>
-                            <CardHeader>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <CardTitle>{bank.name}</CardTitle>
-                                        <CardDescription>
-                                            Owner{bank.bankOwners.length > 1 ? 's' : ''}: {bank.bankOwners.map(owner => owner.user.name).join(', ')}
-                                        </CardDescription>
-                                    </div>
-                                    {bank.isOwner && (
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="sm">
-                                                    <ChevronDown className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => setEditingBank(bank)}>
-                                                    Edit
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => {
-                                                    setSelectedBank(bank)
-                                                    setShareOpen(true)
-                                                    fetchSharedStaff(bank.id)
-                                                }}>
-                                                    Share
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem 
-                                                    onClick={() => handleDelete(bank.id)}
-                                                    className="text-destructive"
-                                                >
-                                                    Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    )}
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    {bank.description || 'No description'}
-                                </p>
-                                <div className="flex items-center justify-between">
-                                    <div className="text-sm">
-                                        Semester {bank.semester}
-                                    </div>
-                                    <div className="space-x-2">
-                                        <Button variant="outline" size="sm" 
-                                            onClick={() => router.push(`/staff/bank/${bank.id}`)}>
-                                            View
-                                        </Button>
+            {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.isArray(banks) && banks.length > 0 ? (
+                        banks.map((bank) => (
+                            <Card key={bank.id}>
+                                <CardHeader>
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle>{bank.name}</CardTitle>
+                                            <CardDescription>
+                                                Owner{bank.bankOwners.length > 1 ? 's' : ''}: {bank.bankOwners.map(owner => owner.user.name).join(', ')}
+                                            </CardDescription>
+                                        </div>
                                         {bank.isOwner && (
-                                            <>
-                                                <Button variant="outline" size="sm"
-                                                    onClick={() => {
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="sm">
+                                                        <ChevronDown className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => setEditingBank(bank)}>
+                                                        Edit
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => {
                                                         setSelectedBank(bank)
                                                         setShareOpen(true)
                                                         fetchSharedStaff(bank.id)
                                                     }}>
-                                                    Share
-                                                </Button>
-                                                {/* <Button variant="outline" size="sm"
-                                                    onClick={() => handleDelete(bank.id)}
-                                                    variant="destructive">
-                                                    Delete
-                                                </Button> */}
-                                            
-                                            </>
+                                                        Share
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem 
+                                                        onClick={() => handleDelete(bank.id)}
+                                                        className="text-destructive"
+                                                    >
+                                                        Delete
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         )}
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))
-                ) : (
-                    <div className="col-span-full flex items-center justify-center p-8 text-muted-foreground">
-                        No question banks found. Create one to get started.
-                    </div>
-                )}
-            </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground mb-4">
+                                        {bank.description || 'No description'}
+                                    </p>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-sm">
+                                            Semester {bank.semester}
+                                        </div>
+                                        <div className="space-x-2">
+                                            <Button variant="outline" size="sm" 
+                                                onClick={() => router.push(`/staff/bank/${bank.id}`)}>
+                                                View
+                                            </Button>
+                                            {bank.isOwner && (
+                                                <>
+                                                    <Button variant="outline" size="sm"
+                                                        onClick={() => {
+                                                            setSelectedBank(bank)
+                                                            setShareOpen(true)
+                                                            fetchSharedStaff(bank.id)
+                                                        }}>
+                                                        Share
+                                                    </Button>
+                                                    {/* <Button variant="outline" size="sm"
+                                                        onClick={() => handleDelete(bank.id)}
+                                                        variant="destructive">
+                                                        Delete
+                                                    </Button> */}
+                                                
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))
+                    ) : (
+                        <div className="col-span-full flex items-center justify-center p-8 text-muted-foreground">
+                            No question banks found. Create one to get started.
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="rounded-md border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Semester</TableHead>
+                                <TableHead>Owner(s)</TableHead>
+                                <TableHead>Description</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {Array.isArray(banks) && banks.length > 0 ? (
+                                banks.map((bank) => (
+                                    <TableRow key={bank.id}>
+                                        <TableCell className="font-medium">{bank.name}</TableCell>
+                                        <TableCell>Semester {bank.semester}</TableCell>
+                                        <TableCell>{bank.bankOwners.map(owner => owner.user.name).join(', ')}</TableCell>
+                                        <TableCell className="max-w-[200px] truncate">
+                                            {bank.description || 'No description'}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.push(`/staff/bank/${bank.id}`)}
+                                                >
+                                                    View
+                                                </Button>
+                                                {bank.isOwner && (
+                                                    <>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setSelectedBank(bank)
+                                                                setShareOpen(true)
+                                                                fetchSharedStaff(bank.id)
+                                                            }}
+                                                        >
+                                                            Share
+                                                        </Button>
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="sm">
+                                                                    <ChevronDown className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuItem onClick={() => setEditingBank(bank)}>
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleDelete(bank.id)}
+                                                                    className="text-destructive"
+                                                                >
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                        No question banks found. Create one to get started.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
 
             {/* Show share dialog only for owners */}
             {selectedBank?.isOwner && (

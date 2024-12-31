@@ -38,7 +38,7 @@ export function LoginForm() {
     return (
         <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md">
             <div className="space-y-2">
-                <Label htmlFor="rollno" className="text-foreground">Roll No</Label>
+                <Label htmlFor="rollno" className="text-foreground">User Name</Label>
                 <Input
                     id="rollno"
                     type="text"

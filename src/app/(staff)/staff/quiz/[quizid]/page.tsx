@@ -130,33 +130,39 @@ export default function QuizPage() {
                 <h1 className="text-2xl font-bold">Quiz Questions</h1>
             </div>
             <div className='flex flex-col gap-4'>
+
                 {
                     questions.map((q,index) => (
-                        q.type === 'MCQ' ? (
-                            <MCQCard
-                                key={q._id}
-                                question={q}
-                                onSave={handleSave}
-                                onDelete={handleDelete}
-                                isNew={q._id?.startsWith('new-')}
-                            />
-                        ) : (q.type === 'DESCRIPTIVE') ? (
-                            <DescriptiveCard
-                                key={q._id}
-                                question={q}
-                                onSave={handleSave}
-                                onDelete={handleDelete}
-                                isNew={q._id?.startsWith('new-')}
-                            />
-                        ) : (
-                            <CodeCard
-                                key={q._id}
-                                question={q}
-                                onSave={handleSave}
-                                onDelete={handleDelete}
-                                isNew={q._id?.startsWith('new-')}
-                            />
-                        )
+                        (<div className='flex flex-col gap-4 p-6 border-2 rounded-lg' key={q._id}>
+                            <div className='text-xl font-bold'>
+                                Question {index + 1}
+                            </div>
+                            {q.type === 'MCQ' ? (
+                                <MCQCard
+                                    key={q._id}
+                                    question={q}
+                                    onSave={handleSave}
+                                    onDelete={handleDelete}
+                                    isNew={q._id?.startsWith('new-')}
+                                />
+                            ) : (q.type === 'DESCRIPTIVE') ? (
+                                <DescriptiveCard
+                                    key={q._id}
+                                    question={q}
+                                    onSave={handleSave}
+                                    onDelete={handleDelete}
+                                    isNew={q._id?.startsWith('new-')}
+                                />
+                            ) : (
+                                <CodeCard
+                                    key={q._id}
+                                    question={q}
+                                    onSave={handleSave}
+                                    onDelete={handleDelete}
+                                    isNew={q._id?.startsWith('new-')}
+                                />
+                            )}
+                        </div>)
                     ))
                 }
                 <div className="flex gap-2 ">

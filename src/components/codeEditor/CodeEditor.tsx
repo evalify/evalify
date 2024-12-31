@@ -79,8 +79,8 @@ interface CodeFile {
 }
 
 class EditorErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean }
+    { children: React.ReactNode },
+    { hasError: boolean }
 > {
     constructor(props: { children: React.ReactNode }) {
         super(props)
@@ -140,7 +140,7 @@ export function CodeEditor() {
 
     React.useEffect(() => {
         setMounted(true)
-        
+
         // Initialize Monaco editor
         loader.init().then((monaco) => {
             // Register Octave language

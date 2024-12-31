@@ -31,8 +31,6 @@ export default function UserProfilePage() {
     const { data: session } = useSession()
     const { toast } = useToast()
 
-
-    // get an optional search query
     const search = new URLSearchParams(window.location.search).get('profile')
     const router = useRouter()
 

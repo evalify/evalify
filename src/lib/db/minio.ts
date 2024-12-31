@@ -12,7 +12,7 @@ if (!process.env.MINIO_ACCESS_KEY ||
 const minioClient = new Client({
     endPoint: `${process.env.MINIO_ENDPOINT}`,
     port: parseInt(`${process.env.MINIO_PORT}`, 10),
-    useSSL: false, // Set to true if your MinIO uses HTTPS
+    useSSL: false,
     accessKey: `${process.env.MINIO_ACCESS_KEY}`,
     secretKey: `${process.env.MINIO_SECRET_KEY}`,
 });
@@ -34,6 +34,27 @@ export async function uploadFile(file: Buffer, fileName: string, fileType?: stri
         return url;
     } catch (error) {
         console.log('Error uploading to MinIO:', error);
+        throw error;
+    }
+}
+
+export async function uploadImage(file: Buffer, fileName: string, fileType: string): Promise<string> {
+    try {
+        const bucketName = 'evalify';
+        const bucketExists = await minioClient.bucketExists(bucketName);
+        if (!bucketExists) {
+            await minioClient.makeBucket(bucketName, 'us-east-1');
+        }
+
+        await minioClient.putObject(bucketName, fileName, file, undefined, {
+            'Content-Type': fileType,
+            'Cache-Control': 'max-age=31536000',
+        });
+
+        const url = `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}/${bucketName}/${fileName}`;
+        return url;
+    } catch (error) {
+        console.error('Error uploading image:', error);
         throw error;
     }
 }

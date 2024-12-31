@@ -7,6 +7,7 @@ export async function GET(
     { params }: { params: { id: string } }
 ) {
     try {
+        const { id } = await params;
         const session = await auth();
         if (!session?.user?.role || session.user.role !== "STAFF") {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
@@ -20,10 +21,10 @@ export async function GET(
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: params.id,
+                id: await id,
                 bankOwners: {
                     some: {
-                        id: staff.id
+                        id: staff?.id
                     }
                 }
             },
