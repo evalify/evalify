@@ -15,9 +15,13 @@ import { format } from "date-fns"
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 
-const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444'];
+type CustomTooltipProps = {
+  active?: boolean;
+  payload?: { payload: { missed?: boolean; score: number; totalScore: number } }[];
+  label?: string | number;
+};
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-background p-2 shadow-md">
@@ -40,9 +44,46 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+type DashboardData = {
+  recentResults: {
+    id: string;
+    score: number;
+    totalScore: number;
+    quizId: string;
+    quiz: {
+      title: string;
+      courses: { name: string }[];
+    };
+  }[];
+  upcomingQuizzes: {
+    id: string;
+    title: string;
+    startTime: string;
+    courses: { name: string }[];
+  }[];
+  liveQuizzes: {
+    id: string;
+    title: string;
+    endTime: string;
+    courses: { name: string }[];
+  }[];
+  performanceData: {
+    averageScore: number;
+    totalQuizzes: number;
+    completedQuizzes: number;
+    missedQuizzes: number;
+    scoreHistory: {
+      date: string;
+      normalizedScore: number;
+      score: number;
+      totalScore: number;
+    }[];
+  };
+};
+
 export default function DashboardPage() {
   const { data: session } = useSession()
-  const [dashboardData, setDashboardData] = useState<any>(null)
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()

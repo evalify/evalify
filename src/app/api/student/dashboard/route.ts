@@ -4,6 +4,8 @@ import { redis, CACHE_KEYS } from "@/lib/db/redis";
 import { NextResponse } from "next/server";
 
 export async function GET() {
+    const now = new Date();
+
     try {
         const session = await auth();
         if (!session?.user?.id || session?.user?.role !== 'STUDENT') {
@@ -21,7 +23,7 @@ export async function GET() {
             include: { class: true }
         });
 
-        // Get recent results
+        // Get recent results - only essential fields
         const recentResults = await prisma.quizResult.findMany({
             where: { 
                 studentId: student!.id,
@@ -31,7 +33,11 @@ export async function GET() {
                     }
                 }
             },
-            include: {
+            select: {
+                id: true,
+                score: true,
+                totalScore: true,
+                quizId: true,
                 quiz: {
                     select: {
                         title: true,
@@ -45,8 +51,7 @@ export async function GET() {
             take: 5
         });
 
-        // Get upcoming quizzes
-        const now = new Date();
+        // Get upcoming quizzes - only essential fields
         const upcomingQuizzes = await prisma.quiz.findMany({
             where: {
                 courses: {
@@ -60,14 +65,13 @@ export async function GET() {
                 id: true,
                 title: true,
                 startTime: true,
-                duration: true,
                 courses: {
                     select: { name: true }
                 }
             }
         });
 
-        // Get live quizzes
+        // Get live quizzes - only essential fields
         const liveQuizzes = await prisma.quiz.findMany({
             where: {
                 courses: {
@@ -80,59 +84,92 @@ export async function GET() {
             select: {
                 id: true,
                 title: true,
-                startTime: true,
                 endTime: true,
-                duration: true,
                 courses: {
                     select: { name: true }
                 }
             }
         });
 
-        // Get all quizzes assigned to student's class that have ended
-        const allAssignedQuizzes = await prisma.quiz.findMany({
+        // Optimize performance calculation
+        const performanceStats = await prisma.quizResult.aggregate({
+            where: {
+                studentId: student!.id,
+                quiz: {
+                    settings: {
+                        showResult: true
+                    },
+                    endTime: { lt: now }
+                }
+            },
+            _avg: {
+                score: true
+            },
+            _count: {
+                _all: true
+            }
+        });
+
+        const totalQuizzes = await prisma.quiz.count({
             where: {
                 courses: {
                     some: { classId: student!.classId }
                 },
-                endTime: { lt: now }
-            },
-            include: {
-                results: {
-                    where: { studentId: student!.id }
-                },
-                settings: true
+                endTime: { lt: now },
+                settings: {
+                    showResult: true
+                }
             }
         });
 
-        // Calculate performance metrics including missed quizzes
-        const scoreHistory = allAssignedQuizzes
-            .filter(quiz => quiz.settings.showResult) // Only include quizzes that allow showing results
-            .map(quiz => ({
-                date: quiz.endTime,
-                score: quiz.results[0]?.score ?? 0,
-                totalScore: quiz.results[0]?.totalScore ?? 100,
-                normalizedScore: quiz.results[0] ? (quiz.results[0].score / quiz.results[0].totalScore) * 100 : 0,
-                missed: quiz.results.length === 0
-            }));
-
-        const visibleCompletedQuizzes = allAssignedQuizzes.filter(
-            quiz => quiz.settings.showResult && quiz.results.length > 0
-        ).length;
-
-        const totalVisibleQuizzes = allAssignedQuizzes.filter(
-            quiz => quiz.settings.showResult
-        ).length;
-
         const performanceData = {
-            averageScore: scoreHistory.length > 0 
-                ? (scoreHistory.reduce((acc, curr) => acc + curr.normalizedScore, 0) / scoreHistory.length)
-                : 0,
-            totalQuizzes: totalVisibleQuizzes,
-            completedQuizzes: visibleCompletedQuizzes,
-            missedQuizzes: totalVisibleQuizzes - visibleCompletedQuizzes,
-            scoreHistory
+            averageScore: performanceStats._avg.score || 0,
+            totalQuizzes,
+            completedQuizzes: performanceStats._count._all,
+            missedQuizzes: totalQuizzes - performanceStats._count._all,
         };
+
+        // Replace the scoreHistory section with this:
+        const allCompletedQuizzes = await prisma.quiz.findMany({
+            where: {
+                courses: { some: { classId: student!.classId } },
+                endTime: { lt: now },
+                settings: { showResult: true }
+            },
+            select: {
+                id: true,
+                endTime: true,
+                results: {
+                    where: { studentId: student!.id },
+                    select: { score: true, totalScore: true }
+                }
+            },
+            orderBy: {
+                endTime: 'asc'
+            }
+        });
+
+        const formattedScoreHistory = allCompletedQuizzes.map((quiz) => {
+            if (quiz.results.length === 0) {
+                return {
+                    date: quiz.endTime,
+                    missed: true,
+                    normalizedScore: 0,
+                    score: 0,
+                    totalScore: 0
+                };
+            }
+            const result = quiz.results[0];
+            return {
+                date: quiz.endTime,
+                missed: false,
+                score: result.score,
+                totalScore: result.totalScore,
+                normalizedScore: (result.score / result.totalScore) * 100
+            };
+        });
+
+        performanceData.scoreHistory = formattedScoreHistory;
 
         const dashboardData = {
             recentResults,
@@ -144,7 +181,10 @@ export async function GET() {
         await redis.setex(cacheKey, 300, JSON.stringify(dashboardData)); // Cache for 5 minutes
 
         return NextResponse.json(dashboardData);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : "Unknown error" },
+            { status: 500 }
+        );
     }
 }
