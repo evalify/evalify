@@ -45,7 +45,7 @@ export async function PATCH(
 
         return NextResponse.json(updatedBank)
     } catch (error) {
-        console.error('Update bank error:', error);
+        console.log('Update bank error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }
@@ -94,7 +94,7 @@ export async function DELETE(
 
         return NextResponse.json({ message: "Bank deleted successfully" }, { status: 200 })
     } catch (error) {
-        console.error('Delete bank error:', error);
+        console.log('Delete bank error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }

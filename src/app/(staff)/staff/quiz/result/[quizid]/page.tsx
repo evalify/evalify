@@ -211,7 +211,6 @@ export default function QuizPage() {
             }))
         );
 
-        // Set column widths
         const colWidths = [
             { wch: 15 }, // Roll No
             { wch: 30 }, // Name
@@ -255,14 +254,6 @@ export default function QuizPage() {
         ].filter(item => item.value > 0); // Only show categories with values
     };
 
-    // Add debug logging
-    useEffect(() => {
-        if (quiz?.QuizReport) {
-            console.log('Quiz Report:', quiz.QuizReport[0]);
-            console.log('Question Stats:', prepareQuestionStatsData());
-            console.log('Mark Distribution:', prepareMarkDistributionData());
-        }
-    }, [quiz]);
 
     return (
         <div className="p-6 space-y-6">

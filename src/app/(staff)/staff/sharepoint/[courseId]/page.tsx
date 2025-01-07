@@ -444,8 +444,8 @@ export default function CourseSharePoint({ params }: Props) {
     const handleMoveFile = async (file: FileInfo, targetFolder: string) => {
         try {
             // Use empty string for root folder, otherwise use the target folder path
-            const newPath = targetFolder === '/' ? 
-                file.name.split('/').pop() || '' : 
+            const newPath = targetFolder === '/' ?
+                file.name.split('/').pop() || '' :
                 `${targetFolder}/${file.name.split('/').pop()}`;
 
             const response = await fetch(`/api/staff/sharepoint/course`, {
@@ -474,7 +474,7 @@ export default function CourseSharePoint({ params }: Props) {
             setMovingFile(null);
             setTargetFolder('');
         } catch (error) {
-            console.error('Move error:', error);
+            console.log('Move error:', error);
             toast({
                 title: 'Error',
                 description: error instanceof Error ? error.message : 'Failed to move file',

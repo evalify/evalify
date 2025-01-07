@@ -2,8 +2,8 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import { Button } from './button';
-import { 
-    Bold, Italic, Underline, Strikethrough, 
+import {
+    Bold, Italic, Underline, Strikethrough,
     List, ListOrdered, Image as ImageIcon,
     AlignLeft, AlignCenter, AlignRight,
     Heading1, Heading2, Heading3,
@@ -62,7 +62,7 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
             const { url } = await response.json();
             editor?.chain().focus().setImage({ src: url }).run();
         } catch (error) {
-            console.error('Error uploading image:', error);
+            console.log('Error uploading image:', error);
         }
     };
 

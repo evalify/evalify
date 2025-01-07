@@ -25,9 +25,9 @@ export async function DELETE(
         const result = await client
             .db()
             .collection('QUESTION_BANK')
-            .deleteOne({ 
+            .deleteOne({
                 _id: objectId,
-                bankId: id 
+                bankId: id
             });
 
         if (result.deletedCount === 0) {
@@ -36,7 +36,7 @@ export async function DELETE(
 
         return NextResponse.json({ message: "Question deleted successfully" });
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 }
@@ -60,18 +60,18 @@ export async function PATCH(
         }
 
         const updatedQuestion = await req.json();
-        
+
         // Remove _id from the update data
         const { _id, id: questionId2, ...updateData } = updatedQuestion;
-        
+
         const client = await clientPromise;
         const result = await client
             .db()
             .collection('QUESTION_BANK')
             .updateOne(
-                { 
+                {
                     _id: objectId,
-                    bankId: id 
+                    bankId: id
                 },
                 { $set: updateData }
             );
@@ -82,7 +82,7 @@ export async function PATCH(
 
         return NextResponse.json({ message: "Question updated successfully" });
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 }

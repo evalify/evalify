@@ -32,11 +32,11 @@ interface QuestionsListProps {
     allTopics: string[]; // Add this prop
 }
 
-export default function QuestionsList({ 
-    questions, 
-    onQuestionUpdate, 
-    bankId, 
-    topic, 
+export default function QuestionsList({
+    questions,
+    onQuestionUpdate,
+    bankId,
+    topic,
     onEdit,
     allTopics // Add allTopics to destructured props
 }: QuestionsListProps) {
@@ -52,21 +52,21 @@ export default function QuestionsList({
     const handleCreateTopic = (newTopic: string) => {
         setAvailableTopics(prev => [...prev, newTopic]);
     };
-    
+
     // Fetch all available topics from the bank
     useEffect(() => {
         const fetchBankTopics = async () => {
             try {
                 const response = await fetch(`/api/staff/bank/${bankId}/topics`);
                 const data = await response.json();
-                
+
                 if (!response.ok) {
                     throw new Error(data.message || 'Failed to fetch topics');
                 }
-                
+
                 setAvailableTopics(data.topics || []);
             } catch (error) {
-                console.error('Error fetching topics:', error);
+                console.log('Error fetching topics:', error);
                 setAvailableTopics([]);
             }
         };
@@ -92,15 +92,15 @@ export default function QuestionsList({
             }
 
             toast({ title: "Success", description: "Question deleted successfully" });
-            
+
             // Since topic is already an array, use it directly
             onQuestionUpdate(topic);
-            
+
         } catch (error) {
-            toast({ 
-                title: "Error", 
-                description: error instanceof Error ? error.message : "Failed to delete question", 
-                variant: "destructive" 
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to delete question",
+                variant: "destructive"
             });
         }
         setDeleteDialog({ isOpen: false, questionId: null });
@@ -137,7 +137,7 @@ export default function QuestionsList({
     };
 
     const getQuestionIcon = (type: string) => {
-        switch(type) {
+        switch (type) {
             case 'MCQ': return <ListChecks className="h-4 w-4" />;
             case 'FILL_IN_BLANK': return <Type className="h-4 w-4" />;
             case 'DESCRIPTIVE': return <FileText className="h-4 w-4" />;
@@ -166,7 +166,7 @@ export default function QuestionsList({
                             <div className="flex flex-col items-end gap-2">
                                 <Badge variant={
                                     question.difficulty === 'EASY' ? 'secondary' :
-                                    question.difficulty === 'MEDIUM' ? 'default' : 'destructive'
+                                        question.difficulty === 'MEDIUM' ? 'default' : 'destructive'
                                 }>
                                     {question.difficulty}
                                 </Badge>
@@ -179,14 +179,14 @@ export default function QuestionsList({
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-40">
-                                    <DropdownMenuItem onClick={() => onEdit({...question, id: questionId})}>
+                                    <DropdownMenuItem onClick={() => onEdit({ ...question, id: questionId })}>
                                         <Edit2 className="h-4 w-4 mr-2" />
                                         Edit
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                         className="text-destructive"
-                                        onClick={() => setDeleteDialog({ 
-                                            isOpen: true, 
+                                        onClick={() => setDeleteDialog({
+                                            isOpen: true,
                                             questionId: questionId
                                         })}
                                     >
@@ -231,13 +231,12 @@ export default function QuestionsList({
                         {(question.type === 'MCQ' || question.type === 'TRUE_FALSE') && (
                             <div className="space-y-2">
                                 {question.options?.map((option, idx) => (
-                                    <div 
+                                    <div
                                         key={`${questionId}-option-${idx}`}
-                                        className={`p-2 rounded ${
-                                            idx === question.correctOption 
-                                            ? 'bg-green-100 dark:bg-green-900' 
-                                            : 'bg-gray-50 dark:bg-gray-800'
-                                        }`}
+                                        className={`p-2 rounded ${idx === question.correctOption
+                                                ? 'bg-green-100 dark:bg-green-900'
+                                                : 'bg-gray-50 dark:bg-gray-800'
+                                            }`}
                                     >
                                         {option}
                                     </div>
@@ -285,9 +284,9 @@ export default function QuestionsList({
                 ))}
             </div>
 
-            <AlertDialog 
-                open={deleteDialog.isOpen} 
-                onOpenChange={(isOpen) => 
+            <AlertDialog
+                open={deleteDialog.isOpen}
+                onOpenChange={(isOpen) =>
                     !isOpen && setDeleteDialog({ isOpen: false, questionId: null })
                 }
             >

@@ -15,13 +15,7 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-
     ignoreBuildErrors: true,
-  },
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
   },
   // webpack: (config, { dev, isServer }) => {
   //   if (!dev) {

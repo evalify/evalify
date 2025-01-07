@@ -17,7 +17,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Question } from "@/types/questions";
 import QuestionsList from "./QuestionsList";
-import AddQuestionDialog from "./AddQuestionDialog";
 import QuestionForm from "./QuestionForm";
 import { Badge } from '@/components/ui/badge';
 
@@ -32,7 +31,7 @@ const QuestionsPage = () => {
     const [editingTopic, setEditingTopic] = useState<{ index: number, name: string } | null>(null);
     const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
     const [questions, setQuestions] = useState<Question[]>([]);
-    const [isAddingQuestion, setIsAddingQuestion] = useState(false); 
+    const [isAddingQuestion, setIsAddingQuestion] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
     const [allTopics, setAllTopics] = useState<string[]>([]);
 
@@ -44,7 +43,7 @@ const QuestionsPage = () => {
         if (selectedTopics.length > 0) {
             fetchQuestions(selectedTopics);
         } else {
-            setQuestions([]); 
+            setQuestions([]);
         }
     }, [selectedTopics]);
 
@@ -59,9 +58,9 @@ const QuestionsPage = () => {
 
             const topicsArray = (data.topics || []).map((topic: string) => topic);
             setTopics((data.topics || []).map((topic: string) => ({ name: topic })));
-            setAllTopics(topicsArray); 
+            setAllTopics(topicsArray);
         } catch (error) {
-            console.error('Error fetching topics:', error);
+            console.log('Error fetching topics:', error);
             setTopics([]);
             setAllTopics([]);
         }
@@ -80,10 +79,8 @@ const QuestionsPage = () => {
             });
 
             const data = await response.json();
-            console.log('Fetched questions:', data); 
             setQuestions(Array.isArray(data.questions) ? data.questions : []);
         } catch (error) {
-            console.error('Error fetching questions:', error);
             setQuestions([]);
         }
     };
@@ -166,7 +163,7 @@ const QuestionsPage = () => {
     };
 
     const handleQuestionUpdate = (topics: string[]) => {
-        
+
         if (Array.isArray(topics) && topics.length > 0) {
             fetchQuestions(topics);
         }
@@ -221,13 +218,13 @@ const QuestionsPage = () => {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end" className="w-40">
-                                                    <DropdownMenuItem
+                                                    {/* <DropdownMenuItem
                                                         onClick={() => setEditingTopic({ index, name: topic.name })}
                                                     >
                                                         <Edit2 className="h-4 w-4 mr-2" />
                                                         Edit
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuSeparator /> */}
                                                     <DropdownMenuItem
                                                         onClick={() => handleDeleteTopic(index)}
                                                         className="text-destructive focus:text-destructive"
@@ -294,7 +291,7 @@ const QuestionsPage = () => {
 
                         {isAddingQuestion && (
                             <QuestionForm
-                                topic={selectedTopics} 
+                                topic={selectedTopics}
                                 bankId={params.id}
                                 onCancel={() => {
                                     setIsAddingQuestion(false);
@@ -306,19 +303,19 @@ const QuestionsPage = () => {
                                     fetchQuestions(selectedTopics);
                                 }}
                                 editingQuestion={editingQuestion}
-                                allTopics={allTopics} 
+                                allTopics={allTopics}
                             />
                         )}
                         <ScrollArea>
 
                             <Tabs defaultValue="all" className="w-full">
                                 <TabsList>
-                                    <TabsTrigger value="all">All</TabsTrigger>
-                                    <TabsTrigger value="mcq">MCQ</TabsTrigger>
-                                    <TabsTrigger value="true_false">True/False</TabsTrigger>
-                                    <TabsTrigger value="fill_in_blank">Fill in Blank</TabsTrigger>
-                                    <TabsTrigger value="descriptive">Descriptive</TabsTrigger>
-                                    <TabsTrigger value="coding">Coding</TabsTrigger>
+                                    <TabsTrigger value="all">All ({getFilteredQuestions('all').length})</TabsTrigger>
+                                    <TabsTrigger value="mcq">MCQ ({getFilteredQuestions('mcq').length})</TabsTrigger>
+                                    <TabsTrigger value="true_false">True/False ({getFilteredQuestions('true_false').length})</TabsTrigger>
+                                    <TabsTrigger value="fill_in_blank">Fill in Blank ({getFilteredQuestions('fill_in_blank').length})</TabsTrigger>
+                                    <TabsTrigger value="descriptive">Descriptive ({getFilteredQuestions('descriptive').length})</TabsTrigger>
+                                    <TabsTrigger value="coding">Coding ({getFilteredQuestions('coding').length})</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="all">
@@ -328,7 +325,7 @@ const QuestionsPage = () => {
                                         bankId={params.id}
                                         topic={selectedTopics}
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} 
+                                        allTopics={allTopics}
                                     />
                                 </TabsContent>
                                 <TabsContent value="mcq">
@@ -338,7 +335,7 @@ const QuestionsPage = () => {
                                         bankId={params.id}
                                         topic={selectedTopics}
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} 
+                                        allTopics={allTopics}
                                     />
                                 </TabsContent>
                                 <TabsContent value="true_false">
@@ -346,9 +343,9 @@ const QuestionsPage = () => {
                                         questions={getFilteredQuestions('true_false')}
                                         onQuestionUpdate={fetchQuestions}
                                         bankId={params.id}
-                                        topic={selectedTopics} 
+                                        topic={selectedTopics}
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} 
+                                        allTopics={allTopics}
                                     />
                                 </TabsContent>
                                 <TabsContent value="fill_in_blank">
@@ -356,9 +353,9 @@ const QuestionsPage = () => {
                                         questions={getFilteredQuestions('fill_in_blank')}
                                         onQuestionUpdate={fetchQuestions}
                                         bankId={params.id}
-                                        topic={selectedTopics} 
+                                        topic={selectedTopics}
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} 
+                                        allTopics={allTopics}
                                     />
                                 </TabsContent>
                                 <TabsContent value="descriptive">
@@ -366,9 +363,9 @@ const QuestionsPage = () => {
                                         questions={getFilteredQuestions('descriptive')}
                                         onQuestionUpdate={fetchQuestions}
                                         bankId={params.id}
-                                        topic={selectedTopics} 
+                                        topic={selectedTopics}
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} 
+                                        allTopics={allTopics}
                                     />
                                 </TabsContent>
                                 <TabsContent value="coding">
@@ -376,9 +373,9 @@ const QuestionsPage = () => {
                                         questions={getFilteredQuestions('coding')}
                                         onQuestionUpdate={fetchQuestions}
                                         bankId={params.id}
-                                        topic={selectedTopics} 
+                                        topic={selectedTopics}
                                         onEdit={handleEditQuestion}
-                                        allTopics={allTopics} 
+                                        allTopics={allTopics}
                                     />
                                 </TabsContent>
                             </Tabs>
@@ -389,24 +386,6 @@ const QuestionsPage = () => {
                     <div className="flex items-center justify-center h-full text-muted-foreground">
                         Select one or more topics to view questions
                     </div>
-                )}
-
-                {isAddingQuestion && (
-                    <AddQuestionDialog
-                        topic={selectedTopics} 
-                        bankId={params.id}
-                        open={isAddingQuestion}
-                        onClose={() => {
-                            setIsAddingQuestion(false);
-                            setEditingQuestion(null);
-                        }}
-                        onQuestionAdded={() => {
-                            setIsAddingQuestion(false);
-                            setEditingQuestion(null);
-                            fetchQuestions(selectedTopics);
-                        }}
-                        editingQuestion={editingQuestion}
-                    />
                 )}
             </div>
         </div>

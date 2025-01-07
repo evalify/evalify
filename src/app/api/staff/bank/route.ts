@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth/auth";
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
 import { redis, CACHE_KEYS, clearBankCache } from "@/lib/db/redis";
+import clientPromise from "@/lib/db/mongo";
 
 export async function GET(req: Request) {
     try {
@@ -69,11 +70,11 @@ export async function GET(req: Request) {
                 bankOwners: {
                     select: {
                         id: true,
-                        user: { 
-                            select: { 
-                                name: true, 
-                                email: true 
-                            } 
+                        user: {
+                            select: {
+                                name: true,
+                                email: true
+                            }
                         }
                     }
                 },
@@ -96,12 +97,20 @@ export async function GET(req: Request) {
             isOwner: bank.bankOwners.some(owner => owner.id === staff.id)
         }))
 
-        // Cache the results
-        await redis.setex(cacheKey, 300, JSON.stringify(banksWithOwnership)) // Cache for 5 minutes
+        // Get number of questions in each bank from mongoDB
+        const banksWithQuestions = await Promise.all(banksWithOwnership.map(async bank => {
+            const questions = await (await clientPromise).db().collection('QUESTION_BANK').find({ bankId: bank.id }).toArray()
+            return {
+                ...bank,
+                questions: questions.length
+            }
+        }))
 
-        return NextResponse.json(banksWithOwnership)
+        await redis.setex(cacheKey, 300, JSON.stringify(banksWithQuestions))
+
+        return NextResponse.json(banksWithQuestions)
     } catch (error) {
-        console.error('Error fetching banks:', error);
+        console.log('Error fetching banks:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }
@@ -176,8 +185,8 @@ export async function POST(req: Request) {
 
         return NextResponse.json(bank, { status: 201 })
     } catch (error) {
-        console.error('Bank creation error:', error);
-        return NextResponse.json({ 
+        console.log('Bank creation error:', error);
+        return NextResponse.json({
             message: "Internal Server Error",
             error: error instanceof Error ? error.message : "Unknown error"
         }, { status: 500 })

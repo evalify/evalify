@@ -11,6 +11,7 @@ import { Question } from './_component/types'
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Plus } from 'lucide-react'
 import CodeCard from './_component/code-card'
+import { BankSearchDialog } from './_component/bank-search-dialog'
 
 export default function QuizPage() {
     const { quizid } = useParams()
@@ -109,6 +110,15 @@ export default function QuizPage() {
         setQuestions([...questions, newQuestion])
     }
 
+    const handleQuestionsFromBank = (bankQuestions: Question[]) => {
+        // Add temporary IDs to the questions
+        const questionsWithIds = bankQuestions.map(q => ({
+            ...q,
+            _id: `new-${Date.now()}-${Math.random()}`
+        }));
+        setQuestions([...questions, ...questionsWithIds]);
+    };
+
     if (!quizid || !isValidQuizId(quizid as string)) {
         return (
             <div className="p-4">
@@ -178,6 +188,7 @@ export default function QuizPage() {
                         <Plus className="h-4 w-4 mr-2" />
                         Add Coding Question
                     </Button>
+                    <BankSearchDialog onQuestionsAdd={handleQuestionsFromBank} />
                 </div>
             </div>
         </div>

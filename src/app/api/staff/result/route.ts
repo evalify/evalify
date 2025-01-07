@@ -96,12 +96,12 @@ export async function PUT(req: Request) {
         const evaluatedResults = await Promise.all(quizResults.map(async (result) => {
             const responses = result.responses as Record<string, string[]> || {};
             const questionMarks: Record<string, number> = {};
-            
+
             questions.forEach(question => {
                 // Safely handle missing responses
                 const questionId = question._id.toString();
                 const studentAnswer = responses[questionId] || [];
-                
+
                 // Ensure we're working with arrays
                 const studentAnswerArray = Array.isArray(studentAnswer) ? studentAnswer : [studentAnswer];
                 const correctAnswerArray = Array.isArray(question.answer) ? question.answer : [question.answer];
@@ -120,6 +120,7 @@ export async function PUT(req: Request) {
                 questionMarks[questionId] = marks;
             });
 
+            const maxMark = questions.reduce((sum, q) => sum + q.marks, 0);
             // Calculate total score from questionMarks
             const totalScore = Object.values(questionMarks).reduce((sum, mark) => sum + (Number(mark) || 0), 0);
 
@@ -127,9 +128,10 @@ export async function PUT(req: Request) {
             return prisma.quizResult.update({
                 where: { id: result.id },
                 data: {
+                    totalScore: maxMark,
                     responses,
                     questionMarks,
-                    score: totalScore // Update score based on questionMarks total
+                    score: totalScore
                 }
             });
         }));
@@ -193,7 +195,6 @@ export async function PUT(req: Request) {
             else markDistribution.poor++;
         });
 
-        // Update or create report based on existence
         const report = await prisma.quizReport.upsert({
             where: { quizId },
             update: {
@@ -217,7 +218,6 @@ export async function PUT(req: Request) {
             }
         });
 
-        // Clear cache after updating data
         await clearQuizCache(quizId);
 
         return NextResponse.json({
@@ -227,7 +227,7 @@ export async function PUT(req: Request) {
         });
 
     } catch (error: any) {
-        console.error('Evaluation error:', error);
+        console.log('Evaluation error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

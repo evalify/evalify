@@ -11,7 +11,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useTransition, Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -28,6 +28,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import debounce from 'lodash/debounce';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination"
 
 type Student = {
     id: string;
@@ -60,43 +70,72 @@ export default function StudentsPage() {
     const [selectedClass, setSelectedClass] = useState<string>("");
     const [open, setOpen] = useState(false);
     const [selectAll, setSelectAll] = useState(false);
+    const [resetDialogOpen, setResetDialogOpen] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [isPending, startTransition] = useTransition();
+    const [isSearching, setIsSearching] = useState(false);
     const router = useRouter();
-    const fetchStudents = async () => {
+
+    const fetchStudents = async (currentPage: number, searchQuery: string = "") => {
         try {
             setLoading(true);
-            const res = await fetch(`/api/admin/students?search=${encodeURIComponent(search)}`, {
-                cache: 'no-store'
-            });
+            setError(null);
+
+            const res = await fetch(
+                `/api/admin/students?search=${encodeURIComponent(searchQuery)}&page=${currentPage}&limit=10`,
+                {
+                    cache: 'no-store',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                }
+            );
 
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
 
-            const text = await res.text();
-            if (!text) {
-                throw new Error('No data received');
-            }
-
-            const data = JSON.parse(text);
-            if (!Array.isArray(data)) {
-                throw new Error('Invalid response format');
-            }
-
-            setStudents(data);
-            setError(null);
+            const data = await res.json();
+            setStudents(data.students);
+            setTotalPages(data.pages || 1);
+            setIsSearching(!!searchQuery);
         } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching students';
-            console.log('Error fetching students:', errorMessage);
-            setError(errorMessage);
+            console.log('Error fetching students:', err);
+            setError(err instanceof Error ? err.message : 'Failed to fetch students');
             setStudents([]);
+            setTotalPages(1);
         } finally {
             setLoading(false);
         }
     };
-    useEffect(() => {
 
-        fetchStudents();
+    const debouncedSearch = useCallback(
+        debounce((searchTerm: string) => {
+            setPage(1);
+            if (searchTerm.trim().length > 0) {
+                setIsSearching(true);
+                fetchStudents(1, searchTerm.trim());
+            } else {
+                setIsSearching(false);
+                fetchStudents(1, "");
+            }
+        }, 300),
+        []
+    );
+
+    useEffect(() => {
+        debouncedSearch(search);
+        return () => {
+            debouncedSearch.cancel();
+        };
     }, [search]);
+
+    useEffect(() => {
+        if (!loading && !isSearching) {
+            fetchStudents(page, "");
+        }
+    }, [page]);
 
     useEffect(() => {
         const fetchClasses = async () => {
@@ -108,14 +147,9 @@ export default function StudentsPage() {
     }, []);
 
     useEffect(() => {
-        if (students.length === 0) {
-            setSelectAll(false);
-        } else if (selected.length === students.length) {
-            setSelectAll(true);
-        } else {
-            setSelectAll(false);
-        }
-    }, [selected, students]);
+        setSelected([]);
+        setSelectAll(false);
+    }, [students]);
 
     const toggleStudent = (id: string) => {
         setSelected(prev =>
@@ -152,10 +186,33 @@ export default function StudentsPage() {
                 setSelected([]);
                 router.refresh();
 
-                fetchStudents();
+                fetchStudents(page);
             }
         } catch (error) {
             console.log('Failed to assign class:', error);
+        }
+    };
+
+    const handleResetPassword = async () => {
+        try {
+            const res = await fetch('/api/admin/students/reset-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    studentIds: selected,
+                }),
+            });
+
+            if (res.ok) {
+                setSelected([]);
+                setResetDialogOpen(false);
+                alert('Passwords reset successfully');
+            }
+        } catch (error) {
+            console.log('Failed to reset passwords:', error);
+            alert('Failed to reset passwords');
         }
     };
 
@@ -169,35 +226,82 @@ export default function StudentsPage() {
                         className="max-w-sm"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                debouncedSearch(search);
+                            }
+                        }}
                     />
+                    {isSearching && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setSearch("");
+                                setIsSearching(false);
+                                fetchStudents(1, "");
+                            }}
+                        >
+                            Clear Search
+                        </Button>
+                    )}
                 </div>
-                <Dialog open={open} onOpenChange={setOpen}>
-                    <DialogTrigger asChild>
-                        <Button disabled={selected.length === 0}>Assign to Class</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Assign Students to Class</DialogTitle>
-                        </DialogHeader>
-                        <div className="flex flex-col gap-4">
-                            <Select value={selectedClass} onValueChange={setSelectedClass}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a class" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {classes.map((cls) => (
-                                        <SelectItem key={cls.id} value={cls.id}>
-                                            {cls.name} - {cls.department} ({cls.semester})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Button onClick={handleAssignClass}>
-                                Assign {selected.length} students
+                <div className="flex gap-2">
+                    <Dialog open={open} onOpenChange={setOpen}>
+                        <DialogTrigger asChild>
+                            <Button disabled={selected.length === 0}>Assign to Class</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Assign Students to Class</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex flex-col gap-4">
+                                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a class" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classes.map((cls) => (
+                                            <SelectItem key={cls.id} value={cls.id}>
+                                                {cls.name} - {cls.department} ({cls.semester})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Button onClick={handleAssignClass}>
+                                    Assign {selected.length} students
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                    <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="destructive"
+                                disabled={selected.length === 0}
+                            >
+                                Reset Passwords
                             </Button>
-                        </div>
-                    </DialogContent>
-                </Dialog>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Confirm Password Reset</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex flex-col gap-4">
+                                <p>Are you sure you want to reset passwords for {selected.length} students?</p>
+                                <p className="text-sm text-muted-foreground">Their passwords will be reset to their roll numbers.</p>
+                                <div className="flex justify-end gap-2">
+                                    <Button variant="outline" onClick={() => setResetDialogOpen(false)}>
+                                        Cancel
+                                    </Button>
+                                    <Button variant="destructive" onClick={handleResetPassword}>
+                                        Reset Passwords
+                                    </Button>
+                                </div>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             <Table>
@@ -207,6 +311,7 @@ export default function StudentsPage() {
                             <Checkbox
                                 checked={selectAll}
                                 onCheckedChange={handleSelectAll}
+                                disabled={loading || students.length === 0}
                             />
                         </TableHead>
                         <TableHead>Name</TableHead>
@@ -235,7 +340,6 @@ export default function StudentsPage() {
                             </TableCell>
                         </TableRow>
                     ) : (
-                        students &&
                         students.map((student) => (
                             <TableRow key={student.id}>
                                 <TableCell>
@@ -262,6 +366,52 @@ export default function StudentsPage() {
                     )}
                 </TableBody>
             </Table>
+
+            {!loading && !error && students.length > 0 && !isSearching && (
+                <div className="mt-4 flex justify-center">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1 || loading}
+                                />
+                            </PaginationItem>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                                .map((p, i, arr) => (
+                                    <Fragment key={p}>
+                                        {i > 0 && arr[i - 1] !== p - 1 && (
+                                            <PaginationItem>
+                                                <PaginationEllipsis />
+                                            </PaginationItem>
+                                        )}
+                                        <PaginationItem>
+                                            <PaginationLink
+                                                isActive={page === p}
+                                                onClick={() => setPage(p)}
+                                            >
+                                                {p}
+                                            </PaginationLink>
+                                        </PaginationItem>
+                                    </Fragment>
+                                ))}
+                            <PaginationItem>
+                                <PaginationNext
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages || loading}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
+
+            {isPending && (
+                <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-md">
+                    Updating students...
+                </div>
+            )}
         </div>
     );
 }

@@ -2,22 +2,22 @@ export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'DESCRIPTIVE
 export type DifficultyLevel = 'EASY' | 'MEDIUM' | 'HARD';
 
 export interface BaseQuestion {
-    _id?: string; 
-    id?: string;     
+    _id?: string;
+    id?: string;
     type: QuestionType;
     content: string;
     difficulty: DifficultyLevel;
     marks: number;
     topic: string;
     bankId: string;
-    topics: string[];  
-    explanation?: string; 
+    topics: string[];
+    explanation?: string;
 }
 
 export interface MCQQuestion extends BaseQuestion {
     type: 'MCQ';
     options: string[];
-    correctOptions: number[]; 
+    correctOptions: number[];
 }
 
 export interface FillInBlankQuestion extends BaseQuestion {

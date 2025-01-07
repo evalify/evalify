@@ -18,7 +18,7 @@ const PermissionRequest = ({ onGranted }: { onGranted: () => void }) => {
             globalState.hasPermission = true;
             onGranted();
         } catch (err) {
-            console.error("Fullscreen permission denied:", err);
+            console.log("Fullscreen permission denied:", err);
         }
     };
 
@@ -58,7 +58,7 @@ const SecureExam = ({
         const pathSegments = window.location.pathname.split('/');
         const quizId = pathSegments[pathSegments.length - 1];
         const storedViolations = localStorage.getItem(`violations_${quizId}`);
-        
+
         if (storedViolations) {
             const parsedViolations = JSON.parse(storedViolations);
             setViolations(parsedViolations);
@@ -68,11 +68,11 @@ const SecureExam = ({
 
     const handleViolation = (message: string) => {
         const violation = { message, timestamp: new Date() };
-        
+
         // Get quiz ID from URL path
         const pathSegments = window.location.pathname.split('/');
         const quizId = pathSegments[pathSegments.length - 1];
-        
+
         if (quizId) {
             // Get existing violations from localStorage
             const existingViolations = JSON.parse(localStorage.getItem(`violations_${quizId}`) || '[]');
@@ -99,7 +99,7 @@ const SecureExam = ({
             globalState.hasPermission = true;
             setIsFullscreen(true);
         } catch (err) {
-            console.error("Fullscreen permission denied:", err);
+            console.log("Fullscreen permission denied:", err);
         }
     };
 

@@ -66,7 +66,7 @@ function BankPage() {
         description: string;
     }>({
         isOpen: false,
-        action: async () => {},
+        action: async () => { },
         title: "",
         description: ""
     });
@@ -104,7 +104,7 @@ function BankPage() {
         e.preventDefault()
         const formData = new FormData(e.currentTarget)
         const data = Object.fromEntries(formData)
-        
+
         // Add validation
         if (!data.name || !data.semester) {
             toast({
@@ -114,7 +114,7 @@ function BankPage() {
             })
             return
         }
-        
+
         try {
             const res = await fetch('/api/staff/bank', {
                 method: 'POST',
@@ -123,12 +123,12 @@ function BankPage() {
                 },
                 body: JSON.stringify(data)
             })
-            
+
             if (!res.ok) {
                 const error = await res.json()
                 throw new Error(error.message || 'Failed to create bank')
             }
-            
+
             toast({
                 title: "Success",
                 description: "Bank created successfully"
@@ -136,7 +136,7 @@ function BankPage() {
             setOpen(false)
             fetchBanks()
         } catch (error) {
-            console.error('Create bank error:', error)
+            console.log('Create bank error:', error)
             toast({
                 title: "Error",
                 description: error instanceof Error ? error.message : "Failed to create bank",
@@ -149,16 +149,16 @@ function BankPage() {
         e.preventDefault()
         const formData = new FormData(e.currentTarget)
         const data = Object.fromEntries(formData)
-        
+
         try {
             const res = await fetch(`/api/staff/bank/${editingBank?.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })
-            
+
             if (!res.ok) throw new Error('Failed to update bank')
-            
+
             toast({ title: "Success", description: "Bank updated successfully" })
             setEditingBank(null)
             fetchBanks()
@@ -173,13 +173,13 @@ function BankPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this bank?')) return
-        
+
         try {
             const res = await fetch(`/api/staff/bank/${id}`, {
                 method: 'DELETE'
             })
             if (!res.ok) throw new Error('Failed to delete bank')
-            
+
             toast({
                 title: "Success",
                 description: "Bank deleted successfully"
@@ -201,21 +201,21 @@ function BankPage() {
         }
         const res = await fetch(`/api/staff/search?q=${term}`)
         const data = await res.json()
-        
+
         // Filter out already shared users and owner from search results
         const filteredStaff = data.filter((staff: any) => {
             const isOwner = selectedBank?.bankOwners.some(owner => owner.id === staff.id)
             const isShared = sharedStaff.some(shared => shared.id === staff.id)
             return !isOwner && !isShared
         })
-        
+
         setStaffList(filteredStaff)
     }
 
     const fetchSharedStaff = async (bankId: string) => {
         const res = await fetch(`/api/staff/bank/${bankId}/shared`, {
-            cache: 'no-store', 
-            next: { revalidate: 0 } 
+            cache: 'no-store',
+            next: { revalidate: 0 }
         })
         const data = await res.json()
         setSharedStaff(data)
@@ -228,7 +228,7 @@ function BankPage() {
                 body: JSON.stringify({ staffId })
             })
             if (!res.ok) throw new Error('Failed to share bank')
-            
+
             toast({
                 title: "Success",
                 description: "Bank shared successfully"
@@ -250,7 +250,7 @@ function BankPage() {
                 body: JSON.stringify({ staffId })
             })
             if (!res.ok) throw new Error('Failed to remove access')
-            
+
             toast({
                 title: "Success",
                 description: "Access removed successfully"
@@ -269,22 +269,22 @@ function BankPage() {
         try {
             const res = await fetch(`/api/staff/bank/${selectedBank?.id}/owner`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
                     'Cache-Control': 'no-cache'
                 },
                 body: JSON.stringify({ staffId })
             })
-            
+
             if (!res.ok) throw new Error('Failed to promote to owner')
-            
+
             // Get the staff member being promoted
             const promotedStaff = sharedStaff.find(staff => staff.id === staffId)
-            
+
             // Update banks list
-            setBanks(prevBanks => 
-                prevBanks.map(bank => 
-                    bank.id === selectedBank?.id 
+            setBanks(prevBanks =>
+                prevBanks.map(bank =>
+                    bank.id === selectedBank?.id
                         ? {
                             ...bank,
                             bankOwners: [...bank.bankOwners, promotedStaff].filter(owner => owner !== undefined)
@@ -298,10 +298,10 @@ function BankPage() {
                 ...prev,
                 bankOwners: [...(prev.bankOwners || []), promotedStaff]
             } : null)
-            
+
             // Remove from shared staff list
             setSharedStaff(prev => prev.filter(staff => staff.id !== staffId))
-            
+
             toast({ title: "Success", description: "Staff promoted to owner" })
         } catch (error) {
             toast({
@@ -321,25 +321,25 @@ function BankPage() {
                 try {
                     const res = await fetch(`/api/staff/bank/${selectedBank?.id}/owner`, {
                         method: 'DELETE',
-                        headers: { 
+                        headers: {
                             'Content-Type': 'application/json',
                             'Cache-Control': 'no-cache'
                         },
                         body: JSON.stringify({ staffId })
                     })
-                    
+
                     if (!res.ok) {
                         const error = await res.json()
                         throw new Error(error.message)
                     }
-                    
+
                     // Get the owner being demoted
                     const demotedOwner = selectedBank?.bankOwners.find(owner => owner.id === staffId)
-                    
+
                     // Update banks list
-                    setBanks(prevBanks => 
-                        prevBanks.map(bank => 
-                            bank.id === selectedBank?.id 
+                    setBanks(prevBanks =>
+                        prevBanks.map(bank =>
+                            bank.id === selectedBank?.id
                                 ? {
                                     ...bank,
                                     bankOwners: bank.bankOwners.filter(owner => owner.id !== staffId)
@@ -353,12 +353,12 @@ function BankPage() {
                         ...prev,
                         bankOwners: prev.bankOwners.filter(owner => owner.id !== staffId)
                     } : null)
-                    
+
                     // Add to shared staff list
                     if (demotedOwner) {
                         setSharedStaff(prev => [...prev, demotedOwner])
                     }
-                    
+
                     toast({ title: "Success", description: "Owner demoted to staff" })
                 } catch (error) {
                     toast({
@@ -429,8 +429,8 @@ function BankPage() {
                             </div>
 
                             <div className="flex justify-end gap-3">
-                                <Button 
-                                    type="button" 
+                                <Button
+                                    type="button"
                                     variant="outline"
                                     onClick={() => setOpen(false)}
                                 >
@@ -506,7 +506,8 @@ function BankPage() {
                                         <div>
                                             <CardTitle>{bank.name}</CardTitle>
                                             <CardDescription>
-                                                Owner{bank.bankOwners.length > 1 ? 's' : ''}: {bank.bankOwners.map(owner => owner.user.name).join(', ')}
+                                                {/* {JSON.stringify(bank.staffs)} */}
+                                                Shared With {bank.staffs.length > 1 ? 's' : ''}: {bank.staffs.map(staff => staff.user.name).join(', ')}
                                             </CardDescription>
                                         </div>
                                         {bank.isOwner && (
@@ -527,7 +528,7 @@ function BankPage() {
                                                     }}>
                                                         Share
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem 
+                                                    <DropdownMenuItem
                                                         onClick={() => handleDelete(bank.id)}
                                                         className="text-destructive"
                                                     >
@@ -547,7 +548,7 @@ function BankPage() {
                                             Semester {bank.semester}
                                         </div>
                                         <div className="space-x-2">
-                                            <Button variant="outline" size="sm" 
+                                            <Button variant="outline" size="sm"
                                                 onClick={() => router.push(`/staff/bank/${bank.id}`)}>
                                                 View
                                             </Button>
@@ -566,7 +567,7 @@ function BankPage() {
                                                         variant="destructive">
                                                         Delete
                                                     </Button> */}
-                                                
+
                                                 </>
                                             )}
                                         </div>
@@ -585,22 +586,30 @@ function BankPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className='text-center'>No</TableHead>
                                 <TableHead>Name</TableHead>
-                                <TableHead>Semester</TableHead>
-                                <TableHead>Owner(s)</TableHead>
                                 <TableHead>Description</TableHead>
+                                <TableHead>Semester</TableHead>
+                                <TableHead>Topic(s)</TableHead>
+                                <TableHead>Question(s)</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {Array.isArray(banks) && banks.length > 0 ? (
-                                banks.map((bank) => (
+                                banks.map((bank, index) => (
                                     <TableRow key={bank.id}>
+                                        <TableCell className='text-center'>{index + 1}</TableCell>
                                         <TableCell className="font-medium">{bank.name}</TableCell>
-                                        <TableCell>Semester {bank.semester}</TableCell>
-                                        <TableCell>{bank.bankOwners.map(owner => owner.user.name).join(', ')}</TableCell>
                                         <TableCell className="max-w-[200px] truncate">
-                                            {bank.description || 'No description'}
+                                            {bank.description || 'No Description'}
+                                        </TableCell>
+                                        <TableCell className='text-center'>S{bank.semester}</TableCell>
+                                        <TableCell className='text-center'>
+                                            {bank.topics.length || 0}
+                                        </TableCell>
+                                        <TableCell className='text-center'>
+                                            {bank.questions || "-"}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
@@ -673,7 +682,7 @@ function BankPage() {
                                     Owners ({selectedBank.bankOwners.length})
                                 </TabsTrigger>
                                 <TabsTrigger value="shared">
-                                    Shared Staff ({sharedStaff.filter(staff => 
+                                    Shared Staff ({sharedStaff.filter(staff =>
                                         !selectedBank.bankOwners.some(owner => owner.id === staff.id)
                                     ).length})
                                 </TabsTrigger>
@@ -682,7 +691,7 @@ function BankPage() {
                                 <ScrollArea className="h-[300px] rounded-md border">
                                     <div className="p-4 space-y-2">
                                         {selectedBank.bankOwners.map((owner) => (
-                                            <div key={owner.id} 
+                                            <div key={owner.id}
                                                 className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-md group">
                                                 <div className="flex items-center gap-3">
                                                     <div>
@@ -691,8 +700,8 @@ function BankPage() {
                                                     </div>
                                                 </div>
                                                 {selectedBank.bankOwners.length > 1 && owner.user.email !== session?.user?.email && (
-                                                    <Button 
-                                                        variant="ghost" 
+                                                    <Button
+                                                        variant="ghost"
                                                         size="sm"
                                                         onClick={() => handleDemoteOwner(owner.id, owner.user.name)}
                                                         className="opacity-0 group-hover:opacity-100 transition-opacity"
@@ -708,8 +717,8 @@ function BankPage() {
                             <TabsContent value="shared" className="space-y-4">
                                 <div className="flex items-center space-x-2 bg-muted/30 rounded-md px-3 py-2">
                                     <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <Input 
-                                        placeholder="Search staff members..." 
+                                    <Input
+                                        placeholder="Search staff members..."
                                         value={searchTerm}
                                         onChange={(e) => {
                                             setSearchTerm(e.target.value)
@@ -725,14 +734,14 @@ function BankPage() {
                                             <div className="mb-4">
                                                 <h4 className="text-sm font-medium mb-2">Search Results</h4>
                                                 {staffList.map((staff: any) => (
-                                                    <div key={staff.id} 
+                                                    <div key={staff.id}
                                                         className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-md">
                                                         <div>
                                                             <p className="font-medium">{staff.user.name}</p>
                                                             <p className="text-xs text-muted-foreground">{staff.user.email}</p>
                                                         </div>
-                                                        <Button 
-                                                            variant="secondary" 
+                                                        <Button
+                                                            variant="secondary"
                                                             size="sm"
                                                             onClick={() => {
                                                                 handleShare(staff.id)
@@ -749,25 +758,25 @@ function BankPage() {
 
                                         <div>
                                             <h4 className="text-sm font-medium mb-2">Shared With</h4>
-                                            {sharedStaff.filter(staff => 
+                                            {sharedStaff.filter(staff =>
                                                 !selectedBank.bankOwners.some(owner => owner.id === staff.id)
                                             ).map((staff) => (
-                                                <div key={staff.id} 
+                                                <div key={staff.id}
                                                     className="flex items-center justify-between p-3 hover:bg-muted/50 rounded-md group">
                                                     <div>
                                                         <p className="font-medium">{staff.user.name}</p>
                                                         <p className="text-xs text-muted-foreground">{staff.user.email}</p>
                                                     </div>
                                                     <div className="space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Button 
-                                                            variant="outline" 
+                                                        <Button
+                                                            variant="outline"
                                                             size="sm"
                                                             onClick={() => handlePromoteToOwner(staff.id)}
                                                         >
                                                             Make Owner
                                                         </Button>
-                                                        <Button 
-                                                            variant="ghost" 
+                                                        <Button
+                                                            variant="ghost"
                                                             size="sm"
                                                             onClick={() => handleUnshare(staff.id)}
                                                         >
@@ -786,8 +795,8 @@ function BankPage() {
             )}
 
             {/* Confirmation Dialog */}
-            <AlertDialog 
-                open={confirmDialog.isOpen} 
+            <AlertDialog
+                open={confirmDialog.isOpen}
                 onOpenChange={(open) => !open && setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
             >
                 <AlertDialogContent>
@@ -855,8 +864,8 @@ function BankPage() {
                         </div>
 
                         <div className="flex justify-end gap-3">
-                            <Button 
-                                type="button" 
+                            <Button
+                                type="button"
                                 variant="outline"
                                 onClick={() => setEditingBank(null)}
                             >

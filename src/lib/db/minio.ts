@@ -54,7 +54,28 @@ export async function uploadImage(file: Buffer, fileName: string, fileType: stri
         const url = `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}/${bucketName}/${fileName}`;
         return url;
     } catch (error) {
-        console.error('Error uploading image:', error);
+        console.log('Error uploading image:', error);
+        throw error;
+    }
+}
+
+export async function uploadQuestionImage(file: Buffer, fileName: string, fileType: string): Promise<string> {
+    try {
+        const bucketName = 'questions';
+        const bucketExists = await minioClient.bucketExists(bucketName);
+        if (!bucketExists) {
+            await minioClient.makeBucket(bucketName, 'us-east-1');
+        }
+
+        await minioClient.putObject(bucketName, fileName, file, undefined, {
+            'Content-Type': fileType,
+            'Cache-Control': 'max-age=31536000',
+        });
+
+        const url = `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}/${bucketName}/${fileName}`;
+        return url;
+    } catch (error) {
+        console.log('Error uploading question image:', error);
         throw error;
     }
 }
@@ -135,7 +156,7 @@ export async function createFolder(folderName: string, bucketName: string) {
         if (!bucketExists) {
             throw new Error('Bucket does not exist');
         }
-        
+
         // Sanitize folder name
         const sanitizedName = sanitizeFolderName(folderName);
         if (!sanitizedName) {
@@ -144,7 +165,7 @@ export async function createFolder(folderName: string, bucketName: string) {
 
         // Ensure folder name ends with slash
         const folderPath = sanitizedName.endsWith('/') ? sanitizedName : `${sanitizedName}/`;
-        
+
         // Create an empty object with folder name
         await minioClient.putObject(bucketName, folderPath, Buffer.from(''));
         return true;

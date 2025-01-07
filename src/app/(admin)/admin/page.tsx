@@ -23,21 +23,27 @@ export default function AdminDashboard() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const [students, staff, courses, classes] = await Promise.all([
-                    fetch('/api/admin/students').then(res => res.json()),
+                const [studentsRes, staff, courses, classes] = await Promise.all([
+                    fetch('/api/admin/students?dashboard=true').then(res => res.json()),
                     fetch('/api/admin/staff').then(res => res.json()),
                     fetch('/api/admin/courses').then(res => res.json()),
                     fetch('/api/admin/classes').then(res => res.json())
                 ]);
 
                 setStats({
-                    studentCount: students.length,
-                    staffCount: staff.length,
-                    courseCount: courses.length,
-                    classCount: classes.length
+                    studentCount: studentsRes.total,
+                    staffCount: Array.isArray(staff) ? staff.length : 0,
+                    courseCount: Array.isArray(courses) ? courses.length : 0,
+                    classCount: Array.isArray(classes) ? classes.length : 0
                 });
             } catch (error) {
                 console.log('Error fetching stats:', error);
+                setStats({
+                    studentCount: 0,
+                    staffCount: 0,
+                    courseCount: 0,
+                    classCount: 0
+                });
             }
         };
 

@@ -32,7 +32,8 @@ export async function GET(req: Request, { params }: { params: { quizId: string }
                 },
                 quiz: {
                     include: {
-                        settings: true
+                        settings: true,
+                        QuizReport: true
                     }
                 }
             }

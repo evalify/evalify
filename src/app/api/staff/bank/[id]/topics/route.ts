@@ -28,7 +28,7 @@ export async function GET(
 
         return NextResponse.json({ topics: bank.topics || [] }, { status: 200 })
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error", topics: [] }, { status: 500 })
     }
 }
@@ -57,7 +57,7 @@ export async function POST(
 
         return NextResponse.json(bank, { status: 201 });
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }
@@ -94,7 +94,7 @@ export async function PATCH(
 
         return NextResponse.json(updatedBank, { status: 200 });
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }
@@ -129,7 +129,7 @@ export async function DELETE(
 
         return NextResponse.json(updatedBank, { status: 200 });
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }

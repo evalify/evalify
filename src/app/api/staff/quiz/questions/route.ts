@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
         const client = await clientPromise;
         const db = client.db();
 
-        // Check if quiz exists, if not initialize it
         const quiz = await db.collection(QUIZ_COLLECTION).findOne({ _id: quizId });
         if (!quiz) {
             await db.collection(QUIZ_COLLECTION).insertOne({

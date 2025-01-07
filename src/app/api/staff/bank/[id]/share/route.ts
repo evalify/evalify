@@ -54,7 +54,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         return NextResponse.json({ message: "Bank shared successfully" })
     } catch (error) {
-        console.error('Share bank error:', error);
+        console.log('Share bank error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }

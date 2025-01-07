@@ -1,7 +1,8 @@
 'use client';
 
+import ErrorBoundary from '@/components/ui/error-boundary';
 import React, { useEffect, useState } from 'react';
-import { Pencil, SquareChartGantt, Trash2, FileBadge2 } from 'lucide-react'; // Add this import
+import { Pencil, SquareChartGantt, Trash2, FileBadge2, Clock, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -43,13 +44,69 @@ type Quiz = {
     createdbyId: string;
     settingsId: string;
     settings: {
-        id: string;
         fullscreen: boolean;
         calculator: boolean;
         shuffle: boolean;
         showResult: boolean;
     };
     courses: Course[];
+};
+
+const getQuizStatus = (startTime: Date, endTime: Date): { icon: React.ReactNode; color: string } => {
+    const now = new Date();
+    if (now < new Date(startTime)) {
+        return {
+            icon: <Clock className="h-4 w-4" />,
+            color: 'text-blue-500'
+        };
+    } else if (now > new Date(endTime)) {
+        return {
+            icon: <CheckCircle2 className="h-4 w-4" />,
+            color: 'text-gray-500'
+        };
+    } else {
+        return {
+            icon: <PlayCircle className="h-4 w-4" />,
+            color: 'text-green-500'
+        };
+    }
+};
+
+
+const isValidDate = (date: any): boolean => {
+    if (!date) return false;
+    const timestamp = Date.parse(date);
+    return !isNaN(timestamp) && timestamp > 0;
+};
+
+const createSafeDate = (date: any): Date => {
+    if (!date) return new Date();
+    if (date instanceof Date && isValidDate(date)) return date;
+
+    const timestamp = Date.parse(date);
+    if (!isNaN(timestamp) && timestamp > 0) {
+        return new Date(timestamp);
+    }
+    return new Date();
+};
+
+const SafeDateTimePicker = ({ value, onChange }: { value: Date, onChange: (date: Date) => void }) => {
+    return (
+        <ErrorBoundary fallback={
+            <div className="text-sm text-red-500">
+                Invalid date. Please try again.
+            </div>
+        }>
+            <DateTimePicker
+                value={isValidDate(value) ? value : new Date()}
+                onChange={(date) => {
+                    if (date && isValidDate(date)) {
+                        onChange(date);
+                    }
+                }}
+            />
+        </ErrorBoundary>
+    );
 };
 
 export default function QuizPage() {
@@ -60,8 +117,8 @@ export default function QuizPage() {
     const [formData, setFormData] = useState<Partial<Quiz>>({
         title: '',
         description: '',
-        startTime: new Date(),
-        endTime: new Date(),
+        startTime: createSafeDate(new Date()),
+        endTime: createSafeDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
         duration: 0,
         settings: {
             fullscreen: false,
@@ -95,12 +152,15 @@ export default function QuizPage() {
             }
 
             const data = await response.json();
-            // The data is already an array of quizzes, no need to access data.data
-            setQuizzes(data.map((quiz: Quiz) => ({
-                ...quiz,
-                startTime: new Date(quiz.startTime),
-                endTime: new Date(quiz.endTime)
-            })));
+
+            setQuizzes(data
+                .map((quiz: Quiz) => ({
+                    ...quiz,
+                    startTime: createSafeDate(quiz.startTime),
+                    endTime: createSafeDate(quiz.endTime)
+                }))
+                .sort((a: Quiz, b: Quiz) => b.startTime.getTime() - a.startTime.getTime())
+            );
         } catch (error) {
             console.log('Error fetching quizzes:', error);
             toast.error(error instanceof Error ? error.message : 'Failed to fetch quizzes');
@@ -157,11 +217,10 @@ export default function QuizPage() {
     const handleEdit = (quiz: Quiz) => {
         setEditMode(true);
         setFormData({
-            id: quiz.id,
             title: quiz.title,
             description: quiz.description,
-            startTime: new Date(quiz.startTime),
-            endTime: new Date(quiz.endTime),
+            startTime: createSafeDate(quiz.startTime),
+            endTime: createSafeDate(quiz.endTime),
             duration: quiz.duration,
             settings: quiz.settings,
             courseIds: quiz.courses.map(course => course.id),
@@ -172,17 +231,38 @@ export default function QuizPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+
+            if (!isValidDate(formData.startTime) || !isValidDate(formData.endTime)) {
+                toast.error('Please enter valid dates');
+                return;
+            }
+
+
+            if (!formData.duration || formData.duration <= 0) {
+                toast.error('Duration must be greater than 0');
+                return;
+            }
+
+            const startTime = createSafeDate(formData.startTime);
+            const endTime = createSafeDate(formData.endTime);
+
+
+            if (startTime >= endTime) {
+                toast.error('Start time must be before end time');
+                return;
+            }
+
             const endpoint = '/api/staff/quiz';
             const method = editMode ? 'PUT' : 'POST';
 
             const requestData = {
                 ...formData,
-                startTime: formData.startTime?.toISOString(),
-                endTime: formData.endTime?.toISOString(),
+                startTime: startTime.toISOString(),
+                endTime: endTime.toISOString(),
                 settingsId: editMode ? formData.settings?.id : undefined,
                 settings: {
                     ...formData.settings,
-                    id: editMode ? formData.settings?.id : undefined
+
                 },
                 courseIds: formData.courseIds || []
             };
@@ -298,15 +378,15 @@ export default function QuizPage() {
                             <div className="grid grid-row-2 gap-4">
                                 <div>
                                     <Label htmlFor="startTime">Start Time</Label>
-                                    <DateTimePicker
-                                        value={formData.startTime}
+                                    22                                    <SafeDateTimePicker
+                                        value={formData.startTime ?? new Date()}
                                         onChange={(date) => setFormData({ ...formData, startTime: date })}
                                     />
                                 </div>
                                 <div>
                                     <Label htmlFor="endTime">End Time</Label>
-                                    <DateTimePicker
-                                        value={formData.endTime}
+                                    <SafeDateTimePicker
+                                        value={formData.endTime ?? new Date()}
                                         onChange={(date) => setFormData({ ...formData, endTime: date })}
                                     />
                                 </div>
@@ -316,8 +396,12 @@ export default function QuizPage() {
                                 <Input
                                     id="duration"
                                     type="number"
+                                    min="1"
                                     value={formData.duration}
-                                    onChange={(e) => setFormData({ ...formData, duration: Number(e.target.value) })}
+                                    onChange={(e) => {
+                                        const value = Math.max(1, parseInt(e.target.value) || 0);
+                                        setFormData({ ...formData, duration: value });
+                                    }}
                                 />
                             </div>
                             <div>
@@ -364,12 +448,12 @@ export default function QuizPage() {
             <Table>
                 <TableHeader>
                     <TableRow>
+                        <TableHead>Status</TableHead>
                         <TableHead>Title</TableHead>
                         <TableHead>Description</TableHead>
                         <TableHead>Start Time</TableHead>
                         <TableHead>End Time</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Course</TableHead>
+                        <TableHead>Duration (mins) </TableHead>
                         <TableHead>Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -381,67 +465,84 @@ export default function QuizPage() {
                             </TableCell>
                         </TableRow>
                     ) : (
-                        quizzes.map((quiz) => (
-                            <TableRow key={quiz.id}>
-                                <TableCell>{quiz.title}</TableCell>
-                                <TableCell>{quiz.description}</TableCell>
-                                <TableCell>{new Date(quiz.startTime).toLocaleString()}</TableCell>
-                                <TableCell>{new Date(quiz.endTime).toLocaleString()}</TableCell>
-                                <TableCell>{quiz.duration} minutes</TableCell>
-                                <TableCell>
-                                    {quiz.courses?.map(c => c.class.name).join(', ') ?? 'N/A'}
-                                </TableCell>
-                                <TableCell>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleEdit(quiz)}
-                                        >
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => {
-                                                router.push(`/staff/quiz/${quiz.id}`);
-                                            }}
-                                        >
-                                            <SquareChartGantt className="h-4 w-4" />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => {
-                                                router.push(`/staff/quiz/result/${quiz.id}`);
-                                            }}
-                                        >
-                                            <FileBadge2 className="h-4 w-4" />
-                                        </Button>
-                                        <Dialog>
-                                            <DialogTrigger className="text-destructive">
-                                                <Trash2 className="h-4 w-4" />
-                                            </DialogTrigger>
-                                            <DialogContent>
-                                                <DialogHeader>
-                                                    <DialogTitle>Are you absolutely sure?</DialogTitle>
-                                                    <DialogDescription>
-                                                        This action cannot be undone. This will permanently delete the quiz.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={() => handleDelete(quiz.id)}
-                                                    className="text-destructive"
-                                                >
-                                                    <Trash2 className="h-4 w-4" /> Delete Quiz
-                                                </Button>
-                                            </DialogContent>
-                                        </Dialog>
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))
+                        quizzes.map((quiz) => {
+                            const { icon, color } = getQuizStatus(quiz.startTime, quiz.endTime);
+                            return (
+                                <TableRow key={quiz.id}>
+                                    <TableCell className={color}>
+                                        <div className={color}>{icon}</div>
+                                    </TableCell>
+                                    <TableCell>{quiz.title}</TableCell>
+                                    <TableCell>{quiz.description}</TableCell>
+                                    <TableCell>  {new Date(quiz.startTime).toLocaleDateString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hourCycle: 'h12'
+                                    })}</TableCell>
+                                    <TableCell>{new Date(quiz.endTime).toLocaleDateString('en-GB', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hourCycle: 'h12'
+                                    })}</TableCell>
+                                    <TableCell>{quiz.duration}</TableCell>
+                                    <TableCell>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleEdit(quiz)}
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    router.push(`/staff/quiz/${quiz.id}`);
+                                                }}
+                                            >
+                                                <SquareChartGantt className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => {
+                                                    router.push(`/staff/quiz/result/${quiz.id}`);
+                                                }}
+                                            >
+                                                <FileBadge2 className="h-4 w-4" color='green' />
+                                            </Button>
+                                            <Dialog>
+                                                <DialogTrigger className="text-destructive">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </DialogTrigger>
+                                                <DialogContent>
+                                                    <DialogHeader>
+                                                        <DialogTitle>Are you absolutely sure?</DialogTitle>
+                                                        <DialogDescription>
+                                                            This action cannot be undone. This will permanently delete the quiz.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <Button
+                                                        variant="ghost"
+                                                        onClick={() => handleDelete(quiz.id)}
+                                                        className="text-destructive"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" /> Delete Quiz
+                                                    </Button>
+                                                </DialogContent>
+                                            </Dialog>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })
                     )}
                 </TableBody>
             </Table>

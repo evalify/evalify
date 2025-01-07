@@ -16,7 +16,7 @@ export const PATCH = async (
         }
 
         const { topics } = await req.json();
-        
+
         if (!Array.isArray(topics)) {
             return NextResponse.json({ message: "Invalid topics format" }, { status: 400 });
         }
@@ -36,7 +36,7 @@ export const PATCH = async (
 
         return NextResponse.json({ message: "Topics updated successfully" });
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 };

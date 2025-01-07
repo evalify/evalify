@@ -57,7 +57,7 @@ export async function POST(
             }
         })
     } catch (error) {
-        console.error('Promote to owner error:', error);
+        console.log('Promote to owner error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }
@@ -96,15 +96,15 @@ export async function DELETE(
 
         // Prevent removing the last owner
         if (bank.bankOwners.length <= 1) {
-            return NextResponse.json({ 
-                message: "Cannot remove the last owner" 
+            return NextResponse.json({
+                message: "Cannot remove the last owner"
             }, { status: 400 })
         }
 
         // Prevent self-demotion
         if (staffId === staff.id) {
-            return NextResponse.json({ 
-                message: "Cannot demote yourself" 
+            return NextResponse.json({
+                message: "Cannot demote yourself"
             }, { status: 400 })
         }
 
@@ -139,7 +139,7 @@ export async function DELETE(
             }
         })
     } catch (error) {
-        console.error('Demote owner error:', error);
+        console.log('Demote owner error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 })
     }
 }

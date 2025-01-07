@@ -1,103 +1,89 @@
 import * as React from "react"
-import { Command as CommandPrimitive } from "cmdk"
 import { X } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Command, CommandGroup, CommandItem } from "@/components/ui/command"
+import { Badge } from "@/components/ui/badge"
 
 interface Option {
-    value: string
     label: string
+    value: string
 }
 
 interface MultiSelectProps {
     options: Option[]
-    value: Option[]
-    onChange: (value: Option[]) => void
+    selected: string[]
+    onChange: (values: string[]) => void
     placeholder?: string
-    className?: string
-    creatable?: boolean
-    onCreateOption?: (value: string) => void
-    onInputChange?: (value: string) => void
-    inputValue?: string
 }
 
 export function MultiSelect({
-    options = [], // Add default value
-    value = [], // Add default value
+    options,
+    selected,
     onChange,
-    placeholder = "Select items...",
-    className,
-    creatable = false,
-    onCreateOption,
-    onInputChange,
-    inputValue = "", // Add default value
+    placeholder = "Select options..."
 }: MultiSelectProps) {
     const [open, setOpen] = React.useState(false)
 
-    // Ensure we're working with arrays even if we get undefined
-    const safeOptions = Array.isArray(options) ? options : [];
-    const safeValue = Array.isArray(value) ? value : [];
-
-    const handleUnselect = (option: Option) => {
-        onChange(safeValue.filter((item) => item.value !== option.value))
+    const handleUnselect = (valueToRemove: string) => {
+        onChange(selected.filter((value) => value !== valueToRemove))
     }
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && inputValue && creatable && onCreateOption) {
-            e.preventDefault();
-            onCreateOption(inputValue);
-        }
-    };
-
     return (
-        <Command className={className} onKeyDown={handleKeyDown}>
-            <div className="flex gap-2 flex-wrap border rounded-md p-2">
-                {safeValue.map((option) => (
-                    <Badge key={option.value} variant="secondary">
-                        {option.label}
-                        <button
-                            className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    handleUnselect(option)
-                                }
-                            }}
-                            onMouseDown={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                            }}
-                            onClick={() => handleUnselect(option)}
-                        >
-                            <X className="h-3 w-3" />
-                        </button>
-                    </Badge>
-                ))}
-                <CommandPrimitive.Input
-                    placeholder={placeholder}
-                    className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground min-w-[100px]"
-                    value={inputValue}
-                    onValueChange={onInputChange}
-                />
-            </div>
-            <div className="relative mt-2">
-                {open && (
-                    <div className="absolute top-0 z-10 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in">
-                        <CommandGroup className="h-full overflow-auto">
-                            {safeOptions.map((option) => (
-                                <CommandItem
-                                    key={option.value}
-                                    onSelect={() => {
-                                        onChange([...safeValue, option])
-                                        setOpen(false)
+        <Command className="overflow-visible bg-white">
+            <div className="group border border-input px-3 py-2 text-sm ring-offset-background rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <div className="flex gap-1 flex-wrap">
+                    {selected && selected.map((value) => {
+                        const option = options.find((opt) => opt.value === value)
+                        if (!option) return null
+                        return (
+                            <Badge key={value} variant="secondary">
+                                {option.label}
+                                <button
+                                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            handleUnselect(value)
+                                        }
                                     }}
+                                    onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                    }}
+                                    onClick={() => handleUnselect(value)}
                                 >
-                                    {option.label}
-                                </CommandItem>
-                            ))}
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        )
+                    })}
+                    <button
+                        className="flex-1 bg-transparent px-2 py-1 text-sm outline-none placeholder:text-muted-foreground"
+                        onClick={() => setOpen(true)}
+                    >
+                        {placeholder}
+                    </button>
+                </div>
+            </div>
+            {open && (
+                <div className="relative mt-2">
+                    <div className="absolute top-0 z-10 w-full rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in">
+                        <CommandGroup className="h-full overflow-auto max-h-60">
+                            {options
+                                .filter((option) => !selected.includes(option.value))
+                                .map((option) => (
+                                    <CommandItem
+                                        key={option.value}
+                                        onSelect={() => {
+                                            onChange([...selected, option.value])
+                                            setOpen(false)
+                                        }}
+                                    >
+                                        {option.label}
+                                    </CommandItem>
+                                ))}
                         </CommandGroup>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </Command>
     )
 }

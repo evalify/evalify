@@ -143,3 +143,31 @@ body {
 .animate-bounce-x {
   animation: bounceX 1s infinite;
 }
+
+/* Add these styles to optimize editor performance */
+.mdxeditor {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.mdxeditor [contenteditable="true"] {
+    outline: none;
+    flex: 1;
+    min-height: 100px;
+    padding: 0.5rem;
+}
+
+/* Add these styles for the markdown editor */
+.markdown-editor textarea {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    line-height: 1.6;
+    tab-size: 4;
+}
+
+.prose img {
+    margin: 1rem auto;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+

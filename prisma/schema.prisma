@@ -63,6 +63,11 @@ model Course {
     sharePoint String
 }
 
+model Topic {
+    id   String @id @default(cuid())
+    name String
+}
+
 model Bank {
     id          String   @id @default(cuid())
     name        String
@@ -119,6 +124,8 @@ model QuizResult {
     quiz          Quiz     @relation(fields: [quizId], references: [id])
     quizId        String
     score         Float
+    totalScore    Float    @default(0)
+    remarks       Json?
     submittedAt   DateTime @default(now())
     responses     Json
     questionMarks Json?

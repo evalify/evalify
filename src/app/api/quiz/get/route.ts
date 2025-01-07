@@ -38,6 +38,9 @@ export async function GET(req: Request) {
         const quiz = await prisma.quiz.findUnique({
             where: {
                 id: quizId
+            },
+            select:{
+                settings: true
             }
         });
 
@@ -48,10 +51,14 @@ export async function GET(req: Request) {
         const cache = await redis.get(`QUIZ_${quizId}`);
 
         if (cache) {
+            if (quiz.settings?.shuffle){
+                const questions = JSON.parse(cache);
+                questions.sort(() => Math.random() - 0.5);
+                return NextResponse.json({ quiz, questions }, { status: 200 });
+            }
             return NextResponse.json({ quiz, questions: JSON.parse(cache) }, { status: 200 });
         }
 
-        // get questions from MONGODB
         const questions = await (await clientPromise).db().collection('NEW_QUESTIONS').find({ quizId: quizId }).toArray();
 
         const safeQuestion = questions.map((question: any) => {

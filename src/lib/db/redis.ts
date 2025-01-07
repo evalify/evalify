@@ -18,7 +18,7 @@ class RedisClient {
             if (!redisUrl) {
                 throw new Error('REDIS_URL is not defined');
             }
-            
+
             RedisClient.instance = new Redis(redisUrl, {
                 maxRetriesPerRequest: 3,
                 retryStrategy(times) {
@@ -29,7 +29,7 @@ class RedisClient {
 
             // Add event listeners
             RedisClient.instance.on('error', (err) => {
-                console.error('Redis error:', err);
+                console.log('Redis error:', err);
             });
 
             RedisClient.instance.on('connect', () => {
@@ -40,7 +40,7 @@ class RedisClient {
             RedisClient.instance.on('reconnecting', () => {
                 RedisClient.retryCount++;
                 if (RedisClient.retryCount > RedisClient.maxRetries) {
-                    console.error('Max Redis reconnection attempts reached');
+                    console.log('Max Redis reconnection attempts reached');
                     process.exit(1);
                 }
                 console.log(`Redis reconnecting... Attempt ${RedisClient.retryCount}`);
@@ -77,6 +77,9 @@ export const CACHE_KEYS = {
     banks: (staffId: string) => `staff:${staffId}:banks`,
     bankSearch: (query: string, staffId: string) => `bank:search:${staffId}:${query}`,
     bankList: (staffId: string) => `bank:list:${staffId}`,
+    studentDashboard: (studentId: string) => `student:${studentId}:dashboard`,
+    studentPerformance: (studentId: string) => `student:${studentId}:performance`,
+    liveQuizzes: (classId: string) => `class:${classId}:live-quizzes`,
 };
 
 export const clearQuizCache = async (quizId: string) => {
@@ -101,6 +104,14 @@ export const clearBankCache = async (staffId: string) => {
     if (keys.length) {
         await redis.del(...keys);
     }
+};
+
+export const clearStudentDashboardCache = async (studentId: string) => {
+    const redis = RedisClient.getInstance();
+    await Promise.all([
+        redis.del(CACHE_KEYS.studentDashboard(studentId)),
+        redis.del(CACHE_KEYS.studentPerformance(studentId))
+    ]);
 };
 
 export const redis = RedisClient.getInstance();

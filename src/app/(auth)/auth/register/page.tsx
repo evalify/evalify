@@ -183,7 +183,7 @@ export default function RegisterPage() {
                             <FormItem>
                                 <FormLabel>Roll Number</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Optional" {...field} />
+                                    <Input placeholder="Your Roll Number" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

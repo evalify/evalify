@@ -10,7 +10,7 @@ export async function GET(
         const { id } = await params;
         const { searchParams } = new URL(req.url);
         const topicsParam = searchParams.get('topic');
-        
+
         const session = await auth();
         if (!session?.user?.role || session.user.role !== "STAFF") {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -23,8 +23,8 @@ export async function GET(
             if (searchTopics.length > 0) {
                 query = {
                     ...query,
-                    topics: { 
-                        $elemMatch: { $in: searchTopics }  // Search within the topics array
+                    topics: {
+                        $elemMatch: { $in: searchTopics }
                     }
                 };
             }
@@ -38,7 +38,7 @@ export async function GET(
 
         return NextResponse.json({ questions }, { status: 200 });
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 }
@@ -55,23 +55,23 @@ export async function POST(
         }
 
         const question = await req.json();
-        
+
         const topics = Array.isArray(question.topics) ? question.topics : [question.topics].filter(Boolean);
-        
+
         const { _id, ...questionData } = question;
-        
+
         const newQuestion = await (await clientPromise)
             .db()
             .collection('QUESTION_BANK')
             .insertOne({
                 ...questionData,
-                topics, 
+                topics,
                 bankId: id,
             });
 
         return NextResponse.json(newQuestion, { status: 201 });
     } catch (error) {
-        console.error('error:', error);
+        console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 }

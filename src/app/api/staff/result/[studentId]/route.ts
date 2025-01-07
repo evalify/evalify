@@ -77,7 +77,7 @@ export async function PUT(req: Request, { params }: { params: { studentId: strin
             data: {
                 responses,
                 questionMarks,
-                score: totalScore // Update score based on questionMarks total
+                score: totalScore 
             }
         });
 
