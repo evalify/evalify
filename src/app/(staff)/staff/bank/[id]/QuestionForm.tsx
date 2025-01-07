@@ -13,12 +13,12 @@ import { MultiSelect } from "@/components/ui/multi-select";
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 interface QuestionFormProps {
-    topic: string[]; // Changed from string to string[]
+    topic: string[]; 
     bankId: string;
     onCancel: () => void;
     onSave: () => void;
     editingQuestion?: Question | null;
-    allTopics?: string[]; // Make it optional
+    allTopics?: string[]; 
 }
 
 export default function QuestionForm({
@@ -27,7 +27,7 @@ export default function QuestionForm({
     onCancel,
     onSave,
     editingQuestion,
-    allTopics = [] // Provide default empty array
+    allTopics = [] 
 }: QuestionFormProps) {
     const { toast } = useToast();
     const [type, setType] = useState<QuestionType>("MCQ");
@@ -38,15 +38,15 @@ export default function QuestionForm({
         if (editingQuestion?.topics) {
             return editingQuestion.topics;
         }
-        return topic; // Use topic array directly
+        return topic; 
     });
     const [explanation, setExplanation] = useState(editingQuestion?.explanation || "");
 
-    // Initialize MCQ with 4 empty options
+    
     const [options, setOptions] = useState<string[]>(Array(4).fill(""));
     const [correctOptions, setCorrectOptions] = useState<number[]>([]);
 
-    // Question type metadata
+    
     const questionTypes = [
         { value: 'MCQ', label: 'Multiple Choice', icon: ListChecks },
         { value: 'TRUE_FALSE', label: 'True/False', icon: ToggleLeft },
@@ -65,7 +65,7 @@ export default function QuestionForm({
     const handleSubmit = async () => {
         if (!validateForm()) return;
 
-        // Use the selectedTopics array directly
+        
         const processedTopics = Array.from(new Set(
             selectedTopics.filter(t => t && t.trim().length > 0)
         ));
@@ -75,9 +75,9 @@ export default function QuestionForm({
             content,
             difficulty,
             marks: parseInt(marks),
-            topics: topic, // Use processed topics array
+            topics: topic, 
             bankId,
-            explanation: explanation.trim() || undefined, // Only include if not empty
+            explanation: explanation.trim() || undefined, 
         };
 
         let questionData;
@@ -121,7 +121,7 @@ export default function QuestionForm({
                 ? `/api/staff/bank/${bankId}/questions/${questionId}`
                 : `/api/staff/bank/${bankId}/questions`;
 
-            // Remove _id from the request body for both POST and PATCH
+            
             const { _id, ...submitData } = questionData;
 
             const response = await fetch(url, {
@@ -282,7 +282,7 @@ export default function QuestionForm({
                                     value={selectedTopics.map(t => ({ value: t, label: t }))}
                                     onChange={(selected) => setSelectedTopics(selected.map(s => s.value))}
                                     placeholder="Select topics..."
-                                    required // Add required attribute
+                                    required 
                                 />
                                 {selectedTopics.length === 0 && (
                                     <p className="text-sm text-destructive">At least one topic is required</p>

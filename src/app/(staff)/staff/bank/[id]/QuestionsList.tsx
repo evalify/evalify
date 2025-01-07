@@ -29,7 +29,7 @@ interface QuestionsListProps {
     bankId: string;
     topic: string[];
     onEdit: (question: Question) => void;
-    allTopics: string[]; // Add this prop
+    allTopics: string[]; 
 }
 
 export default function QuestionsList({
@@ -38,7 +38,7 @@ export default function QuestionsList({
     bankId,
     topic,
     onEdit,
-    allTopics // Add allTopics to destructured props
+    allTopics 
 }: QuestionsListProps) {
     const { toast } = useToast();
     const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; questionId: string | null }>({
@@ -53,7 +53,7 @@ export default function QuestionsList({
         setAvailableTopics(prev => [...prev, newTopic]);
     };
 
-    // Fetch all available topics from the bank
+    
     useEffect(() => {
         const fetchBankTopics = async () => {
             try {
@@ -74,7 +74,7 @@ export default function QuestionsList({
         fetchBankTopics();
     }, [bankId]);
 
-    // Memoize the filtered questions to prevent unnecessary re-renders
+    
     const validQuestions = useMemo(() => {
         return Array.isArray(questions) ? questions : [];
     }, [questions]);
@@ -93,7 +93,7 @@ export default function QuestionsList({
 
             toast({ title: "Success", description: "Question deleted successfully" });
 
-            // Since topic is already an array, use it directly
+            
             onQuestionUpdate(topic);
 
         } catch (error) {
@@ -118,7 +118,7 @@ export default function QuestionsList({
                 throw new Error('Failed to update topics');
             }
 
-            // Since onQuestionUpdate expects an array, pass newTopics directly
+            
             if (onQuestionUpdate) {
                 onQuestionUpdate(newTopics);
             }
@@ -146,7 +146,7 @@ export default function QuestionsList({
         }
     };
 
-    // Memoize the card render function
+    
     const renderQuestionCard = useCallback((question: Question) => {
         const questionId = question._id || question.id;
         const generateKey = (prefix: string) => `${questionId}-${prefix}`;
@@ -268,7 +268,7 @@ export default function QuestionsList({
                 </CardContent>
             </Card>
         );
-    }, [onEdit, availableTopics, handleTopicsChange, inputValue]); // Add handleTopicsChange to dependencies
+    }, [onEdit, availableTopics, handleTopicsChange, inputValue]); 
 
     if (validQuestions.length === 0) {
         return <div className="text-muted-foreground">No questions available</div>;

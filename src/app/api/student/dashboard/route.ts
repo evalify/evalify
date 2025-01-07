@@ -23,7 +23,7 @@ export async function GET() {
             include: { class: true }
         });
 
-        // Get recent results - only essential fields
+        
         const recentResults = await prisma.quizResult.findMany({
             where: { 
                 studentId: student!.id,
@@ -48,10 +48,10 @@ export async function GET() {
                 }
             },
             orderBy: { submittedAt: 'desc' },
-            take: 5
+            take: 6
         });
 
-        // Get upcoming quizzes - only essential fields
+
         const upcomingQuizzes = await prisma.quiz.findMany({
             where: {
                 courses: {
@@ -71,7 +71,7 @@ export async function GET() {
             }
         });
 
-        // Get live quizzes - only essential fields
+        
         const liveQuizzes = await prisma.quiz.findMany({
             where: {
                 courses: {
@@ -91,7 +91,7 @@ export async function GET() {
             }
         });
 
-        // Optimize performance calculation
+        
         const performanceStats = await prisma.quizResult.aggregate({
             where: {
                 studentId: student!.id,
@@ -129,7 +129,7 @@ export async function GET() {
             missedQuizzes: totalQuizzes - performanceStats._count._all,
         };
 
-        // Replace the scoreHistory section with this:
+        
         const allCompletedQuizzes = await prisma.quiz.findMany({
             where: {
                 courses: { some: { classId: student!.classId } },
@@ -169,6 +169,11 @@ export async function GET() {
             };
         });
 
+        const averageNormalizedScore = formattedScoreHistory.reduce((acc, curr) => {
+            return acc + curr.normalizedScore;
+        }, 0) / (formattedScoreHistory.length || 1);
+
+        performanceData.averageScore = averageNormalizedScore;
         performanceData.scoreHistory = formattedScoreHistory;
 
         const dashboardData = {
@@ -178,7 +183,7 @@ export async function GET() {
             performanceData
         };
 
-        await redis.setex(cacheKey, 300, JSON.stringify(dashboardData)); // Cache for 5 minutes
+        await redis.setex(cacheKey, 300, JSON.stringify(dashboardData)); 
 
         return NextResponse.json(dashboardData);
     } catch (error) {
