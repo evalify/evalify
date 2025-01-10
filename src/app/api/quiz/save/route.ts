@@ -3,16 +3,6 @@ import { prisma } from "@/lib/db/prismadb";
 import { getTime } from "@/lib/utils";
 import { NextResponse } from "next/server";
 
-// id          String @id @default (cuid())
-// student     Student @relation(fields: [studentId], references: [id])
-// studentId   String
-// quiz        Quiz @relation(fields: [quizId], references: [id])
-// quizId      String
-// score       Float
-// submittedAt DateTime @default (now())
-// responses   Json
-// violations  String ?
-
 export async function POST(req: Request) {
     try {
         const session = await auth();
@@ -41,9 +31,9 @@ export async function POST(req: Request) {
                 quizId: response.quizId,
                 score: 0,
                 responses: response.responses,
-                // submittedAt: getTime(),
                 submittedAt: new Date(),
                 violations: response.violations,
+                ip : req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || req.headers.get('fastly-client-ip') || req.headers.get('true-client-ip') || req.headers.get('x-client-ip') || req.headers.get('x-cluster-client-ip') || req.headers.get('x-forward') || "none"
             }
         })
 

@@ -91,6 +91,8 @@ const createSafeDate = (date: any): Date => {
 };
 
 const SafeDateTimePicker = ({ value, onChange }: { value: Date, onChange: (date: Date) => void }) => {
+    const safeDate = isValidDate(value) ? value : new Date();
+    
     return (
         <ErrorBoundary fallback={
             <div className="text-sm text-red-500">
@@ -98,12 +100,8 @@ const SafeDateTimePicker = ({ value, onChange }: { value: Date, onChange: (date:
             </div>
         }>
             <DateTimePicker
-                value={isValidDate(value) ? value : new Date()}
-                onChange={(date) => {
-                    if (date && isValidDate(date)) {
-                        onChange(date);
-                    }
-                }}
+                value={safeDate}
+                onChange={onChange}
             />
         </ErrorBoundary>
     );
@@ -352,95 +350,97 @@ export default function QuizPage() {
                     <DialogTrigger asChild>
                         <Button>Create Quiz</Button>
                     </DialogTrigger>
-                    <DialogContent className="w-full max-w-lg overflow-auto">
+                    <DialogContent className="w-full max-w-lg">
                         <DialogHeader>
                             <DialogTitle>
                                 {editMode ? 'Edit Quiz' : 'Create New Quiz'}
                             </DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <Label htmlFor="title">Title</Label>
-                                <Input
-                                    id="title"
-                                    value={formData.title}
-                                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="description">Description</Label>
-                                <Input
-                                    id="description"
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid grid-row-2 gap-4">
+                        <div className="max-h-[80vh] overflow-y-auto pr-6">
+                            <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
-                                    <Label htmlFor="startTime">Start Time</Label>
-                                    22                                    <SafeDateTimePicker
-                                        value={formData.startTime ?? new Date()}
-                                        onChange={(date) => setFormData({ ...formData, startTime: date })}
+                                    <Label htmlFor="title">Title</Label>
+                                    <Input
+                                        id="title"
+                                        value={formData.title}
+                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <Label htmlFor="endTime">End Time</Label>
-                                    <SafeDateTimePicker
-                                        value={formData.endTime ?? new Date()}
-                                        onChange={(date) => setFormData({ ...formData, endTime: date })}
+                                    <Label htmlFor="description">Description</Label>
+                                    <Input
+                                        id="description"
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <Label htmlFor="duration">Duration (minutes)</Label>
-                                <Input
-                                    id="duration"
-                                    type="number"
-                                    min="1"
-                                    value={formData.duration}
-                                    onChange={(e) => {
-                                        const value = Math.max(1, parseInt(e.target.value) || 0);
-                                        setFormData({ ...formData, duration: value });
-                                    }}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="courses">Classes</Label>
-                                <div className="flex flex-wrap gap-2">
-                                    {courses.map(course => (
-                                        <div key={course.id} className="flex items-center space-x-2">
+                                <div className="grid grid-row-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="startTime">Start Time</Label>
+                                        <SafeDateTimePicker
+                                            value={formData.startTime ?? new Date()}
+                                            onChange={(date) => setFormData({ ...formData, startTime: date })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="endTime">End Time</Label>
+                                        <SafeDateTimePicker
+                                            value={formData.endTime ?? new Date()}
+                                            onChange={(date) => setFormData({ ...formData, endTime: date })}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label htmlFor="duration">Duration (minutes)</Label>
+                                    <Input
+                                        id="duration"
+                                        type="number"
+                                        min="1"
+                                        value={formData.duration}
+                                        onChange={(e) => {
+                                            const value = Math.max(1, parseInt(e.target.value) || 0);
+                                            setFormData({ ...formData, duration: value });
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="courses">Classes</Label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {courses.map(course => (
+                                            <div key={course.id} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={course.id}
+                                                    checked={formData.courseIds?.includes(course.id) || false}
+                                                    onCheckedChange={() => handleCourseChange(course.id)}
+                                                />
+                                                <Label htmlFor={course.id}>{course.class.name} ({course.code})</Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Settings</Label>
+                                    {Object.entries(formData.settings || {}).map(([key, value]) => (
+                                        <div key={key} className="flex items-center space-x-2">
                                             <Checkbox
-                                                id={course.id}
-                                                checked={formData.courseIds?.includes(course.id) || false}
-                                                onCheckedChange={() => handleCourseChange(course.id)}
+                                                id={key}
+                                                checked={value}
+                                                onCheckedChange={(checked) =>
+                                                    setFormData({
+                                                        ...formData,
+                                                        settings: { ...formData.settings, [key]: checked }
+                                                    })
+                                                }
                                             />
-                                            <Label htmlFor={course.id}>{course.class.name} ({course.code})</Label>
+                                            <Label htmlFor={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</Label>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Settings</Label>
-                                {Object.entries(formData.settings || {}).map(([key, value]) => (
-                                    <div key={key} className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={key}
-                                            checked={value}
-                                            onCheckedChange={(checked) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    settings: { ...formData.settings, [key]: checked }
-                                                })
-                                            }
-                                        />
-                                        <Label htmlFor={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</Label>
-                                    </div>
-                                ))}
-                            </div>
-                            <Button type="submit">
-                                {editMode ? 'Update Quiz' : 'Create Quiz'}
-                            </Button>
-                        </form>
+                                <Button type="submit">
+                                    {editMode ? 'Update Quiz' : 'Create Quiz'}
+                                </Button>
+                            </form>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>

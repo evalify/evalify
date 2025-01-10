@@ -23,7 +23,6 @@ export async function GET() {
             include: { class: true }
         });
 
-        
         const recentResults = await prisma.quizResult.findMany({
             where: { 
                 studentId: student!.id,
@@ -51,7 +50,6 @@ export async function GET() {
             take: 6
         });
 
-
         const upcomingQuizzes = await prisma.quiz.findMany({
             where: {
                 courses: {
@@ -71,7 +69,6 @@ export async function GET() {
             }
         });
 
-        
         const liveQuizzes = await prisma.quiz.findMany({
             where: {
                 courses: {
@@ -91,7 +88,6 @@ export async function GET() {
             }
         });
 
-        
         const performanceStats = await prisma.quizResult.aggregate({
             where: {
                 studentId: student!.id,
@@ -129,7 +125,6 @@ export async function GET() {
             missedQuizzes: totalQuizzes - performanceStats._count._all,
         };
 
-        
         const allCompletedQuizzes = await prisma.quiz.findMany({
             where: {
                 courses: { some: { classId: student!.classId } },

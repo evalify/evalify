@@ -130,6 +130,7 @@ model QuizResult {
     responses     Json
     questionMarks Json?
     violations    String?
+    ip            String?
 }
 
 model QuizReport {

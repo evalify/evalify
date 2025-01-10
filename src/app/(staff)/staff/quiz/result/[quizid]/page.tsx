@@ -476,6 +476,11 @@ export default function QuizPage() {
                                         Submitted At {getSortIcon('submittedAt')}
                                     </div>
                                 </TableHead>
+                                <TableHead onClick={() => handleSort('ip')} className="cursor-pointer hover:bg-gray-100">
+                                    <div className="flex items-center gap-2">
+                                        IP Address {getSortIcon('ip')}
+                                    </div>
+                                </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -491,6 +496,9 @@ export default function QuizPage() {
                                         <TableCell>{result.score}</TableCell>
                                         <TableCell>{result.violations.split("\n").length - 1}</TableCell>
                                         <TableCell>{new Date(result.submittedAt).toLocaleString()}</TableCell>
+                                        <TableCell className={!result.ip?.startsWith('172') ? 'text-red-500 font-medium' : ''}>
+                                            {result.ip || 'N/A'}
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             }

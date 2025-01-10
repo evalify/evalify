@@ -1,18 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Calendar as CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
-
+import ReactDatePicker from "react-datepicker"
+import "react-datepicker/dist/react-datepicker.css"
+import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
 
 interface DateTimePickerProps {
     value: Date
@@ -20,62 +13,32 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ value, onChange }: DateTimePickerProps) {
-    const [date, setDate] = React.useState<Date | undefined>(value)
-
-    const handleDateSelect = (selectedDate: Date | undefined) => {
-        if (selectedDate) {
-            const newDateTime = new Date(
-                selectedDate.getFullYear(),
-                selectedDate.getMonth(),
-                selectedDate.getDate(),
-                date ? date.getHours() : 0,
-                date ? date.getMinutes() : 0
-            )
-            setDate(newDateTime)
-            onChange(newDateTime)
-        }
-    }
-
-    const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const [hours, minutes] = e.target.value.split(':').map(Number)
-        if (date) {
-            const newDateTime = new Date(date)
-            newDateTime.setHours(hours)
-            newDateTime.setMinutes(minutes)
-            setDate(newDateTime)
-            onChange(newDateTime)
-        }
-    }
-
     return (
-        <div className="flex items-center space-x-2">
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant={"outline"}
-                        className={cn(
-                            "w-[240px] justify-start text-left font-normal",
-                            !date && "text-muted-foreground"
-                        )}
-                    >
+        <div className="relative">
+            <ReactDatePicker
+                selected={value}
+                onChange={onChange}
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                dateFormat="MMMM d, yyyy h:mm aa"
+                className={cn(
+                    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                    "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
+                customInput={
+                    <Button variant="outline" className="w-[280px] justify-start text-left font-normal">
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, "PPP") : <span>Pick a date</span>}
+                        {value ? value.toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                            hour: 'numeric',
+                            minute: 'numeric',
+                        }) : 'Pick date and time'}
                     </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                        mode="single"
-                        selected={date}
-                        onSelect={handleDateSelect}
-                        initialFocus
-                    />
-                </PopoverContent>
-            </Popover>
-            <Input
-                type="time"
-                value={date ? format(date, "HH:mm") : ""}
-                onChange={handleTimeChange}
-                className="w-[120px]"
+                }
             />
         </div>
     )

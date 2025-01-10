@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Evalify
+
+Evalify is an AI-powered Learning Management System (LMS) designed to enhance the educational experience for both students and educators. This platform leverages advanced AI technologies to provide a comprehensive and interactive learning environment.
+
+## Features
+
+### Student Dashboard
+- **Personalized Learning Paths**: Tailored learning experiences based on individual student performance and preferences.
+- **Quiz and Assessments**: Interactive quizzes and assessments with instant feedback.
+- **Progress Tracking**: Monitor your learning progress and performance over time.
+- **Resource Library**: Access to a wide range of learning materials and resources.
+
+### Educator Dashboard
+- **Course Management**: Create, manage, and organize courses with ease.
+- **Student Analytics**: Detailed analytics on student performance and engagement.
+- **Automated Grading**: AI-powered grading system to save time and ensure consistency.
+- **Communication Tools**: Built-in messaging and announcement features to stay connected with students.
+
+### AI-Powered Features
+- **Adaptive Learning**: AI algorithms that adapt the content and difficulty based on student performance.
+- **Predictive Analytics**: Predict student outcomes and identify those who may need additional support.
+- **Content Recommendation**: Suggests relevant resources and materials to enhance learning.
+
+### Additional Features
+- **Mobile-Friendly**: Access Evalify on any device, anywhere, anytime.
+- **Secure and Reliable**: Robust security measures to protect user data and ensure platform reliability.
+- **Integration Capabilities**: Seamless integration with other educational tools and platforms.
 
 ## Getting Started
 
-First, run the development server:
+To get started with Evalify, follow these steps:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. **Clone the Repository**:
+    ```bash
+    git clone https://github.com/aksaykanthan/evalify.git
+    ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Install Dependencies**:
+    ```bash
+    cd evalify
+    npm install
+    ```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **Run the Application**:
+    ```bash
+    npm run dev
+    ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. **Access the Application**:
+    Open your browser and navigate to `http://localhost:3000`.
 
-## Learn More
+## Contributing
 
-To learn more about Next.js, take a look at the following resources:
+We welcome contributions from the community. To contribute to Evalify, please follow these steps:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature-branch`).
+3. Make your changes and commit them (`git commit -m 'Add new feature'`).
+4. Push to the branch (`git push origin feature-branch`).
+5. Open a Pull Request.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
+Evalify is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Contact
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For any questions or support, please contact us at support@evalify.com.
+
+---
+
+Thank you for using Evalify! We hope it enhances your learning and teaching experience.
