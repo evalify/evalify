@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface Topic {
     id: string;
@@ -46,6 +47,7 @@ const QuestionsPage = () => {
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
     const [allTopics, setAllTopics] = useState<string[]>([]);
     const [topicToDelete, setTopicToDelete] = useState<string | null>(null);
+    const editFormRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetchTopics();
@@ -311,24 +313,40 @@ const QuestionsPage = () => {
                                 </Button>
                             </div>
 
-                            {isAddingQuestion && (
-                                <QuestionForm
-                                    topics={topics}  // Pass the full topics array with id and name
-                                    bankId={params.id}
-                                    onCancel={() => {
-                                        setIsAddingQuestion(false);
-                                        setEditingQuestion(null);
-                                    }}
-                                    onSave={() => {
-                                        setIsAddingQuestion(false);
-                                        setEditingQuestion(null);
-                                        fetchQuestions(selectedTopics);
-                                    }}
-                                    editingQuestion={editingQuestion}
-                                    allTopics={selectedTopics.map(t => t.name)} // Update this to pass only selected topic names
-                                    selectedTopicIds={selectedTopics.map(t => t.id)} // Add this prop
-                                />
-                            )}
+                            <Sheet open={isAddingQuestion} onOpenChange={(open) => {
+                                if (!open) {
+                                    setIsAddingQuestion(false);
+                                    setEditingQuestion(null);
+                                }
+                            }}>
+                                <SheetContent 
+                                    side="right" 
+                                    className="w-[1200px] sm:max-w-[1200px] overflow-y-auto"
+                                >
+                                    <SheetHeader className="sticky top-0 bg-background z-10 pb-4">
+                                        <SheetTitle>{editingQuestion ? 'Edit Question' : 'Add Question'}</SheetTitle>
+                                    </SheetHeader>
+                                    <div className="pt-2">
+                                        <QuestionForm
+                                            topics={topics}
+                                            bankId={params.id}
+                                            onCancel={() => {
+                                                setIsAddingQuestion(false);
+                                                setEditingQuestion(null);
+                                            }}
+                                            onSave={() => {
+                                                setIsAddingQuestion(false);
+                                                setEditingQuestion(null);
+                                                fetchQuestions(selectedTopics);
+                                            }}
+                                            editingQuestion={editingQuestion}
+                                            allTopics={selectedTopics.map(t => t.name)}
+                                            selectedTopicIds={selectedTopics.map(t => t.id)}
+                                        />
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+
                             <ScrollArea>
 
                                 <Tabs defaultValue="all" className="w-full">
@@ -349,6 +367,7 @@ const QuestionsPage = () => {
                                             topic={selectedTopics.map(t => t.id)}
                                             onEdit={handleEditQuestion}
                                             allTopics={allTopics}
+                                            editingQuestion={editingQuestion}
                                         />
                                     </TabsContent>
                                     <TabsContent value="mcq">
@@ -359,6 +378,7 @@ const QuestionsPage = () => {
                                             topic={selectedTopics.map(t => t.id)}
                                             onEdit={handleEditQuestion}
                                             allTopics={allTopics}
+                                            editingQuestion={editingQuestion}
                                         />
                                     </TabsContent>
                                     <TabsContent value="true_false">
@@ -369,6 +389,7 @@ const QuestionsPage = () => {
                                             topic={selectedTopics.map(t => t.id)}
                                             onEdit={handleEditQuestion}
                                             allTopics={allTopics}
+                                            editingQuestion={editingQuestion}
                                         />
                                     </TabsContent>
                                     <TabsContent value="fill_in_blank">
@@ -379,6 +400,7 @@ const QuestionsPage = () => {
                                             topic={selectedTopics.map(t => t.id)}
                                             onEdit={handleEditQuestion}
                                             allTopics={allTopics}
+                                            editingQuestion={editingQuestion}
                                         />
                                     </TabsContent>
                                     <TabsContent value="descriptive">
@@ -389,6 +411,7 @@ const QuestionsPage = () => {
                                             topic={selectedTopics.map(t => t.id)}
                                             onEdit={handleEditQuestion}
                                             allTopics={allTopics}
+                                            editingQuestion={editingQuestion}
                                         />
                                     </TabsContent>
                                     <TabsContent value="coding">
@@ -399,6 +422,7 @@ const QuestionsPage = () => {
                                             topic={selectedTopics.map(t => t.id)}
                                             onEdit={handleEditQuestion}
                                             allTopics={allTopics}
+                                            editingQuestion={editingQuestion}
                                         />
                                     </TabsContent>
                                 </Tabs>

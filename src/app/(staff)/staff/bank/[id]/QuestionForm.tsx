@@ -14,6 +14,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CustomImage } from '@/components/ui/custom-image';
 import { v4 as uuidv4 } from 'uuid';
+import { LatexPreview } from '@/components/latex-preview';
 
 interface QuestionFormProps {
     topics: Array<{ id: string; name: string }>;
@@ -431,6 +432,7 @@ export default function EnhancedQuestionForm({
                                             onClick={() => handleTypeChange(qType.value as QuestionType)}
                                             disabled={!!editingQuestion}
                                         >
+                                            {qType.label}
                                             <qType.icon className="h-5 w-5" />
                                         </Button>
                                     </TooltipTrigger>
@@ -471,49 +473,50 @@ export default function EnhancedQuestionForm({
                                     <div className={`grid ${type === "TRUE_FALSE" ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"} gap-4`}>
                                         {optionsWithIds.map((option, index) => (
                                             <div key={option.optionId}
-                                                className={`flex items-center gap-2 ${type === "TRUE_FALSE"
+                                                className={`flex flex-col gap-2 ${type === "TRUE_FALSE"
                                                     ? "justify-center p-4 hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer"
                                                     : "bg-gray-50 dark:bg-gray-900 p-3"
                                                     } rounded-md`}
-                                                onClick={() => {
-                                                    if (type === "TRUE_FALSE") {
-                                                        setCorrectOptions([index]);
-                                                    }
-                                                }}
                                             >
-                                                <Checkbox
-                                                    checked={correctOptions.includes(index)}
-                                                    onCheckedChange={(checked) => {
-                                                        if (type === 'TRUE_FALSE') {
-                                                            setCorrectOptions(checked ? [index] : []);
-                                                        } else {
-                                                            setCorrectOptions(prev =>
-                                                                checked
-                                                                    ? [...prev, index]
-                                                                    : prev.filter(i => i !== index)
-                                                            );
-                                                        }
-                                                    }}
-                                                />
-                                                {type === "TRUE_FALSE" ? (
-                                                    <span className="text-lg">{option.option}</span>
-                                                ) : (
-                                                    <Input
-                                                        value={option.option}
-                                                        onChange={(e) => handleOptionChange(index, e.target.value)}
-                                                        placeholder={`Option ${index + 1}`}
-                                                        className="flex-1"
+                                                <div className="flex items-center gap-2">
+                                                    <Checkbox
+                                                        checked={correctOptions.includes(index)}
+                                                        onCheckedChange={(checked) => {
+                                                            if (type === 'TRUE_FALSE') {
+                                                                setCorrectOptions(checked ? [index] : []);
+                                                            } else {
+                                                                setCorrectOptions(prev =>
+                                                                    checked
+                                                                        ? [...prev, index]
+                                                                        : prev.filter(i => i !== index)
+                                                                );
+                                                            }
+                                                        }}
                                                     />
-                                                )}
-                                                <Button variant="outline" className="relative overflow-hidden">
-                                                    <input
-                                                        type="file"
-                                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                                        accept="image/*"
-                                                        onChange={(e) => handleOptionImageUpload(index, e)}
-                                                    />
-                                                    <ImageIcon className="h-4 w-4" />
-                                                </Button>
+                                                    {type === "TRUE_FALSE" ? (
+                                                        <span className="text-lg">{option.option}</span>
+                                                    ) : (
+                                                        <div className="flex-1 space-y-2">
+                                                            <Input
+                                                                value={option.option}
+                                                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                                                placeholder={`Option ${index + 1}`}
+                                                            />
+                                                            <div className="text-sm text-muted-foreground p-2 bg-background rounded">
+                                                                <LatexPreview content={option.option} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <Button variant="outline" className="relative overflow-hidden">
+                                                        <input
+                                                            type="file"
+                                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                                            accept="image/*"
+                                                            onChange={(e) => handleOptionImageUpload(index, e)}
+                                                        />
+                                                        <ImageIcon className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                                 {option.image && (
                                                     <CustomImage 
                                                         src={option.image} 

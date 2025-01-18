@@ -19,7 +19,7 @@ export async function PATCH(
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: params.id,
+                id: await params.id,
                 bankOwners: {
                     some: {
                         id: staff.id
@@ -36,7 +36,7 @@ export async function PATCH(
         const { name, description, semester } = body
 
         const updatedBank = await prisma.bank.update({
-            where: { id: params.id },
+            where: { id: await params.id },
             data: { name, description, semester }
         })
 
@@ -70,7 +70,7 @@ export async function DELETE(
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: params.id,
+                id: await params.id,
                 bankOwners: {
                     some: {
                         id: staff.id
@@ -85,7 +85,7 @@ export async function DELETE(
 
         await prisma.bank.delete({
             where: {
-                id: params.id
+                id: await params.id
             }
         })
 

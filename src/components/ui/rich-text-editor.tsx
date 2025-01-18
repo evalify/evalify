@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -11,6 +12,8 @@ import {
 } from 'lucide-react';
 import { Separator } from './separator';
 import { Extension } from '@tiptap/core';
+import { LatexPreview } from '../latex-preview';
+import { LatexDialog } from './latex-dialog';
 
 interface RichTextEditorProps {
     content: string;
@@ -41,6 +44,8 @@ export const LaTeX = Extension.create({
 });
 
 export function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
+    const [showLatexDialog, setShowLatexDialog] = useState(false);
+    
     const editor = useEditor({
         extensions: [
             StarterKit.configure({
@@ -91,12 +96,8 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
         }
     };
 
-    // Add LaTeX button handler
-    const insertLatex = () => {
-        const latex = prompt('Enter LaTeX formula:');
-        if (latex) {
-            editor?.chain().focus().insertContent(`$${latex}$`).run();
-        }
+    const handleLatexInsert = (latex: string) => {
+        editor?.chain().focus().insertContent(`$${latex}$`).run();
     };
 
     if (!editor) return null;
@@ -186,13 +187,21 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={insertLatex}
+                        onClick={() => setShowLatexDialog(true)}
                     >
                         <span className="font-serif">TEX</span>
                     </Button>
                 </div>
             </div>
-            <EditorContent editor={editor} placeholder={placeholder} />
+            <div className="min-h-[150px]">
+                <EditorContent editor={editor} placeholder={placeholder} />
+            </div>
+            
+            <LatexDialog
+                open={showLatexDialog}
+                onOpenChange={setShowLatexDialog}
+                onInsert={handleLatexInsert}
+            />
         </div>
     );
 }

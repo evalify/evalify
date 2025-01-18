@@ -38,15 +38,16 @@ interface QuestionsListProps {
     topic: string[];
     onEdit: (question: Question) => void;
     allTopics: string[];
+    editingQuestion: Question | null;
 }
 
-export default function QuestionsList({
-    questions,
+export default function QuestionsList({ 
+    questions, 
+    onEdit, 
+    bankId, 
+    topic, 
     onQuestionUpdate,
-    bankId,
-    topic,
-    onEdit,
-    allTopics
+    editingQuestion 
 }: QuestionsListProps) {
     const { toast } = useToast();
     const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; questionId: string | null }>({
@@ -184,8 +185,11 @@ export default function QuestionsList({
         }
     };
 
+    const handleEdit = (question: Question) => {
+        onEdit(question);
+    };
 
-    const renderQuestionCard = useCallback((question: Question) => {
+    const renderQuestionCard = useCallback((question: Question, index: number) => {
         const questionId = question._id || question.id;
         const generateKey = (prefix: string) => `${questionId}-${prefix}`;
 
@@ -194,6 +198,7 @@ export default function QuestionsList({
                 <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2 flex-1">
+                                <span className="font-medium">Question {index + 1}</span>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 {getQuestionIcon(question.type)}
                                 <span className="text-sm">{question.type}</span>
@@ -218,8 +223,17 @@ export default function QuestionsList({
                                         <MoreVertical className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40">
-                                    <DropdownMenuItem onClick={() => onEdit({ ...question, id: questionId })}>
+                                <DropdownMenuContent align="end" className="w-40 z-50">
+                                    <DropdownMenuItem onClick={() => handleEdit({
+                                        ...question,
+                                        id: questionId,
+                                        content: question.question, // Make sure to map question content correctly
+                                        topics: question.topics || [],
+                                        options: question.options || [],
+                                        answer: question.answer || [],
+                                        expectedAnswer: question.expectedAnswer || '',
+                                        mark: question.mark || 1
+                                    })}>
                                         <Edit2 className="h-4 w-4 mr-2" />
                                         Edit
                                     </DropdownMenuItem>
@@ -347,9 +361,9 @@ export default function QuestionsList({
     return (
         <>
             <div className="space-y-4">
-                {validQuestions.map((question) => (
+                {validQuestions.map((question, index) => (
                     <div key={`question-${question._id || question.id}`}>
-                        {renderQuestionCard(question)}
+                        {renderQuestionCard(question, index)}
                     </div>
                 ))}
             </div>
