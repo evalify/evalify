@@ -26,6 +26,12 @@ export interface MCQQuestion extends BaseQuestion {
     answer: string[];
 }
 
+export interface TrueFalseQuestion extends BaseQuestion {
+    type: "TRUE_FALSE";
+    options: MCQOption[];
+    answer: string; // Single optionId instead of array
+}
+
 export interface DescriptiveQuestion extends BaseQuestion {
     type: "DESCRIPTIVE";
     expectedAnswer: string;
@@ -37,4 +43,4 @@ export interface FillInBlankQuestion extends BaseQuestion {
     expectedAnswer: string;
 }
 
-export type Question = MCQQuestion | DescriptiveQuestion | FillInBlankQuestion;
+export type Question = MCQQuestion | TrueFalseQuestion | DescriptiveQuestion | FillInBlankQuestion;

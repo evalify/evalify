@@ -22,7 +22,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: params.id,
+                id: await params.id,
                 bankOwners: {
                     some: {
                         id: staff.id
@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         const { staffId } = await req.json()
 
         await prisma.bank.update({
-            where: { id: params.id },
+            where: { id: await params.id },
             data: {
                 staffs: {
                     connect: { id: staffId }
@@ -73,7 +73,7 @@ export async function DELETE(
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: params.id,
+                id: await params.id,
                 bankOwners: {
                     some: {
                         id: session.user.staffId
@@ -87,7 +87,7 @@ export async function DELETE(
         }
 
         await prisma.bank.update({
-            where: { id: params.id },
+            where: { id: await params.id },
             data: {
                 staffs: {
                     disconnect: { id: staffId }

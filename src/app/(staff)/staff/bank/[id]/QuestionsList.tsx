@@ -190,7 +190,7 @@ export default function QuestionsList({
         const generateKey = (prefix: string) => `${questionId}-${prefix}`;
 
         return (
-            <Card className="group hover:shadow-md transition-shadow dark:bg-gray-800">
+            <Card className="group hover:shadow-md transition-shadow dark:bg-gray-900 bg-gray-50">
                 <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2 flex-1">

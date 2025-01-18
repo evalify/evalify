@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CustomImage } from '@/components/ui/custom-image';
+import { v4 as uuidv4 } from 'uuid';
 
 interface QuestionFormProps {
     topics: Array<{ id: string; name: string }>;
@@ -30,18 +31,17 @@ interface OptionWithImage {
     image?: string;
 }
 
-export default function EnhancedQuestionForm({
-    topics,
-    bankId,
-    onCancel,
-    onSave,
-    editingQuestion,
-    allTopics = [],
-    selectedTopicIds = [] // Add default value
+export default function EnhancedQuestionForm({ 
+    editingQuestion, 
+    topics, 
+    bankId, 
+    onCancel, 
+    onSave, 
+    selectedTopicIds = [] 
 }: QuestionFormProps) {
     const { toast } = useToast();
     const [type, setType] = useState<QuestionType>(editingQuestion?.type || "MCQ");
-    const [content, setContent] = useState(editingQuestion?.content || "");
+    const [content, setContent] = useState(editingQuestion?.content || editingQuestion?.question || "");
     const [difficulty, setDifficulty] = useState<DifficultyLevel>(editingQuestion?.difficulty || "MEDIUM");
     const [marks, setMarks] = useState(editingQuestion?.marks?.toString() || "1");
     const [selectedTopics, setSelectedTopics] = useState<string[]>(() => {
@@ -51,7 +51,6 @@ export default function EnhancedQuestionForm({
         return selectedTopicIds; // Use the selected topic IDs instead of empty array
     });
     const [explanation, setExplanation] = useState(editingQuestion?.explanation || "");
-    const [correctOptions, setCorrectOptions] = useState<number[]>(editingQuestion?.answer || []);
     const [correctAnswer, setCorrectAnswer] = useState(editingQuestion?.expectedAnswer || "");
     const [sampleAnswer, setSampleAnswer] = useState(editingQuestion?.expectedAnswer || "");
     const [testCases, setTestCases] = useState(editingQuestion?.testCases || "");
@@ -60,6 +59,13 @@ export default function EnhancedQuestionForm({
 
     // Add helper for true/false options initialization
     const initializeOptions = () => {
+        if (editingQuestion?.options) {
+            return editingQuestion.options.map(opt => ({
+                ...opt,
+                optionId: opt.optionId || uuidv4().replace(/-/g, ''),
+            }));
+        }
+
         if (type === 'TRUE_FALSE') {
             return [
                 { optionId: 'true-option', option: 'True' },
@@ -67,17 +73,25 @@ export default function EnhancedQuestionForm({
             ];
         }
 
-        if (editingQuestion?.type === 'MCQ') {
-            return editingQuestion.options;
-        }
-
         return Array(4).fill('').map(() => ({
-            optionId: crypto.randomUUID().replace(/-/g, ''),
+            optionId: uuidv4().replace(/-/g, ''),
             option: ''
         }));
     };
 
+    // Update correct options initialization to handle editing mode
+    const initializeCorrectOptions = () => {
+        if (editingQuestion?.answer) {
+            const optionIds = editingQuestion.options?.map(opt => opt.optionId) || [];
+            return editingQuestion.answer.map(answerId => 
+                optionIds.findIndex(id => id === answerId)
+            ).filter(index => index !== -1);
+        }
+        return [];
+    };
+
     const [optionsWithIds, setOptionsWithIds] = useState<OptionWithImage[]>(initializeOptions);
+    const [correctOptions, setCorrectOptions] = useState<number[]>(initializeCorrectOptions());
 
     const [selectedAnswer, setSelectedAnswer] = useState<string>(() => {
         if (editingQuestion?.type === 'TRUE_FALSE') {
@@ -97,7 +111,7 @@ export default function EnhancedQuestionForm({
                 setCorrectOptions([]);
             } else {
                 setOptionsWithIds(Array(4).fill('').map(() => ({
-                    optionId: crypto.randomUUID().replace(/-/g, ''),
+                    optionId: uuidv4().replace(/-/g, ''),
                     option: ''
                 })));
             }
@@ -180,7 +194,7 @@ export default function EnhancedQuestionForm({
             type,
             difficulty,
             topics: selectedTopics,
-            bankId,
+            bankId,  // Use bankId directly from props
             explanation: explanation.trim(),
             question: content,
             mark: parseInt(marks)
@@ -239,7 +253,7 @@ export default function EnhancedQuestionForm({
                 title: "Success",
                 description: editingQuestion ? "Question updated successfully" : "Question added successfully"
             });
-            onSave();
+            onSave();  // Use onSave directly from props
         } catch (error) {
             toast({
                 title: "Error",
@@ -393,7 +407,7 @@ export default function EnhancedQuestionForm({
     };
 
     return (
-        <Card className="w-full dark:bg-gray-800 dark:border-gray-700">
+        <Card className="w-full  dark:border-gray-700">
             <CardHeader className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white dark:from-purple-600 dark:to-indigo-700">
                 <CardTitle className="text-2xl flex items-center gap-2">
                     {editingQuestion ? (
@@ -458,8 +472,8 @@ export default function EnhancedQuestionForm({
                                         {optionsWithIds.map((option, index) => (
                                             <div key={option.optionId}
                                                 className={`flex items-center gap-2 ${type === "TRUE_FALSE"
-                                                    ? "justify-center p-4 hover:bg-gray-100 cursor-pointer"
-                                                    : "bg-gray-50 p-3"
+                                                    ? "justify-center p-4 hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer"
+                                                    : "bg-gray-50 dark:bg-gray-900 p-3"
                                                     } rounded-md`}
                                                 onClick={() => {
                                                     if (type === "TRUE_FALSE") {
@@ -583,7 +597,7 @@ export default function EnhancedQuestionForm({
                         </div>
 
                         <div className="space-y-6">
-                            <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                            <div className="p-4 rounded-lg space-y-4">
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
                                     <AlertTriangle className="h-5 w-5 text-yellow-500" />
                                     Settings
