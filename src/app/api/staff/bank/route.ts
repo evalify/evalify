@@ -17,7 +17,7 @@ export async function GET(req: Request) {
         const sort = searchParams.get('sort') || 'name'
 
         const staff = await prisma.staff.findFirst({
-            where: { userId: session.user.id }
+            where: { id: session.user.id }
         });
 
         // Try to get from cache first
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
         // Get the staff record
         const staff = await prisma.staff.findFirst({
             where: {
-                userId: session.user.id
+                id: session.user.id
             }
         });
 

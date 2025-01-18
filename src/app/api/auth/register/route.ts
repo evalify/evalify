@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
         const formData = await req.formData();
         type Role = 'STUDENT' | 'ADMIN' | 'STAFF';
 
-        // Input validation
+
         const name = formData.get('name')?.toString();
         const email = formData.get('email')?.toString();
         const password = formData.get('password')?.toString();
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
         const rollNo = formData.get('rollNo')?.toString();
         const imageFile = formData.get('image') as File | null;
 
-        // Required field validation
+
         if (!name || !email || !password) {
             return new NextResponse(
                 JSON.stringify({ error: 'Name, email, and password are required.' }),
@@ -33,12 +33,12 @@ export async function POST(req: NextRequest) {
                 imageUrl = await uploadFile(buffer, fileName, imageFile.type, 'profile-pics');
             } catch (uploadError) {
                 console.log('Image upload failed:', uploadError);
-                // Continue registration without image if upload fails
+
             }
         }
 
         const hashedPassword = await hash(password, 10);
-
+        const now = new Date();
         const userData = {
             name,
             email,
@@ -47,28 +47,33 @@ export async function POST(req: NextRequest) {
             phoneNo: phoneNo || null,
             rollNo: rollNo || null,
             image: imageUrl,
-            createdAt: new Date(),
-            lastPasswordChange: new Date(),
+            createdAt: now,
+            lastPasswordChange: now,
             isActive: true
         };
 
-        const newUser = await prisma.user.create({ data: userData });
 
-        if (newUser.role === 'STUDENT') {
-            await prisma.student.create({
-                data: {
-                    userId: newUser.id
-                }
-            })
-        } else if (newUser.role === 'STAFF') {
-            await prisma.staff.create({
-                data: {
-                    userId: newUser.id
-                }
-            })
-        }
+        const newUser = await prisma.$transaction(async (tx) => {
+            const user = await tx.user.create({ data: userData });
 
-        // Remove sensitive data before sending response
+            if (user.role === 'STUDENT') {
+                await tx.student.create({
+                    data: {
+                        id: user.id
+                    }
+                });
+            } else if (user.role === 'STAFF') {
+                await tx.staff.create({
+                    data: {
+                        id: user.id
+                    }
+                });
+            }
+
+            return user;
+        });
+
+
         const { password: _, ...userResponse } = newUser;
 
         return new NextResponse(

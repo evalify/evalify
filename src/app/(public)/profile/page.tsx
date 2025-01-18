@@ -23,6 +23,7 @@ interface UserData {
     email: string
     role: string
     lastPasswordChange: string
+    createdAt: string
 }
 
 
@@ -30,20 +31,21 @@ interface UserData {
 export default function UserProfilePage() {
     const { data: session } = useSession()
     const { toast } = useToast()
+    const router = useRouter()
 
     const search = new URLSearchParams(window.location.search).get('profile')
-    const router = useRouter()
 
     const [isEditing, setIsEditing] = useState(false)
     const [user, setUser] = useState<UserData | null>(null)
     const [formData, setFormData] = useState({
-        name: '',
+        name: session?.user?.name || '',
         phoneNo: '',
-        image: '',
+        image: session?.user?.image || '',
     })
     const [passwordData, setPasswordData] = useState({
         oldPassword: '',
         newPassword: '',
+        confirmNewPassword: '',
     })
     const [showCropper, setShowCropper] = useState(false)
     const [cropImage, setCropImage] = useState<string | null>(null)
@@ -58,11 +60,17 @@ export default function UserProfilePage() {
                 const data = await response.json()
                 if (response.ok) {
                     setUser(data.user)
-                    setFormData({
-                        name: data.user.name || '',
+                    setFormData(prev => ({
+                        ...prev,
+                        name: data.user.name || prev.name,
                         phoneNo: data.user.phoneNo || '',
-                        image: data.user.image || '',
-                    })
+                        image: data.user.image || prev.image,
+                    }))
+
+                    // Check if password change is required
+                    if (new Date(data.user.createdAt).getTime() === new Date(data.user.lastPasswordChange).getTime()) {
+                        router.push('/auth/change-password')
+                    }
                 } else {
                     toast({
                         variant: "destructive",
@@ -80,7 +88,7 @@ export default function UserProfilePage() {
         }
 
         fetchUser()
-    }, [session, toast])
+    }, [session, toast, router])
 
     const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target
@@ -202,9 +210,44 @@ export default function UserProfilePage() {
         }
     }
 
+    const validatePassword = (password: string) => {
+        if (password.length < 8) {
+            return 'Password must be at least 8 characters long';
+        }
+        if (!/[A-Z]/.test(password)) {
+            return 'Password must contain at least one uppercase letter';
+        }
+        if (!/[a-z]/.test(password)) {
+            return 'Password must contain at least one lowercase letter';
+        }
+        if (!/[0-9]/.test(password)) {
+            return 'Password must contain at least one number';
+        }
+        return null;
+    };
+
     const changePassword = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!session?.user?.email) return
+
+        const passwordError = validatePassword(passwordData.newPassword);
+        if (passwordError) {
+            toast({
+                variant: "destructive",
+                title: "Invalid Password",
+                description: passwordError,
+            });
+            return;
+        }
+
+        if (passwordData.newPassword !== passwordData.confirmNewPassword) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "New passwords do not match",
+            });
+            return;
+        }
 
         try {
             const response = await fetch('/api/profile', {
@@ -219,7 +262,7 @@ export default function UserProfilePage() {
                     title: "Success",
                     description: "Password changed successfully",
                 })
-                setPasswordData({ oldPassword: '', newPassword: '' })
+                setPasswordData({ oldPassword: '', newPassword: '', confirmNewPassword: '' })
             } else {
                 toast({
                     variant: "destructive",
@@ -295,23 +338,23 @@ export default function UserProfilePage() {
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-muted">
                                 <User className="h-32 w-32 text-muted-foreground" />
-                                    {isEditing && (
-                                        <label htmlFor="imageUpload" className="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer">
-                                            <Upload className="h-8 w-8 text-white" />
-                                            <input
-                                                id="imageUpload"
-                                                type="file"
-                                                className="hidden"
-                                                accept="image/*"
-                                                onChange={handleImageSelect}
-                                                ref={fileInputRef}
-                                            />
-                                        </label>
-                                    )}
+                                {isEditing && (
+                                    <label htmlFor="imageUpload" className="absolute inset-0 flex items-center justify-center bg-black/50 cursor-pointer">
+                                        <Upload className="h-8 w-8 text-white" />
+                                        <input
+                                            id="imageUpload"
+                                            type="file"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handleImageSelect}
+                                            ref={fileInputRef}
+                                        />
+                                    </label>
+                                )}
                             </div>
-                            
+
                         )}
- 
+
                     </div>
                     <div className="flex flex-col gap-2">
                         {formData.image && isEditing && (
@@ -405,6 +448,7 @@ export default function UserProfilePage() {
                                             type="password"
                                             value={passwordData.oldPassword}
                                             onChange={handlePasswordChange}
+                                            required
                                         />
                                     </div>
                                     <div className="space-y-2">
@@ -415,7 +459,29 @@ export default function UserProfilePage() {
                                             type="password"
                                             value={passwordData.newPassword}
                                             onChange={handlePasswordChange}
+                                            required
+                                            placeholder="At least 8 characters"
                                         />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                                        <Input
+                                            id="confirmNewPassword"
+                                            name="confirmNewPassword"
+                                            type="password"
+                                            value={passwordData.confirmNewPassword}
+                                            onChange={handlePasswordChange}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="text-sm text-muted-foreground space-y-1">
+                                        <p>Password must contain:</p>
+                                        <ul className="list-disc pl-4">
+                                            <li>At least 8 characters</li>
+                                            <li>One uppercase letter</li>
+                                            <li>One lowercase letter</li>
+                                            <li>One number</li>
+                                        </ul>
                                     </div>
                                     <Button type="submit" className="w-full">
                                         Change Password

@@ -9,7 +9,7 @@ export const PATCH = async (
     { params }: { params: { id: string, questionId: string } }
 ) => {
     try {
-        const { id, questionId } = params;
+        const { id, questionId } = await params;
         const session = await auth();
         if (!session?.user?.role || session.user.role !== "STAFF") {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });

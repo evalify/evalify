@@ -12,7 +12,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         const staff = await prisma.staff.findFirst({
             where: {
-                userId: session.user.id
+                id: session.user.id
             }
         });
 

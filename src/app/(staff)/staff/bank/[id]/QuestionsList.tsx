@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Question } from "@/types/questions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, Edit2, Trash2, Code, FileText, ListChecks, Type } from "lucide-react";
+import { MoreVertical, Edit2, Trash2, Code, FileText, ListChecks, Type, Plus, X } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -21,7 +21,15 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import TiptapRenderer from '@/components/ui/tiptap-renderer';
+import { LatexPreview } from '@/components/latex-preview';
+import { CustomImage } from '@/components/ui/custom-image';
+
+interface Topic {
+    id: string;
+    name: string;
+}
 
 interface QuestionsListProps {
     questions: Question[];
@@ -29,7 +37,7 @@ interface QuestionsListProps {
     bankId: string;
     topic: string[];
     onEdit: (question: Question) => void;
-    allTopics: string[]; 
+    allTopics: string[];
 }
 
 export default function QuestionsList({
@@ -38,7 +46,7 @@ export default function QuestionsList({
     bankId,
     topic,
     onEdit,
-    allTopics 
+    allTopics
 }: QuestionsListProps) {
     const { toast } = useToast();
     const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; questionId: string | null }>({
@@ -53,7 +61,7 @@ export default function QuestionsList({
         setAvailableTopics(prev => [...prev, newTopic]);
     };
 
-    
+
     useEffect(() => {
         const fetchBankTopics = async () => {
             try {
@@ -74,7 +82,7 @@ export default function QuestionsList({
         fetchBankTopics();
     }, [bankId]);
 
-    
+
     const validQuestions = useMemo(() => {
         return Array.isArray(questions) ? questions : [];
     }, [questions]);
@@ -93,7 +101,7 @@ export default function QuestionsList({
 
             toast({ title: "Success", description: "Question deleted successfully" });
 
-            
+
             onQuestionUpdate(topic);
 
         } catch (error) {
@@ -106,31 +114,61 @@ export default function QuestionsList({
         setDeleteDialog({ isOpen: false, questionId: null });
     };
 
-    const handleTopicsChange = async (questionId: string, newTopics: string[]) => {
+    const handleTopicSelect = async (questionId: string, topicId: string, existingTopics: string[]) => {
+        const updatedTopics = [...existingTopics, topicId];
         try {
             const response = await fetch(`/api/staff/bank/${bankId}/questions/${questionId}/topics`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topics: newTopics })
+                body: JSON.stringify({ topics: updatedTopics })
             });
 
             if (!response.ok) {
-                throw new Error('Failed to update topics');
+                throw new Error('Failed to update topic');
             }
 
-            
             if (onQuestionUpdate) {
-                onQuestionUpdate(newTopics);
+                onQuestionUpdate(updatedTopics);
             }
 
             toast({
                 title: "Success",
-                description: "Topics updated successfully"
+                description: "Topic added successfully"
             });
         } catch (error) {
             toast({
                 title: "Error",
-                description: "Failed to update topics",
+                description: "Failed to update topic",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const handleRemoveTopic = async (questionId: string, topicIdToRemove: string, existingTopics: string[]) => {
+        const updatedTopics = existingTopics.filter(id => id !== topicIdToRemove);
+        try {
+            const response = await fetch(`/api/staff/bank/${bankId}/questions/${questionId}/topics`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topics: updatedTopics })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to remove topic');
+            }
+
+            if (onQuestionUpdate) {
+                onQuestionUpdate(updatedTopics);
+            }
+
+            toast({
+                title: "Success",
+                description: "Topic removed successfully"
+            });
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to remove topic",
                 variant: "destructive"
             });
         }
@@ -146,13 +184,13 @@ export default function QuestionsList({
         }
     };
 
-    
+
     const renderQuestionCard = useCallback((question: Question) => {
         const questionId = question._id || question.id;
         const generateKey = (prefix: string) => `${questionId}-${prefix}`;
 
         return (
-            <Card className="group hover:shadow-md transition-shadow">
+            <Card className="group hover:shadow-md transition-shadow dark:bg-gray-800">
                 <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2 flex-1">
@@ -160,7 +198,9 @@ export default function QuestionsList({
                                 {getQuestionIcon(question.type)}
                                 <span className="text-sm">{question.type}</span>
                             </div>
-                            <p className="font-medium">{question.content}</p>
+                            <div className="prose dark:prose-invert max-w-none">
+                                <TiptapRenderer content={question.question} />
+                            </div>
                         </div>
                         <div className="flex items-start gap-2">
                             <div className="flex flex-col items-end gap-2">
@@ -170,7 +210,7 @@ export default function QuestionsList({
                                 }>
                                     {question.difficulty}
                                 </Badge>
-                                <Badge variant="outline">{question.marks} marks</Badge>
+                                <Badge variant="outline">{`${question.mark} marks`}</Badge>
                             </div>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -197,60 +237,90 @@ export default function QuestionsList({
                             </DropdownMenu>
                         </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        {question.topics?.map((topic) => (
-                            <Badge key={topic} variant="outline">
-                                {topic}
-                            </Badge>
-                        ))}
+                    <div className="flex flex-row justify-between">
+                        <div className="flex flex-wrap gap-2">
+                            {question.topics?.map((topicId) => (
+                                <Badge key={topicId} variant="outline" className="flex items-center gap-1">
+                                    {(availableTopics.find(t => t.id === topicId))?.name || topicId}
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleRemoveTopic(questionId, topicId, question.topics || []);
+                                        }}
+                                        className="ml-1 hover:text-destructive"
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                </Badge>
+                            ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Add Topic:</span>
+                            <Select
+                                onValueChange={(value) => handleTopicSelect(questionId, value, question.topics || [])}
+                            >
+                                <SelectTrigger className="w-64">
+                                    <SelectValue>
+                                        <span>Add Topic</span>
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableTopics
+                                        .filter(topic => !(question.topics || []).includes(topic.id))
+                                        .map((topic) => (
+                                            <SelectItem key={topic.id} value={topic.id}>
+                                                <div className="flex items-center gap-2">
+                                                    <Plus className="h-4 w-4" />
+                                                    <span>{topic.name}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Topics:</span>
-                        <MultiSelect
-                            options={availableTopics.map(t => ({ value: t, label: t })) || []}
-                            value={(question.topics || []).map(t => ({ value: t, label: t }))}
-                            onChange={(selected) => {
-                                const newTopics = selected.map(s => s.value);
-                                handleTopicsChange(question._id || question.id, newTopics);
-                            }}
-                            onInputChange={setInputValue}
-                            inputValue={inputValue}
-                            onCreateOption={(inputValue) => {
-                                handleCreateTopic(inputValue);
-                                setInputValue('');
-                            }}
-                            creatable
-                            placeholder="Select or add topics..."
-                            className="flex-1"
-                        />
-                    </div>
+
                 </CardHeader>
                 <CardContent>
                     {/* Question type specific content */}
                     <div className="pl-6 border-l-2 border-muted">
                         {(question.type === 'MCQ' || question.type === 'TRUE_FALSE') && (
                             <div className="space-y-2">
-                                {question.options?.map((option, idx) => (
+                                {question.options?.map((option) => (
                                     <div
-                                        key={`${questionId}-option-${idx}`}
-                                        className={`p-2 rounded ${idx === question.correctOption
-                                                ? 'bg-green-100 dark:bg-green-900'
-                                                : 'bg-gray-50 dark:bg-gray-800'
+                                        key={option.optionId}
+                                        className={`p-2 rounded ${question.answer.includes(option.optionId)
+                                            ? 'bg-green-100 dark:bg-green-900'
+                                            : 'bg-gray-50 dark:bg-gray-800'
                                             }`}
                                     >
-                                        {option}
+                                        <div className="flex items-center gap-4">
+                                            {/* Option text with LaTeX support */}
+                                            <div className="flex-1">
+                                                <LatexPreview content={option.option} />
+                                            </div>
+                                            {/* Option image if exists */}
+                                            {option.image && (
+                                                <CustomImage 
+                                                    src={option.image} 
+                                                    alt={`Option ${option.option}`}
+                                                    className="rounded"
+                                                />
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         )}
                         {question.type === 'FILL_IN_BLANK' && (
                             <div key={generateKey('fill')}>
-                                Answer: {question.correctAnswer}
+                                Answer: <LatexPreview content={question.expectedAnswer} />
                             </div>
                         )}
-                        {question.type === 'DESCRIPTIVE' && question.sampleAnswer && (
+                        {question.type === 'DESCRIPTIVE' && question.expectedAnswer && (
                             <div key={generateKey('desc')}>
-                                Sample Answer: {question.sampleAnswer}
+                                <h4 className="font-medium mb-2">Sample Answer:</h4>
+                                <TiptapRenderer content={question.expectedAnswer} />
                             </div>
                         )}
                         {question.type === 'CODING' && question.testCases && (
@@ -268,7 +338,7 @@ export default function QuestionsList({
                 </CardContent>
             </Card>
         );
-    }, [onEdit, availableTopics, handleTopicsChange, inputValue]); 
+    }, [onEdit, availableTopics, handleTopicSelect, handleRemoveTopic]);
 
     if (validQuestions.length === 0) {
         return <div className="text-muted-foreground">No questions available</div>;

@@ -19,12 +19,12 @@ export async function GET(
         let query = { bankId: id };
 
         if (topicsParam) {
-            const searchTopics = topicsParam.split(',').filter(Boolean).map(t => t.trim());
-            if (searchTopics.length > 0) {
+            const topicIds = topicsParam.split(',').filter(Boolean);
+            if (topicIds.length > 0) {
                 query = {
                     ...query,
                     topics: {
-                        $elemMatch: { $in: searchTopics }
+                        $in: topicIds 
                     }
                 };
             }
@@ -37,6 +37,7 @@ export async function GET(
             .toArray();
 
         return NextResponse.json({ questions }, { status: 200 });
+
     } catch (error) {
         console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
@@ -55,21 +56,20 @@ export async function POST(
         }
 
         const question = await req.json();
+        
+        const newQuestion = {
+            ...question,
+            createdBy: session.user.id,
+            createdAt: new Date().toISOString(),
+            bankId: id
+        };
 
-        const topics = Array.isArray(question.topics) ? question.topics : [question.topics].filter(Boolean);
-
-        const { _id, ...questionData } = question;
-
-        const newQuestion = await (await clientPromise)
+        const result = await (await clientPromise)
             .db()
             .collection('QUESTION_BANK')
-            .insertOne({
-                ...questionData,
-                topics,
-                bankId: id,
-            });
+            .insertOne(newQuestion);
 
-        return NextResponse.json(newQuestion, { status: 201 });
+        return NextResponse.json(result, { status: 201 });
     } catch (error) {
         console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });

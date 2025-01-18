@@ -14,7 +14,7 @@ export async function POST(
         }
 
         const staff = await prisma.staff.findFirst({
-            where: { userId: session.user.id }
+            where: { id: session.user.id }
         });
 
         const bank = await prisma.bank.findFirst({
@@ -73,7 +73,7 @@ export async function DELETE(
         }
 
         const staff = await prisma.staff.findFirst({
-            where: { userId: session.user.id }
+            where: { id: session.user.id }
         });
 
         const bank = await prisma.bank.findFirst({

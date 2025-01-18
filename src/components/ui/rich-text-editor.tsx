@@ -10,12 +10,35 @@ import {
     Quote, Code, Link, Undo, Redo
 } from 'lucide-react';
 import { Separator } from './separator';
+import { Extension } from '@tiptap/core';
 
 interface RichTextEditorProps {
     content: string;
     onChange: (content: string) => void;
     placeholder?: string;
 }
+
+// Make sure LaTeX is exported
+export const LaTeX = Extension.create({
+    name: 'latex',
+    addGlobalAttributes() {
+        return [
+            {
+                types: ['textStyle'],
+                attributes: {
+                    latex: {
+                        default: false,
+                        parseHTML: element => element.hasAttribute('data-latex'),
+                        renderHTML: attributes => {
+                            if (!attributes.latex) return {};
+                            return { 'data-latex': '' };
+                        }
+                    }
+                }
+            }
+        ];
+    }
+});
 
 export function RichTextEditor({ content, onChange, placeholder }: RichTextEditorProps) {
     const editor = useEditor({
@@ -27,9 +50,11 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
             }),
             Image.configure({
                 HTMLAttributes: {
-                    class: 'max-w-full rounded-lg',
+                    class: 'max-w-full rounded-lg dark:border-gray-700',
                 },
+                inline: true,
             }),
+            LaTeX,
         ],
         content,
         onUpdate: ({ editor }) => {
@@ -66,11 +91,19 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
         }
     };
 
+    // Add LaTeX button handler
+    const insertLatex = () => {
+        const latex = prompt('Enter LaTeX formula:');
+        if (latex) {
+            editor?.chain().focus().insertContent(`$${latex}$`).run();
+        }
+    };
+
     if (!editor) return null;
 
     return (
-        <div className="border rounded-lg overflow-hidden">
-            <div className="border-b bg-muted/50 p-2 flex flex-wrap gap-1">
+        <div className="border rounded-lg overflow-hidden dark:border-gray-700">
+            <div className="border-b bg-muted/50 p-2 flex flex-wrap gap-1 dark:border-gray-700">
                 <div className="flex items-center gap-1">
                     <Button
                         variant="ghost"
@@ -98,91 +131,10 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
                     </Button>
                 </div>
 
-                <Separator orientation="vertical" className="h-6" />
-
-                <div className="flex items-center gap-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                        className={editor.isActive('heading', { level: 1 }) ? 'bg-muted' : ''}
-                    >
-                        <Heading1 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                        className={editor.isActive('heading', { level: 2 }) ? 'bg-muted' : ''}
-                    >
-                        <Heading2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                        className={editor.isActive('heading', { level: 3 }) ? 'bg-muted' : ''}
-                    >
-                        <Heading3 className="h-4 w-4" />
-                    </Button>
-                </div>
 
                 <Separator orientation="vertical" className="h-6" />
 
                 <div className="flex items-center gap-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                        className={editor.isActive({ textAlign: 'left' }) ? 'bg-muted' : ''}
-                    >
-                        <AlignLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                        className={editor.isActive({ textAlign: 'center' }) ? 'bg-muted' : ''}
-                    >
-                        <AlignCenter className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                        className={editor.isActive({ textAlign: 'right' }) ? 'bg-muted' : ''}
-                    >
-                        <AlignRight className="h-4 w-4" />
-                    </Button>
-                </div>
-
-                <Separator orientation="vertical" className="h-6" />
-
-                <div className="flex items-center gap-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleBulletList().run()}
-                        className={editor.isActive('bulletList') ? 'bg-muted' : ''}
-                    >
-                        <List className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                        className={editor.isActive('orderedList') ? 'bg-muted' : ''}
-                    >
-                        <ListOrdered className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                        className={editor.isActive('blockquote') ? 'bg-muted' : ''}
-                    >
-                        <Quote className="h-4 w-4" />
-                    </Button>
                     <Button
                         variant="ghost"
                         size="sm"
@@ -225,6 +177,18 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
                             onChange={handleImageUpload}
                         />
                         <ImageIcon className="h-4 w-4" />
+                    </Button>
+                </div>
+
+                <Separator orientation="vertical" className="h-6" />
+
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={insertLatex}
+                    >
+                        <span className="font-serif">TEX</span>
                     </Button>
                 </div>
             </div>

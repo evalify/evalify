@@ -26,7 +26,7 @@ export async function GET(req: Request) {
             where: {
                 quizId: quizId,
                 student: {
-                    userId: id
+                    id: id
                 }
             }
         });

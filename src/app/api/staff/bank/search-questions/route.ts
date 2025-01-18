@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
         // Validate staff has access to these banks
         const staff = await prisma.staff.findFirst({
-            where: { userId: session.user.id }
+            where: { id: session.user.id }
         });
 
         const accessibleBanks = await prisma.bank.findMany({

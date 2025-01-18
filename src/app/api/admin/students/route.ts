@@ -106,7 +106,7 @@ export async function PUT(req: Request) {
 
         await prisma.student.updateMany({
             where: {
-                userId: {
+                id: {
                     in: studentIds
                 }
             },

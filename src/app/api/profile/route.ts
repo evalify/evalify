@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { compare, hash } from 'bcryptjs';
-import { prisma } from '@/lib/db/prismadb'; // Assuming Prisma is set up
+import { prisma } from '@/lib/db/prismadb';
 
 
-// Fetch user profile
+
 export async function GET(req: NextRequest) {
     try {
         const email = req.nextUrl.searchParams.get('email');
+        const rollNo = req.nextUrl.searchParams.get('rollNo');
 
-        if (!email) {
-            return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
+        if (!email && !rollNo) {
+            return NextResponse.json({ error: 'Email or Roll Number is required.' }, { status: 400 });
         }
 
         const user = await prisma.user.findUnique({
-            where: { email },
+            where: rollNo ? { rollNo } : { email },
             select: {
                 id: true,
                 name: true,
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
     }
 }
 
-// Update user profile
+
 export async function PUT(req: NextRequest) {
     try {
         const body = await req.json();
@@ -61,19 +62,35 @@ export async function PUT(req: NextRequest) {
     }
 }
 
-// Change user password
+
 export async function PATCH(req: NextRequest) {
     try {
         const body = await req.json();
         const { email, oldPassword, newPassword } = body;
 
         if (!email || !oldPassword || !newPassword) {
-            return NextResponse.json({ error: 'Email, old password, and new password are required.' }, { status: 400 });
+            return NextResponse.json({
+                error: 'Email, current password, and new password are required.'
+            }, { status: 400 });
         }
 
-        const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !(await compare(oldPassword, user.password))) {
-            return NextResponse.json({ error: 'Invalid credentials.' }, { status: 401 });
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: {
+                password: true,
+                createdAt: true,
+                lastPasswordChange: true
+            }
+        });
+
+        if (!user) {
+            return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+        }
+
+        const isFirstTimeChange = new Date(user.createdAt).getTime() === new Date(user.lastPasswordChange).getTime();
+
+        if (!isFirstTimeChange && !(await compare(oldPassword, user.password))) {
+            return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 401 });
         }
 
         const hashedPassword = await hash(newPassword, 10);
@@ -82,13 +99,13 @@ export async function PATCH(req: NextRequest) {
             where: { email },
             data: {
                 password: hashedPassword,
-                lastPasswordChange: new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+                lastPasswordChange: new Date()
             },
         });
 
         return NextResponse.json({ message: 'Password changed successfully.' });
     } catch (error) {
-        console.log('Error changing password:', error);
+        console.error('Error changing password:', error);
         return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 });
     }
 }
