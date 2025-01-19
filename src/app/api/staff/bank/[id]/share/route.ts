@@ -19,10 +19,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         if (!staff) {
             return NextResponse.json({ message: "Staff not found" }, { status: 404 })
         }
-
+        const { id } = await params;
         const bank = await prisma.bank.findFirst({
             where: {
-                id: await params.id,
+                id: id,
                 bankOwners: {
                     some: {
                         id: staff.id
@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         const { staffId } = await req.json()
 
         await prisma.bank.update({
-            where: { id: await params.id },
+            where: { id: id },
             data: {
                 staffs: {
                     connect: { id: staffId }
@@ -70,10 +70,10 @@ export async function DELETE(
         }
 
         const { staffId } = await req.json()
-
+        const {id} = await params;
         const bank = await prisma.bank.findFirst({
             where: {
-                id: await params.id,
+                id: id,
                 bankOwners: {
                     some: {
                         id: session.user.staffId
@@ -87,7 +87,7 @@ export async function DELETE(
         }
 
         await prisma.bank.update({
-            where: { id: await params.id },
+            where: { id: id },
             data: {
                 staffs: {
                     disconnect: { id: staffId }

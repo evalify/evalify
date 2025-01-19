@@ -8,6 +8,7 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
+        const { id } = await params;
         const session = await auth();
         if (!session?.user?.role || session.user.role !== "STAFF") {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
@@ -19,7 +20,7 @@ export async function PATCH(
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: await params.id,
+                id: id,
                 bankOwners: {
                     some: {
                         id: staff.id
@@ -34,9 +35,8 @@ export async function PATCH(
 
         const body = await req.json()
         const { name, description, semester } = body
-
         const updatedBank = await prisma.bank.update({
-            where: { id: await params.id },
+            where: { id: id },
             data: { name, description, semester }
         })
 
@@ -59,7 +59,7 @@ export async function DELETE(
         if (session?.user?.role !== "STAFF") {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
-
+        const { id } = await params;
         const staff = await prisma.staff.findFirst({
             where: { id: session.user.id }
         });
@@ -70,7 +70,7 @@ export async function DELETE(
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: await params.id,
+                id: id,
                 bankOwners: {
                     some: {
                         id: staff.id
@@ -85,7 +85,7 @@ export async function DELETE(
 
         await prisma.bank.delete({
             where: {
-                id: await params.id
+                id: id
             }
         })
 
