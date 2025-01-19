@@ -134,6 +134,7 @@ const QuizPage = () => {
     const [imageLoadingStates, setImageLoadingStates] = useState<Record<string, boolean>>({})
     const [imageErrorStates, setImageErrorStates] = useState<Record<string, boolean>>({})
     const [isTimeWarning, setIsTimeWarning] = useState(false);
+    const [warningMessage, setWarningMessage] = useState<string | null>(null);
     const router = useRouter()
 
     // Update local storage key handling
@@ -209,7 +210,9 @@ const QuizPage = () => {
         // Add time warning effect
         if (timeLeft === 300) { // 5 minutes = 300 seconds
             setIsTimeWarning(true);
-            alert("Only 5 minutes remaining! Quiz will be auto-submitted after time is up.");
+            setWarningMessage("Only 5 minutes remaining! Quiz will be auto-submitted after time is up.");
+            // Auto-hide warning after 10 seconds
+            setTimeout(() => setWarningMessage(null), 10000);
         }
     }, [timeLeft]);
 
@@ -439,6 +442,11 @@ const QuizPage = () => {
                     <div className="flex justify-between items-center">
                         <div>
                             <h1 className="text-2xl font-bold">{quiz.title}</h1>
+                            {warningMessage && (
+                                <div className="mt-2 text-sm text-red-600 bg-red-100 px-3 py-2 rounded-md animate-pulse">
+                                    {warningMessage}
+                                </div>
+                            )}
                             <div className="flex items-center mt-2 text-sm text-muted-foreground">
                                 <Progress value={calculateProgress()} className="w-40 mr-2" />
                                 <span>{Math.round(calculateProgress())}% complete</span>
@@ -449,12 +457,15 @@ const QuizPage = () => {
                                 Question {currentQuestionIndex + 1} of {questions.length}
                             </div>
                             <div className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-full",
+                                "flex items-center gap-2 px-3 py-2 rounded-full transition-colors duration-300",
                                 isTimeWarning 
-                                    ? "bg-red-100 text-red-600 animate-pulse" 
+                                    ? "bg-red-100 text-red-600 font-bold" 
                                     : "bg-primary/10"
                             )}>
-                                <Clock className="h-4 w-4" />
+                                <Clock className={cn(
+                                    "h-4 w-4",
+                                    isTimeWarning && "animate-pulse"
+                                )} />
                                 <span className="font-medium">
                                     {formatTime(timeLeft || 0)}
                                 </span>
