@@ -4,18 +4,25 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { isValidQuizId } from '@/utils/validation'
-import { MCQCard } from './_component/mcq-card'
-import { DescriptiveCard } from './_component/descriptive-card'
-import { fetchQuestions, createQuestion, updateQuestion, deleteQuestion } from './_component/api'
+import { fetchQuestions } from './_component/api'
 import { Question } from './_component/types'
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Plus } from 'lucide-react'
-import CodeCard from './_component/code-card'
 import { BankSearchDialog } from './_component/bank-search-dialog'
+import QuestionsList from '@/components/bank/QuestionsList'
+import QuestionForm from '@/components/bank/QuestionForm'
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+} from "@/components/ui/sheet";
 
 export default function QuizPage() {
     const { quizid } = useParams()
     const [questions, setQuestions] = useState<Question[]>([])
+    const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+    const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
     const router = useRouter()
     useEffect(() => {
         if (!quizid || !isValidQuizId(quizid as string)) {
@@ -38,85 +45,106 @@ export default function QuizPage() {
         }
     }
 
-    const handleSave = async (question: Question) => {
+    const handleSave = async (questionData: Question) => {
         try {
-            if (question._id?.startsWith('new-')) {
-                // Remove the temporary ID before creating
-                const { _id, ...newQuestion } = question
-                await createQuestion(quizid as string, newQuestion)
-                toast('Question created', {
-                    description: 'The question has been created successfully.',
+            const response = await fetch('/api/staff/quiz/questions', {
+                method: questionData._id ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...questionData,
+                    quizId: quizid,
+                    _id: questionData._id || questionData.id,
+                    question: questionData.content || questionData.question, // Ensure question content is properly mapped
+                    mark: parseInt(questionData.mark?.toString() || '1')
                 })
-            } else {
-                await updateQuestion(quizid as string, question._id!, question)
-                toast('Question updated', {
-                    description: 'The question has been updated successfully.',
-                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                toast.error(data.message || 'Failed to update question');
+                return;
             }
-            await loadQuestions() // Reload questions after save
+
+            toast.success('Question updated successfully');
+            await loadQuestions();
+            setIsAddingQuestion(false);
+            setEditingQuestion(null);
         } catch (error) {
-            toast('Error', {
-                description: error instanceof Error ? error.message : 'Failed to save question',
-            })
+            console.error('Save error:', error);
+            toast.error('Failed to save question');
         }
-    }
+    };
 
     const handleDelete = async (questionId: string) => {
         try {
-            await deleteQuestion(quizid as string, questionId)
-            toast('Question deleted', {
-                description: 'The question has been removed successfully.',
-            })
-            loadQuestions()
+            const response = await fetch(`/api/staff/quiz/questions`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    quizId: quizid,
+                    questionId
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                toast.error(data?.message || data?.error || 'Failed to delete question');
+                return;
+            }
+
+            toast.success('Question deleted successfully');
+            await loadQuestions(); // Reload the questions after successful deletion
         } catch (error) {
-            toast('Error', {
-                description: error instanceof Error ? error.message : 'Failed to delete question',
-            })
+            console.error('Delete error:', error);
+            toast.error('Failed to delete question');
         }
-    }
+    };
 
-    const addNewQuestion = (type: 'MCQ' | 'DESCRIPTIVE' | 'CODING') => {
-        const baseQuestion = {
-            _id: `new-${Date.now()}`,
-            difficulty: 'easy' as const,
-            marks: 1,
-            question: '',
-            explanation: '',
+    const handleQuestionsFromBank = async (bankQuestions: Question[]) => {
+        try {
+            // Add questions in batch
+            const response = await fetch('/api/staff/quiz/questions/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    quizId: quizid,
+                    questions: bankQuestions.map(q => ({
+                        ...q,
+                        bankId: q.bankId,
+                        topics: undefined // Remove topics for quiz questions
+                    }))
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to add questions');
+            }
+
+            toast.success(`Added ${bankQuestions.length} questions to quiz`);
+            loadQuestions(); // Reload questions after adding
+        } catch (error) {
+            toast.error('Failed to add questions from bank');
         }
+    };
 
-        const newQuestion: Question = type === 'MCQ'
-            ? {
-                ...baseQuestion,
-                type: 'MCQ',
-                options: [
-                    { option: '', optionId: '1' },
-                    { option: '', optionId: '2' },
-                    { option: '', optionId: '3' },
-                    { option: '', optionId: '4' }
-                ],
-                answer: []
-            } : (type === 'DESCRIPTIVE') ?
-                {
-                    ...baseQuestion,
-                    type: 'DESCRIPTIVE'
-                } : {
-                    ...baseQuestion,
-                    type: 'CODING',
-                    testCases: [],
-                    language: '',
-                    functionName: '',
-                }
-
-        setQuestions([...questions, newQuestion])
-    }
-
-    const handleQuestionsFromBank = (bankQuestions: Question[]) => {
-        // Add temporary IDs to the questions
-        const questionsWithIds = bankQuestions.map(q => ({
-            ...q,
-            _id: `new-${Date.now()}-${Math.random()}`
-        }));
-        setQuestions([...questions, ...questionsWithIds]);
+    const handleEdit = (question: Question) => {
+        // Transform the question data to match the form expectations
+        const transformedQuestion = {
+            ...question,
+            id: question._id || question.id,
+            content: question.question || question.content,
+            topics: question.topics || [],
+            options: question.options || [],
+            answer: question.answer || [],
+            expectedAnswer: question.expectedAnswer || '',
+            mark: question.mark || 1,
+            difficulty: question.difficulty || 'MEDIUM',
+            type: question.type || 'MCQ'
+        };
+        setEditingQuestion(transformedQuestion);
+        setIsAddingQuestion(true);
     };
 
     if (!quizid || !isValidQuizId(quizid as string)) {
@@ -130,68 +158,73 @@ export default function QuizPage() {
 
     return (
         <div className="p-4 space-y-6">
-            <div className="flex gap-5 items-center">
-                <Button variant="ghost" onClick={() => {
-                    router.back()
-                }}>
-                    <ArrowLeft />
-                    Back
-                </Button>
-                <h1 className="text-2xl font-bold">Quiz Questions</h1>
-            </div>
-            <div className='flex flex-col gap-4'>
+            <div className='flex justify-between'>
 
-                {
-                    questions.map((q,index) => (
-                        (<div className='flex flex-col gap-4 p-6 border-2 rounded-lg' key={q._id}>
-                            <div className='text-xl font-bold'>
-                                Question {index + 1}
-                            </div>
-                            {q.type === 'MCQ' ? (
-                                <MCQCard
-                                    key={q._id}
-                                    question={q}
-                                    onSave={handleSave}
-                                    onDelete={handleDelete}
-                                    isNew={q._id?.startsWith('new-')}
-                                />
-                            ) : (q.type === 'DESCRIPTIVE') ? (
-                                <DescriptiveCard
-                                    key={q._id}
-                                    question={q}
-                                    onSave={handleSave}
-                                    onDelete={handleDelete}
-                                    isNew={q._id?.startsWith('new-')}
-                                />
-                            ) : (
-                                <CodeCard
-                                    key={q._id}
-                                    question={q}
-                                    onSave={handleSave}
-                                    onDelete={handleDelete}
-                                    isNew={q._id?.startsWith('new-')}
-                                />
-                            )}
-                        </div>)
-                    ))
-                }
-                <div className="flex gap-2 ">
-                    <Button onClick={() => addNewQuestion('MCQ')}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add MCQ
+                <div className="flex gap-5 items-center">
+                    <Button variant="ghost" onClick={() => {
+                        router.back()
+                    }}>
+                        <ArrowLeft />
+                        Back
                     </Button>
-                    <Button onClick={() => addNewQuestion('DESCRIPTIVE')}>
+                    <h1 className="text-2xl font-bold">Quiz Questions</h1>
+                </div>
+
+                <div className="flex gap-2">
+                    <Button onClick={() => setIsAddingQuestion(true)}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Add Descriptive
-                    </Button>
-                    <Button onClick={() => addNewQuestion('CODING')}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Coding Question
+                        Add Question
                     </Button>
                     <BankSearchDialog onQuestionsAdd={handleQuestionsFromBank} />
                 </div>
             </div>
+
+            <div className='flex flex-col gap-4'>
+                <QuestionsList
+                    questions={questions}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onQuestionUpdate={loadQuestions}
+                    requireTopics={false}
+                    bankId="" // Add empty bankId
+                    topic={[]} // Add empty topic array
+                />
+
+            </div>
+
+            <Sheet
+                open={isAddingQuestion}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setIsAddingQuestion(false);
+                        setEditingQuestion(null);
+                    }
+                }}
+            >
+                <SheetContent
+                    side="right"
+                    className="w-[1200px] sm:max-w-[1200px] overflow-y-auto"
+                >
+                    <SheetHeader>
+                        <SheetTitle>
+                            {editingQuestion ? "Edit Question" : "Add New Question"}
+                        </SheetTitle>
+                    </SheetHeader>
+                    <QuestionForm
+                        onCancel={() => {
+                            setIsAddingQuestion(false);
+                            setEditingQuestion(null);
+                        }}
+                        onSave={handleSave}
+                        editingQuestion={editingQuestion}
+                        requireTopics={false}
+                        topics={[]}
+                        bankId=""
+                        quizId={quizid as string}
+                    />
+                </SheetContent>
+            </Sheet>
         </div>
-    )
+    );
 }
 

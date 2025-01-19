@@ -538,7 +538,7 @@ export default function QuizPage() {
         <div className="min-h-screen bg-gradient-to-br p-8">
             <div className="max-w-7xl mx-auto">
                 <header className="flex justify-between items-center mb-6">
-                    <h1 className="text-4xl font-bold text-indigo-900 dark:text-indigo-100">Quiz</h1>
+                    <h1 className="text-4xl font-bold">Quiz</h1>
                     <div className="flex items-center gap-4">
                         <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'table' | 'grid')}>
                             <TabsList className="bg-white dark:bg-gray-800">
@@ -583,7 +583,7 @@ export default function QuizPage() {
                                                 id="title"
                                                 value={formData.title}
                                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                                className="mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
                                                 placeholder="Enter quiz title"
                                             />
                                         </div>
@@ -593,7 +593,7 @@ export default function QuizPage() {
                                                 id="description"
                                                 value={formData.description}
                                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                                className="mt-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                                className="mt-1 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
                                                 placeholder="Enter quiz description"
                                             />
                                         </div>
@@ -622,7 +622,7 @@ export default function QuizPage() {
                                                             const value = Math.max(1, parseInt(e.target.value) || 0);
                                                             setFormData({ ...formData, duration: value });
                                                         }}
-                                                        className="pr-16"
+                                                        className="pr-16 dark:bg-gray-900"
                                                     />
                                                     <span className="absolute  right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-indigo-300">
                                                         minutes
@@ -634,7 +634,7 @@ export default function QuizPage() {
                                             <Label className="text-indigo-900 dark:text-indigo-100 mb-2 block">Classes</Label>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {courses.map(course => (
-                                                    <div key={course.id} className="flex items-center space-x-2 bg-white dark:bg-gray-700 p-2 rounded-lg shadow-sm">
+                                                    <div key={course.id} className="flex items-center space-x-2 bg-white dark:bg-gray-900 p-2 rounded-lg shadow-sm">
                                                         <Checkbox
                                                             id={course.id}
                                                             checked={formData.courseIds?.includes(course.id) || false}
@@ -652,7 +652,7 @@ export default function QuizPage() {
                                             <Label className="text-indigo-900 dark:text-indigo-100">Settings</Label>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {settingsFields.map((key) => (
-                                                    <div key={key} className="flex items-center space-x-2 bg-white dark:bg-slate-700/50 p-2 rounded-lg shadow-sm">
+                                                    <div key={key} className="flex items-center space-x-2 bg-white dark:bg-gray-900 p-2 rounded-lg shadow-sm">
                                                         <Checkbox
                                                             id={key}
                                                             checked={formData.settings?.[key] || false}

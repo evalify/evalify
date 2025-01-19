@@ -24,6 +24,8 @@ interface QuestionFormProps {
     editingQuestion?: Question | null;
     allTopics?: string[];
     selectedTopicIds?: string[]; // Add this prop
+    requireTopics?: boolean;
+    isQuiz?: boolean; // Add this prop
 }
 
 interface OptionWithImage {
@@ -32,13 +34,15 @@ interface OptionWithImage {
     image?: string;
 }
 
-export default function EnhancedQuestionForm({ 
-    editingQuestion, 
-    topics, 
-    bankId, 
-    onCancel, 
-    onSave, 
-    selectedTopicIds = [] 
+export default function EnhancedQuestionForm({
+    editingQuestion,
+    topics = [], // Add default value
+    bankId = '', // Add default value
+    onCancel,
+    onSave,
+    selectedTopicIds = [],
+    requireTopics = true, // Add default value
+    isQuiz = false // Add default value
 }: QuestionFormProps) {
     const { toast } = useToast();
     const [type, setType] = useState<QuestionType>(editingQuestion?.type || "MCQ");
@@ -84,7 +88,7 @@ export default function EnhancedQuestionForm({
     const initializeCorrectOptions = () => {
         if (editingQuestion?.answer) {
             const optionIds = editingQuestion.options?.map(opt => opt.optionId) || [];
-            return editingQuestion.answer.map(answerId => 
+            return editingQuestion.answer.map(answerId =>
                 optionIds.findIndex(id => id === answerId)
             ).filter(index => index !== -1);
         }
@@ -194,12 +198,17 @@ export default function EnhancedQuestionForm({
         const baseQuestion = {
             type,
             difficulty,
-            topics: selectedTopics,
-            bankId,  // Use bankId directly from props
+            // Only include topics if required
+            ...(requireTopics ? { topics: selectedTopics } : {}),
             explanation: explanation.trim(),
             question: content,
             mark: parseInt(marks)
         };
+
+        // Add bankId only if it's not a quiz question
+        if (!isQuiz) {
+            baseQuestion.bankId = bankId;
+        }
 
         let questionData;
         switch (type) {
@@ -233,14 +242,19 @@ export default function EnhancedQuestionForm({
                 throw new Error('Invalid question ID');
             }
 
+            // Use different API endpoints based on isQuiz
             const url = editingQuestion
-                ? `/api/staff/bank/${bankId}/questions/${questionId}`
-                : `/api/staff/bank/${bankId}/questions`;
+                ? isQuiz
+                    ? `/api/staff/quiz/questions`
+                    : `/api/staff/bank/${bankId}/questions/${questionId}`
+                : isQuiz
+                    ? `/api/staff/quiz/questions`
+                    : `/api/staff/bank/${bankId}/questions`;
 
             const { _id, ...submitData } = questionData;
 
             const response = await fetch(url, {
-                method: editingQuestion ? "PATCH" : "POST",
+                method: editingQuestion ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(submitData),
             });
@@ -254,7 +268,7 @@ export default function EnhancedQuestionForm({
                 title: "Success",
                 description: editingQuestion ? "Question updated successfully" : "Question added successfully"
             });
-            onSave();  // Use onSave directly from props
+            onSave();
         } catch (error) {
             toast({
                 title: "Error",
@@ -295,7 +309,8 @@ export default function EnhancedQuestionForm({
             return false;
         }
 
-        if (selectedTopics.length === 0) {
+        // Only validate topics if required
+        if (requireTopics && selectedTopics.length === 0) {
             toast({
                 title: "Validation Error",
                 description: "At least one topic is required",
@@ -518,8 +533,8 @@ export default function EnhancedQuestionForm({
                                                     </Button>
                                                 </div>
                                                 {option.image && (
-                                                    <CustomImage 
-                                                        src={option.image} 
+                                                    <CustomImage
+                                                        src={option.image}
                                                         alt={`Option ${index + 1}`}
                                                         className="rounded"
                                                     />
@@ -634,56 +649,59 @@ export default function EnhancedQuestionForm({
                                 </div>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-lg font-semibold">Topics</Label>
-                            <Select
-                                onValueChange={handleAddTopic}
-                                disabled={availableTopics.length === 0}
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder={
-                                        availableTopics.length === 0
-                                            ? "All topics selected"
-                                            : "Add topic..."
-                                    } />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {availableTopics.map(topic => (
-                                        <SelectItem
-                                            key={topic.id}
-                                            value={topic.id}
-                                        >
-                                            {topic.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            {selectedTopics.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {selectedTopics.map(topicId => {
-                                        const topic = topics.find(t => t.id === topicId);
-                                        if (!topic) return null;
-
-                                        return (
-                                            <Badge
-                                                key={topicId}
-                                                variant="secondary"
-                                                className="flex items-center gap-1 py-1 px-2"
+                        {/* Only show topics section if required */}
+                        {requireTopics && (
+                            <div className="space-y-2">
+                                <Label className="text-lg font-semibold">Topics</Label>
+                                <Select
+                                    onValueChange={handleAddTopic}
+                                    disabled={availableTopics.length === 0}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder={
+                                            availableTopics.length === 0
+                                                ? "All topics selected"
+                                                : "Add topic..."
+                                        } />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableTopics.map(topic => (
+                                            <SelectItem
+                                                key={topic.id}
+                                                value={topic.id}
                                             >
                                                 {topic.name}
-                                                <X
-                                                    className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                                    onClick={() => handleRemoveTopic(topicId)}
-                                                />
-                                            </Badge>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {selectedTopics.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                        {selectedTopics.map(topicId => {
+                                            const topic = topics.find(t => t.id === topicId);
+                                            if (!topic) return null;
+
+                                            return (
+                                                <Badge
+                                                    key={topicId}
+                                                    variant="secondary"
+                                                    className="flex items-center gap-1 py-1 px-2"
+                                                >
+                                                    {topic.name}
+                                                    <X
+                                                        className="h-3 w-3 cursor-pointer hover:text-destructive"
+                                                        onClick={() => handleRemoveTopic(topicId)}
+                                                    />
+                                                </Badge>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {
-                            selectedTopics.length === 0 && (
+                            requireTopics && selectedTopics.length === 0 && (
                                 <p className="text-sm text-destructive flex items-center gap-2">
                                     <AlertTriangle className="h-4 w-4" />
                                     At least one topic is required
@@ -713,5 +731,67 @@ export default function EnhancedQuestionForm({
             </CardContent>
         </Card>
     );
+}
+
+interface QuizQuestionFormProps {
+    onCancel: () => void;
+    onSave: (question: Question) => void;
+    editingQuestion?: Question | null;
+    quizId: string;
+}
+
+export function QuizQuestionForm({
+    onCancel,
+    onSave,
+    editingQuestion,
+    quizId
+}: QuizQuestionFormProps) {
+    // ...existing state declarations...
+
+    const handleSubmit = async () => {
+        if (!validateForm()) return;
+
+        const questionData = {
+            type,
+            difficulty,
+            explanation: explanation.trim(),
+            question: content,
+            mark: parseInt(marks),
+            quizId, // Include quizId in the data
+            ...(type === "MCQ" || type === "TRUE_FALSE" ? {
+                options: optionsWithIds,
+                answer: correctOptions.map(index => optionsWithIds[index].optionId)
+            } : type === "DESCRIPTIVE" ? {
+                expectedAnswer: sampleAnswer,
+                guidelines: guidelines
+            } : {
+                expectedAnswer: correctAnswer
+            })
+        };
+
+        try {
+            const url = '/api/staff/quiz/questions';
+            const method = editingQuestion ? 'PUT' : 'POST';
+            const submitData = editingQuestion ? { ...questionData, _id: editingQuestion._id } : questionData;
+
+            const response = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(submitData)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Operation failed');
+            }
+
+            toast.success(`Question ${editingQuestion ? 'updated' : 'created'} successfully`);
+            onSave(questionData);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to save question');
+        }
+    };
+
+    // ...rest of the component remains the same...
 }
 

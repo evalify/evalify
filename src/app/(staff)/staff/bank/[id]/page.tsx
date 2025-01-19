@@ -16,8 +16,7 @@ import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Question } from "@/types/questions";
-import QuestionsList from "./QuestionsList";
-import QuestionForm from "./QuestionForm";
+
 import { Badge } from '@/components/ui/badge';
 import {
     AlertDialog,
@@ -30,6 +29,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import QuestionsList from '@/components/bank/QuestionsList';
+import QuestionForm from '@/components/bank/QuestionForm';
 
 interface Topic {
     id: string;

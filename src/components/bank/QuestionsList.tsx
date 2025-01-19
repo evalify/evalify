@@ -39,6 +39,9 @@ interface QuestionsListProps {
     onEdit: (question: Question) => void;
     allTopics: string[];
     editingQuestion: Question | null;
+    requireTopics?: boolean;
+    showActions?: boolean;
+    onDelete?: (questionId: string) => void; // Make onDelete optional
 }
 
 export default function QuestionsList({ 
@@ -47,7 +50,10 @@ export default function QuestionsList({
     bankId, 
     topic, 
     onQuestionUpdate,
-    editingQuestion 
+    editingQuestion,
+    requireTopics = true, // Add default value
+    showActions = true,
+    onDelete,
 }: QuestionsListProps) {
     const { toast } = useToast();
     const [deleteDialog, setDeleteDialog] = useState<{ isOpen: boolean; questionId: string | null }>({
@@ -90,21 +96,23 @@ export default function QuestionsList({
 
     const handleDelete = async (questionId: string) => {
         try {
-            const id = questionId.toString();
-            const response = await fetch(`/api/staff/bank/${bankId}/questions/${id}`, {
-                method: 'DELETE'
-            });
+            if (onDelete) {
+                await onDelete(questionId);
+            } else {
+                // Fallback to bank delete if no onDelete provided
+                const id = questionId.toString();
+                const response = await fetch(`/api/staff/bank/${bankId}/questions/${id}`, {
+                    method: 'DELETE'
+                });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Failed to delete question');
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Failed to delete question');
+                }
+
+                toast({ title: "Success", description: "Question deleted successfully" });
+                onQuestionUpdate(topic);
             }
-
-            toast({ title: "Success", description: "Question deleted successfully" });
-
-
-            onQuestionUpdate(topic);
-
         } catch (error) {
             toast({
                 title: "Error",
@@ -217,83 +225,87 @@ export default function QuestionsList({
                                 </Badge>
                                 <Badge variant="outline">{`${question.mark} marks`}</Badge>
                             </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
-                                        <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40 z-50">
-                                    <DropdownMenuItem onClick={() => handleEdit({
-                                        ...question,
-                                        id: questionId,
-                                        content: question.question, // Make sure to map question content correctly
-                                        topics: question.topics || [],
-                                        options: question.options || [],
-                                        answer: question.answer || [],
-                                        expectedAnswer: question.expectedAnswer || '',
-                                        mark: question.mark || 1
-                                    })}>
-                                        <Edit2 className="h-4 w-4 mr-2" />
-                                        Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                        className="text-destructive"
-                                        onClick={() => setDeleteDialog({
-                                            isOpen: true,
-                                            questionId: questionId
-                                        })}
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                            {showActions && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-40 z-50">
+                                        <DropdownMenuItem onClick={() => handleEdit({
+                                            ...question,
+                                            id: questionId,
+                                            content: question.question, // Make sure to map question content correctly
+                                            topics: question.topics || [],
+                                            options: question.options || [],
+                                            answer: question.answer || [],
+                                            expectedAnswer: question.expectedAnswer || '',
+                                            mark: question.mark || 1
+                                        })}>
+                                            <Edit2 className="h-4 w-4 mr-2" />
+                                            Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="text-destructive"
+                                            onClick={() => setDeleteDialog({
+                                                isOpen: true,
+                                                questionId: questionId
+                                            })}
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            )}
                         </div>
                     </div>
-                    <div className="flex flex-row justify-between">
-                        <div className="flex flex-wrap gap-2">
-                            {question.topics?.map((topicId) => (
-                                <Badge key={topicId} variant="outline" className="flex items-center gap-1">
-                                    {(availableTopics.find(t => t.id === topicId))?.name || topicId}
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            handleRemoveTopic(questionId, topicId, question.topics || []);
-                                        }}
-                                        className="ml-1 hover:text-destructive"
-                                    >
-                                        <X className="h-3 w-3" />
-                                    </button>
-                                </Badge>
-                            ))}
+                    {/* Only show topics section if required */}
+                    {requireTopics && (
+                        <div className="flex flex-row justify-between">
+                            <div className="flex flex-wrap gap-2">
+                                {question.topics?.map((topicId) => (
+                                    <Badge key={topicId} variant="outline" className="flex items-center gap-1">
+                                        {(availableTopics.find(t => t.id === topicId))?.name || topicId}
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleRemoveTopic(questionId, topicId, question.topics || []);
+                                            }}
+                                            className="ml-1 hover:text-destructive"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </Badge>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-muted-foreground">Add Topic:</span>
+                                <Select
+                                    onValueChange={(value) => handleTopicSelect(questionId, value, question.topics || [])}
+                                >
+                                    <SelectTrigger className="w-64">
+                                        <SelectValue>
+                                            <span>Add Topic</span>
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {availableTopics
+                                            .filter(topic => !(question.topics || []).includes(topic.id))
+                                            .map((topic) => (
+                                                <SelectItem key={topic.id} value={topic.id}>
+                                                    <div className="flex items-center gap-2">
+                                                        <Plus className="h-4 w-4" />
+                                                        <span>{topic.name}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Add Topic:</span>
-                            <Select
-                                onValueChange={(value) => handleTopicSelect(questionId, value, question.topics || [])}
-                            >
-                                <SelectTrigger className="w-64">
-                                    <SelectValue>
-                                        <span>Add Topic</span>
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {availableTopics
-                                        .filter(topic => !(question.topics || []).includes(topic.id))
-                                        .map((topic) => (
-                                            <SelectItem key={topic.id} value={topic.id}>
-                                                <div className="flex items-center gap-2">
-                                                    <Plus className="h-4 w-4" />
-                                                    <span>{topic.name}</span>
-                                                </div>
-                                            </SelectItem>
-                                        ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-
+                    )}
                 </CardHeader>
                 <CardContent>
                     {/* Question type specific content */}

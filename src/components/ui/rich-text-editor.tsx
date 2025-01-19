@@ -189,7 +189,7 @@ export function RichTextEditor({ content, onChange, placeholder }: RichTextEdito
                         size="sm"
                         onClick={() => setShowLatexDialog(true)}
                     >
-                        <span className="font-serif">TEX</span>
+                        <span className="font-serif">LaTeX</span>
                     </Button>
                 </div>
             </div>

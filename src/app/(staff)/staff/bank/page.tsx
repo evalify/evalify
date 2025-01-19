@@ -606,7 +606,7 @@ function BankPage() {
                                         </TableCell>
                                         <TableCell className='text-center'>S{bank.semester}</TableCell>
                                         <TableCell className='text-center'>
-                                            0
+                                            {bank.topicsCount || 0}
                                         </TableCell>
                                         <TableCell className='text-center'>
                                             {bank.questions || "-"}

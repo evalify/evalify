@@ -6,8 +6,8 @@ interface BaseQuestion {
     id?: string;
     type: QuestionType;
     difficulty: DifficultyLevel;
-    topics: string[];
-    bankId: string;
+    topics?: string[]; // Make topics optional
+    bankId?: string;  // Make bankId optional
     explanation: string;
     createdBy?: string;
     createdAt?: string;

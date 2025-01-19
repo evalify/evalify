@@ -1,24 +1,20 @@
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import { Extension } from '@tiptap/core';
 import 'katex/dist/katex.min.css';
-import { InlineMath } from 'react-katex';
+import { InlineMath, BlockMath } from 'react-katex';
 
 interface TiptapRendererProps {
     content: string;
 }
 
-// Custom extension to handle LaTeX
 const LatexExtension = Extension.create({
     name: 'latex',
     addStorage() {
-        return {
-            lastContent: '',
-        };
+        return { lastContent: '' };
     },
     onCreate() {
-        // Process initial content
         this.storage.lastContent = this.editor.getHTML();
     },
 });
@@ -28,9 +24,7 @@ const TiptapRenderer = ({ content }: TiptapRendererProps) => {
         extensions: [
             StarterKit,
             Image.configure({
-                HTMLAttributes: {
-                    class: 'rounded-lg dark:border-gray-700',
-                },
+                HTMLAttributes: { class: 'rounded-lg dark:border-gray-700' },
             }),
             LatexExtension,
         ],
@@ -40,23 +34,36 @@ const TiptapRenderer = ({ content }: TiptapRendererProps) => {
 
     if (!editor) return null;
 
-    // Process content to render LaTeX
     const renderContent = () => {
-        const parts = content.split(/(\$[^$]+\$)/g);
+        const parts = content.split(/(\$\$.*?\$\$|\$.*?\$)/g); // Split by LaTeX delimiters
+
         return (
             <div className="prose dark:prose-invert max-w-none">
                 {parts.map((part, index) => {
-                    if (part.startsWith('$') && part.endsWith('$')) {
-                        // Extract LaTeX content without the $ symbols
-                        const latex = part.slice(1, -1);
+                    if (part.startsWith('$$') && part.endsWith('$$')) {
+                        // Block LaTeX
+                        const latex = part.slice(2, -2).trim();
                         return (
-                            <span key={index} className="inline-block mx-1">
+                            <div key={index} className="block-latex">
+                                <BlockMath math={latex} />
+                            </div>
+                        );
+                    } else if (part.startsWith('$') && part.endsWith('$')) {
+                        // Inline LaTeX
+                        const latex = part.slice(1, -1).trim();
+                        return (
+                            <span key={index} className="inline-latex">
                                 <InlineMath math={latex} />
                             </span>
                         );
                     }
-                    // For non-LaTeX content, use TipTap to render
-                    return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+                    // For non-LaTeX content, render raw HTML safely
+                    return (
+                        <span
+                            key={index}
+                            dangerouslySetInnerHTML={{ __html: part }}
+                        />
+                    );
                 })}
             </div>
         );
@@ -67,8 +74,15 @@ const TiptapRenderer = ({ content }: TiptapRendererProps) => {
             {renderContent()}
             <style jsx global>{`
                 img {
-                    max-width: 200px;
+                    max-width: 100%;
                     height: auto;
+                }
+                .block-latex {
+                    display: block;
+                    margin: 1em 0;
+                }
+                .inline-latex {
+                    display: inline;
                 }
             `}</style>
         </div>

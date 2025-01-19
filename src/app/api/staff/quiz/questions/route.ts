@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/db/mongo";
 import { ObjectId } from 'mongodb';
+import { auth } from "@/lib/auth/auth";
+import { v4 as uuidv4 } from 'uuid';
 
 const QUESTIONS_COLLECTION = "NEW_QUESTIONS";
 const QUIZ_COLLECTION = "QUIZZES";
@@ -44,93 +46,137 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
     try {
-        const { quizId, ...question } = await request.json();
-        if (!quizId) {
+        const question = await request.json();
+
+        if (!question.quizId) {
             return NextResponse.json({ error: "Quiz ID is required" }, { status: 400 });
         }
 
-        const client = await clientPromise;
+        // Add metadata
+        const questionData = {
+            _id: uuidv4(),
+            ...question,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
 
+        const client = await clientPromise;
         const result = await client
             .db()
             .collection(QUESTIONS_COLLECTION)
-            .insertOne({
-                ...question,
-                quizId,
-                createdAt: new Date()
-            });
+            .insertOne(questionData);
 
-        return NextResponse.json({ success: true, _id: result.insertedId });
+        return NextResponse.json({
+            success: true,
+            _id: result.insertedId
+        });
     } catch (error) {
-        console.log('POST Question Error:', error);
-        return NextResponse.json({ error: "Server error" }, { status: 500 });
+        // ...error handling...
+        console.log(error)
     }
 }
 
 export async function PUT(request: NextRequest) {
     try {
-        const { quizId, _id, ...question } = await request.json();
+        const session = await auth();
+        if (!session?.user?.role || session.user.role !== "STAFF") {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
+
+        const { quizId, _id, ...questionData } = await request.json();
 
         if (!quizId || !_id) {
-            return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+            return NextResponse.json({ message: "Quiz ID and Question ID are required" }, { status: 400 });
         }
-        const questionId = new ObjectId(_id);
+
+        // Clean up the question data
+        const updatedQuestion = {
+            ...questionData,
+            question: questionData.content || questionData.question,
+            mark: parseInt(questionData.mark?.toString() || '1'),
+            updatedAt: new Date()
+        };
+
+        // Remove any undefined or null values
+        Object.keys(updatedQuestion).forEach(key => 
+            (updatedQuestion[key] === undefined || updatedQuestion[key] === null) && delete updatedQuestion[key]
+        );
 
         const client = await clientPromise;
         const result = await client
             .db()
             .collection(QUESTIONS_COLLECTION)
             .updateOne(
-                {
-                    _id: questionId,
-                    quizId
+                { 
+                    _id: _id,
+                    quizId 
                 },
-                {
-                    $set: {
-                        ...question,
-                        updatedAt: new Date()
-                    }
-                }
+                { $set: updatedQuestion }
             );
 
         if (result.matchedCount === 0) {
-            return NextResponse.json({ error: "Question not found" }, { status: 404 });
+            return NextResponse.json({ message: "Question not found" }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ 
+            message: "Question updated successfully",
+            success: true 
+        });
     } catch (error) {
-        console.log('PUT Question Error:', error);
-        return NextResponse.json({ error: "Server error" }, { status: 500 });
+        console.error('PUT Question Error:', error);
+        return NextResponse.json({ 
+            message: "Failed to update question",
+            error: error instanceof Error ? error.message : "Unknown error"
+        }, { status: 500 });
     }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(req: Request) {
     try {
-        const { quizId, questionId } = await request.json();
-
-        if (!quizId || !questionId) {
-            return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+        const session = await auth();
+        if (!session?.user?.role || session.user.role !== "STAFF") {
+            return NextResponse.json(
+                { message: "Unauthorized" },
+                { status: 401 }
+            );
         }
 
-        const client = await clientPromise;
-        const result = await client
+        const { quizId, questionId } = await req.json();
+
+        if (!quizId || !questionId) {
+            return NextResponse.json(
+                { message: "Missing required fields" },
+                { status: 400 }
+            );
+        }
+
+        const result = await (await clientPromise)
             .db()
             .collection(QUESTIONS_COLLECTION)
             .deleteOne({
-                _id: ObjectId(questionId),
-                quizId
+                _id: questionId,
+                quizId: quizId
             });
 
         if (result.deletedCount === 0) {
-            return NextResponse.json({ error: "Question not found" }, { status: 404 });
+            return NextResponse.json(
+                { message: "Question not found or already deleted" },
+                { status: 404 }
+            );
         }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json(
+            { message: "Question deleted successfully" },
+            { status: 200 }
+        );
     } catch (error) {
-        console.log('DELETE Question Error:', error);
-        return NextResponse.json({ error: "Server error" }, { status: 500 });
+        console.error('Delete question error:', error);
+        return NextResponse.json(
+            { message: "Internal Server Error", error: error instanceof Error ? error.message : "Unknown error" },
+            { status: 500 }
+        );
     }
 }
 
