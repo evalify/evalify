@@ -17,6 +17,7 @@ import Image from 'next/image'
 import { cn } from "@/lib/utils"
 import TiptapRenderer from '@/components/ui/tiptap-renderer'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 interface Option {
     option: string
@@ -29,7 +30,8 @@ interface Question {
     question: string
     options?: Option[]
     marks: number
-    type: string
+    type: 'MCQ' | 'MMCQ' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'DESCRIPTIVE';
+    isMultiple?: boolean;
 }
 
 interface Quiz {
@@ -38,7 +40,86 @@ interface Quiz {
     description: string
     startTime: string
     endTime: string
+    settings: {
+        shuffle?: boolean;
+        // other settings...
+    };
     duration: number
+}
+
+function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void) {
+    const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!quiz?.duration) return;
+
+        // Get or set start time from localStorage
+        let startTime = localStorage.getItem(`quiz_${quiz.id}_startTime`);
+        if (!startTime) {
+            startTime = Date.now().toString();
+            localStorage.setItem(`quiz_${quiz.id}_startTime`, startTime);
+        }
+
+        const endTime = parseInt(startTime) + (quiz.duration * 60 * 1000);
+        const now = Date.now();
+
+        // If quiz has expired
+        if (now >= endTime) {
+            setTimeLeft(0);
+            onTimeUp();
+            return;
+        }
+
+        // Calculate initial time left
+        const initialTimeLeft = Math.floor((endTime - now) / 1000);
+        setTimeLeft(initialTimeLeft);
+
+        const interval = setInterval(() => {
+            const currentTime = Date.now();
+            const remaining = Math.max(0, Math.floor((endTime - currentTime) / 1000));
+            
+            setTimeLeft(remaining);
+
+            if (remaining <= 0) {
+                clearInterval(interval);
+                onTimeUp();
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [quiz, onTimeUp]);
+
+    return timeLeft;
+}
+
+function ImagePreviewDialog({ image, isOpen, onClose }: { image: string | null, isOpen: boolean, onClose: () => void }) {
+    if (!image) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-0">
+                <div className="relative w-full h-full">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute top-2 right-2 z-50"
+                        onClick={onClose}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                    <div className="w-full h-full flex items-center justify-center">
+                        <Image
+                            src={image}
+                            alt="Preview"
+                            fill
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 const QuizPage = () => {
@@ -47,113 +128,16 @@ const QuizPage = () => {
     const [questions, setQuestions] = useState<Question[]>([])
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
     const [userAnswers, setUserAnswers] = useState<Record<string, string[]>>({})
-    const [timeLeft, setTimeLeft] = useState<number | null>(null)
     const [quizStartTime, setQuizStartTime] = useState<number | null>(null)
     const [selectedImage, setSelectedImage] = useState<string | null>(null)
     const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false)
     const [imageLoadingStates, setImageLoadingStates] = useState<Record<string, boolean>>({})
     const [imageErrorStates, setImageErrorStates] = useState<Record<string, boolean>>({})
+    const [isTimeWarning, setIsTimeWarning] = useState(false);
     const router = useRouter()
 
     // Update local storage key handling
     const getStorageKey = (key: string) => `quiz_${quizId}_${key}`;
-
-    useEffect(() => {
-        const fetchQuiz = async () => {
-            try {
-                if (!quizId) return
-                const res = await fetch(`/api/quiz/get?quizId=${quizId}`)
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-                const data = await res.json()
-                if (data.status === 404 || data.status === 400 || data.message === "Quiz already completed") {
-                    router.push('/student/quiz')
-                    alert("Quiz already completed")
-                    return
-                }
-                setQuiz(data.quiz)
-                setQuestions(data.questions)
-                localStorage.setItem(getStorageKey('quiz'), JSON.stringify(data.quiz))
-                localStorage.setItem(getStorageKey('questions'), JSON.stringify(data.questions))
-            } catch (error: any) {
-                console.error('Error fetching quiz:', error)
-                if (error.status === 404 || error.status === 400 || error.message === "Quiz already completed") {
-                    router.push('/student/quiz')
-                    alert("Quiz already completed")
-                }
-            }
-        }
-
-        const storedQuiz = localStorage.getItem(getStorageKey('quiz'))
-        const storedQuestions = localStorage.getItem(getStorageKey('questions'))
-        const storedUserAnswers = localStorage.getItem(getStorageKey('answers'))
-        const storedTimeLeft = localStorage.getItem(getStorageKey('timeLeft'))
-        const startTime = localStorage.getItem(getStorageKey('startTime'))
-
-        if (storedQuiz && storedQuestions) {
-            setQuiz(JSON.parse(storedQuiz))
-            setQuestions(JSON.parse(storedQuestions))
-        } else {
-            fetchQuiz()
-        }
-
-        if (storedUserAnswers) setUserAnswers(JSON.parse(storedUserAnswers))
-        if (storedTimeLeft) setTimeLeft(Number(storedTimeLeft))
-
-        if (!startTime) {
-            const now = Date.now()
-            localStorage.setItem(getStorageKey('startTime'), now.toString())
-            setQuizStartTime(now)
-        } else {
-            setQuizStartTime(Number(startTime))
-        }
-    }, [quizId, router])
-
-    useEffect(() => {
-        if (!quiz?.duration || !quizStartTime) return
-
-        const interval = setInterval(() => {
-            const now = Date.now()
-            const elapsed = Math.floor((now - quizStartTime) / 1000)
-            const remaining = Math.max(0, quiz.duration * 60 - elapsed)
-
-            setTimeLeft(remaining)
-            localStorage.setItem(getStorageKey('timeLeft'), remaining.toString())
-
-            if (remaining <= 0) {
-                clearInterval(interval)
-                handleSubmitQuiz()
-            }
-        }, 1000)
-
-        return () => clearInterval(interval)
-    }, [quiz, quizStartTime, quizId])
-
-    const handleAnswerChange = (questionId: string, optionId: string, isChecked: boolean) => {
-        setUserAnswers((prevAnswers) => {
-            const currentAnswers = prevAnswers[questionId] || []
-            const newAnswers = isChecked
-                ? { ...prevAnswers, [questionId]: [...currentAnswers, optionId] }
-                : { ...prevAnswers, [questionId]: currentAnswers.filter(id => id !== optionId) }
-            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
-            return newAnswers
-        })
-    }
-
-    const handleRadioChange = (questionId: string, optionId: string) => {
-        setUserAnswers((prevAnswers) => {
-            const newAnswers = { ...prevAnswers, [questionId]: [optionId] }
-            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
-            return newAnswers
-        })
-    }
-
-    const handleDescriptiveAnswer = (questionId: string, answer: string) => {
-        setUserAnswers((prevAnswers) => {
-            const newAnswers = { ...prevAnswers, [questionId]: [answer] }
-            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
-            return newAnswers
-        })
-    }
 
     const handleSubmitQuiz = async () => {
         try {
@@ -173,6 +157,91 @@ const QuizPage = () => {
         } catch (error) {
             console.error('Error saving quiz:', error)
         }
+    }
+
+    useEffect(() => {
+        const fetchQuiz = async () => {
+            try {
+                if (!quizId) return
+                const res = await fetch(`/api/quiz/get?quizId=${quizId}`)
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+                const data = await res.json()
+                if (data.status === 404 || data.status === 400 || data.message === "Quiz already completed") {
+                    router.push('/student/quiz')
+                    alert("Quiz already completed")
+                    return
+                }
+                const quizData = {
+                    ...data.quiz,
+                    duration: data.quiz.duration
+                }
+                setQuiz(quizData)
+                setQuestions(data.questions)
+                localStorage.setItem(getStorageKey('quiz'), JSON.stringify(quizData))
+                localStorage.setItem(getStorageKey('questions'), JSON.stringify(data.questions))
+            } catch (error: any) {
+                console.error('Error fetching quiz:', error)
+                if (error.status === 404 || error.status === 400 || error.message === "Quiz already completed") {
+                    router.push('/student/quiz')
+                    alert("Quiz already completed")
+                }
+            }
+        }
+
+        const storedQuiz = localStorage.getItem(getStorageKey('quiz'))
+        const storedQuestions = localStorage.getItem(getStorageKey('questions'))
+        const storedUserAnswers = localStorage.getItem(getStorageKey('answers'))
+
+        if (storedQuiz && storedQuestions) {
+            const parsedQuiz = JSON.parse(storedQuiz)
+            setQuiz(parsedQuiz)
+            setQuestions(JSON.parse(storedQuestions))
+        } else {
+            fetchQuiz()
+        }
+
+        if (storedUserAnswers) setUserAnswers(JSON.parse(storedUserAnswers))
+    }, [quizId, router])
+
+    const timeLeft = useQuizTimer(quiz, handleSubmitQuiz);
+
+    useEffect(() => {
+        // Add time warning effect
+        if (timeLeft === 300) { // 5 minutes = 300 seconds
+            setIsTimeWarning(true);
+            alert("Only 5 minutes remaining! Quiz will be auto-submitted after time is up.");
+        }
+    }, [timeLeft]);
+
+    const handleAnswerChange = (questionId: string, optionId: string, isChecked: boolean) => {
+        setUserAnswers((prevAnswers) => {
+            const currentAnswers = prevAnswers[questionId] || []
+            const newAnswers = isChecked
+                ? { ...prevAnswers, [questionId]: [...currentAnswers, optionId] }
+                : { ...prevAnswers, [questionId]: currentAnswers.filter(id => id !== optionId) }
+            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
+            return newAnswers
+        })
+    }
+
+    const handleRadioChange = (questionId: string, optionId: string) => {
+        setUserAnswers((prevAnswers) => {
+            const currentAnswer = prevAnswers[questionId]?.[0];
+            // If same option is clicked, deselect it
+            const newAnswers = currentAnswer === optionId 
+                ? { ...prevAnswers, [questionId]: [] }
+                : { ...prevAnswers, [questionId]: [optionId] };
+            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers));
+            return newAnswers;
+        });
+    };
+
+    const handleDescriptiveAnswer = (questionId: string, answer: string) => {
+        setUserAnswers((prevAnswers) => {
+            const newAnswers = { ...prevAnswers, [questionId]: [answer] }
+            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
+            return newAnswers
+        })
     }
 
     const formatTime = (seconds: number) => {
@@ -230,49 +299,16 @@ const QuizPage = () => {
     const renderQuestion = (question: Question) => {
         switch (question.type) {
             case 'MCQ':
-            case 'MMCQ':
+            case 'TRUE_FALSE':
                 return (
                     <div className="space-y-4">
                         <TiptapRenderer content={question.question} />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {question.type === 'MCQ' ? (
-                                <RadioGroup
-                                    value={userAnswers[question.id]?.[0] || ''}
-                                    onValueChange={(value) => handleRadioChange(question.id, value)}
-                                >
-                                    {question.options?.map((option) => (
-                                        <div
-                                            key={option.optionId}
-                                            className={cn(
-                                                "flex items-start space-x-3 p-4 rounded-lg transition-colors",
-                                                "hover:bg-muted/50 cursor-pointer",
-                                                userAnswers[question.id]?.includes(option.optionId) &&
-                                                "bg-primary/10 hover:bg-primary/20"
-                                            )}
-                                        >
-                                            <RadioGroupItem value={option.optionId} id={option.optionId} />
-                                            <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
-                                                {option.image && option.image.length > 0 && (
-                                                    <div
-                                                        className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02]"
-                                                        onClick={() => setSelectedImage(option.image)}
-                                                    >
-                                                        <ImageWithFallback
-                                                            src={option.image}
-                                                            alt={`Image for option: ${option.option}`}
-                                                            width={200}
-                                                            height={150}
-                                                            className="rounded-md object-cover"
-                                                        />
-                                                    </div>
-                                                )}
-                                                <TiptapRenderer content={option.option} />
-                                            </Label>
-                                        </div>
-                                    ))}
-                                </RadioGroup>
-                            ) : (
-                                question.options?.map((option) => (
+                            <RadioGroup
+                                value={userAnswers[question.id]?.[0] || ''}
+                                onValueChange={(value) => handleRadioChange(question.id, value)}
+                            >
+                                {question.options?.map((option) => (
                                     <div
                                         key={option.optionId}
                                         className={cn(
@@ -282,36 +318,75 @@ const QuizPage = () => {
                                             "bg-primary/10 hover:bg-primary/20"
                                         )}
                                     >
-                                        <Checkbox
-                                            id={option.optionId}
-                                            checked={userAnswers[question.id]?.includes(option.optionId)}
-                                            onCheckedChange={(checked) =>
-                                                handleAnswerChange(question.id, option.optionId, checked as boolean)
-                                            }
-                                        />
+                                        <RadioGroupItem value={option.optionId} id={option.optionId} />
                                         <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
-                                            {option.image && option.image.length > 0 && (
-                                                <div
-                                                    className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02]"
-                                                    onClick={() => setSelectedImage(option.image)}
-                                                >
-                                                    <ImageWithFallback
-                                                        src={option.image}
-                                                        alt={`Image for option: ${option.option}`}
-                                                        width={200}
-                                                        height={150}
-                                                        className="rounded-md object-cover"
-                                                    />
-                                                </div>
-                                            )}
                                             <TiptapRenderer content={option.option} />
                                         </Label>
+                                        {option.image && option.image.length > 0 && (
+                                            <div
+                                                className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02] ml-16"
+                                                onClick={() => setSelectedImage(option.image)}
+                                            >
+                                                <ImageWithFallback
+                                                    src={option.image}
+                                                    alt={`Image for option: ${option.option}`}
+                                                    width={200}
+                                                    height={150}
+                                                    className="rounded-md object-cover"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-                                ))
-                            )}
+                                ))}
+                            </RadioGroup>
                         </div>
                     </div>
-                )
+                );
+
+            case 'MMCQ':
+                return (
+                    <div className="space-y-4">
+                        <TiptapRenderer content={question.question} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {question.options?.map((option) => (
+                                <div
+                                    key={option.optionId}
+                                    className={cn(
+                                        "flex items-start space-x-3 p-4 rounded-lg transition-colors",
+                                        "hover:bg-muted/50 cursor-pointer",
+                                        userAnswers[question.id]?.includes(option.optionId) &&
+                                        "bg-primary/10 hover:bg-primary/20"
+                                    )}
+                                >
+                                    <Checkbox
+                                        id={option.optionId}
+                                        checked={userAnswers[question.id]?.includes(option.optionId)}
+                                        onCheckedChange={(checked) =>
+                                            handleAnswerChange(question.id, option.optionId, checked as boolean)
+                                        }
+                                    />
+                                    <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
+                                        {option.image && option.image.length > 0 && (
+                                            <div
+                                                className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02]"
+                                                onClick={() => setSelectedImage(option.image)}
+                                            >
+                                                <ImageWithFallback
+                                                    src={option.image}
+                                                    alt={`Image for option: ${option.option}`}
+                                                    width={200}
+                                                    height={150}
+                                                    className="rounded-md object-cover"
+                                                />
+                                            </div>
+                                        )}
+                                        <TiptapRenderer content={option.option} />
+                                    </Label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
 
             case 'FILL_IN_BLANK':
                 return (
@@ -373,9 +448,16 @@ const QuizPage = () => {
                             <div className="text-sm">
                                 Question {currentQuestionIndex + 1} of {questions.length}
                             </div>
-                            <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-full">
+                            <div className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-full",
+                                isTimeWarning 
+                                    ? "bg-red-100 text-red-600 animate-pulse" 
+                                    : "bg-primary/10"
+                            )}>
                                 <Clock className="h-4 w-4" />
-                                <span className="font-medium">{formatTime(timeLeft || 0)}</span>
+                                <span className="font-medium">
+                                    {formatTime(timeLeft || 0)}
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -390,7 +472,7 @@ const QuizPage = () => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                         <Badge variant="outline">{questions[currentQuestionIndex].type}</Badge>
-                                        <Badge>{questions[currentQuestionIndex].marks} marks</Badge>
+                                        <Badge>{questions[currentQuestionIndex].mark} marks</Badge>
                                     </div>
                                 </div>
                             </CardHeader>
@@ -430,9 +512,9 @@ const QuizPage = () => {
                     </div>
 
                     <div className="w-1/4">
-                        <Card className="sticky top-4">
+                        <Card className="sticky">
                             <CardHeader>
-                                <CardTitle>Question Navigator</CardTitle>
+                                <CardTitle>Questions</CardTitle>
                             </CardHeader>
                             <CardContent>
                                 <ScrollArea className="h-[60vh]">
@@ -474,40 +556,11 @@ const QuizPage = () => {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <AlertDialog
-                open={!!selectedImage}
-                onOpenChange={() => setSelectedImage(null)}
-            >
-                <AlertDialogContent
-                    className="relative max-w-4xl w-auto h-auto p-1 bg-background/95 backdrop-blur-sm"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <AlertDialogHeader className="absolute inset-x-0 top-0 z-50 flex justify-between items-center p-2">
-                        <AlertDialogTitle className="sr-only">Image Preview</AlertDialogTitle>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-full bg-background/80 ml-auto"
-                            onClick={() => setSelectedImage(null)}
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </AlertDialogHeader>
-                    {selectedImage && selectedImage.length > 0 && (
-                        <div className="relative mt-8">
-                            <ImageWithFallback
-                                src={selectedImage}
-                                alt="Enlarged view of question option image"
-                                width={800}
-                                height={600}
-                                className="rounded-lg"
-                                style={{ objectFit: 'contain', maxHeight: 'calc(80vh - 2rem)' }}
-                                priority
-                            />
-                        </div>
-                    )}
-                </AlertDialogContent>
-            </AlertDialog>
+            <ImagePreviewDialog 
+                image={selectedImage} 
+                isOpen={!!selectedImage} 
+                onClose={() => setSelectedImage(null)} 
+            />
         </div>
     )
 }

@@ -40,7 +40,8 @@ export async function GET(req: Request) {
                 id: quizId
             },
             select:{
-                settings: true
+                settings: true,
+                duration: true,
             }
         });
 
@@ -62,24 +63,47 @@ export async function GET(req: Request) {
         const questions = await (await clientPromise).db().collection('NEW_QUESTIONS').find({ quizId: quizId }).toArray();
 
         const safeQuestion = questions.map((question: any) => {
-            if (question.type === 'DESCRIPTIVE') {
-                return {
-                    id: question._id,
-                    question: question.question,
-                    marks: question.marks,
-                    type: 'DESCRIPTIVE',
-                    quizId: question.quizId
-                }
-            }
-            return {
+            const baseFields = {
                 id: question._id,
                 question: question.question,
-                options: question.options,
-                marks: question.marks,
-                type: (question.answer.length > 1) ? 'MMCQ' : 'MCQ',
+                mark: question.mark || question.marks,
+                type: question.type,
                 quizId: question.quizId
+            };
+
+            switch (question.type) {
+                case 'DESCRIPTIVE':
+                    return {
+                        ...baseFields,
+                        guidelines: question.guidelines
+                    };
+                case 'FILL_IN_BLANK':
+                    return baseFields;
+                case 'TRUE_FALSE':
+                    return {
+                        ...baseFields,
+                        options: question.options
+                    };
+                case 'MCQ':
+                    // Convert MCQ with multiple answers to MMCQ
+                    if (Array.isArray(question.answer) && question.answer.length > 1) {
+                        return {
+                            ...baseFields,
+                            type: 'MMCQ',
+                            options: question.options
+                        };
+                    }
+                    return {
+                        ...baseFields,
+                        options: question.options
+                    };
+                default:
+                    return {
+                        ...baseFields,
+                        options: question.options
+                    };
             }
-        })
+        });
 
         await redis.set(`QUIZ_${quizId}`, JSON.stringify(safeQuestion), 'EX', 2 * 60 * 60);
 
