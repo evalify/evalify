@@ -4,6 +4,7 @@ import Image from '@tiptap/extension-image';
 import { Extension } from '@tiptap/core';
 import 'katex/dist/katex.min.css';
 import { InlineMath, BlockMath } from 'react-katex';
+import { decodeLatex } from '@/utils/latex';
 
 interface TiptapRendererProps {
     content: string;
@@ -44,14 +45,14 @@ const TiptapRenderer = ({ content }: TiptapRendererProps) => {
             <div className="prose dark:prose-invert max-w-none">
                 {parts.map((part, index) => {
                     if (part.startsWith('$$') && part.endsWith('$$')) {
-                        const latex = part.slice(2, -2).trim();
+                        const latex = decodeLatex(part.slice(2, -2).trim());
                         return (
                             <div key={index} className="block-latex">
                                 <BlockMath math={latex} />
                             </div>
                         );
                     } else if (part.startsWith('$') && part.endsWith('$')) {
-                        const latex = part.slice(1, -1).trim();
+                        const latex = decodeLatex(part.slice(1, -1).trim());
                         return (
                             <span key={index} className="inline-latex">
                                 <InlineMath math={latex} />

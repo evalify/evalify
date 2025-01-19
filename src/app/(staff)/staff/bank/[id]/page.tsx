@@ -194,7 +194,6 @@ const QuestionsPage = () => {
                 : `/api/staff/bank/${params.id}/questions`;
 
             const method = questionData._id ? 'PATCH' : 'POST';
-            console.log({ endpoint,method,questionData })
 
             const response = await fetch(endpoint, {
                 method,

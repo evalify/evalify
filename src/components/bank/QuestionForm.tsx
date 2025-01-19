@@ -198,7 +198,7 @@ export default function EnhancedQuestionForm({
             const questionData = {
                 type,
                 difficulty,
-                marks: parseInt(marks),
+                mark: parseInt(marks),
                 question: content,
                 explanation: explanation.trim(),
                 topics: selectedTopics,

@@ -223,7 +223,7 @@ export default function QuestionsList({
                                 }>
                                     {question.difficulty}
                                 </Badge>
-                                <Badge variant="outline">{`${question.mark} marks`}</Badge>
+                                <Badge variant="outline">{`${question.mark || question.marks} marks`}</Badge>
                             </div>
                             {showActions && (
                                 <DropdownMenu>

@@ -6,7 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { LatexPreview } from '@/components/latex-preview'
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
@@ -17,8 +17,11 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogClose,
 } from "@/components/ui/dialog"
-
+import { Textarea } from "@/components/ui/textarea";
+import TiptapRenderer from '@/components/ui/tiptap-renderer';
+import { cn } from "@/lib/utils";
 
 interface Option {
     option: string
@@ -229,95 +232,175 @@ const QuizPage = () => {
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
     }
 
-    return (
-        <div className="container mx-auto p-4 max-w-3xl">
-            <Card>
-                <CardHeader>
-                    <CardTitle>{quiz.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{quiz.description}</p>
-                    <div className="flex justify-between items-center mt-4">
-                        <div className="flex items-center">
-                            <Clock className="mr-2 h-4 w-4" />
-                            <span className="font-medium">{formatTime(timeLeft || 0)}</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                            Question {currentQuestionIndex + 1} of {questions.length}
+    const renderQuestion = (question: Question) => {
+        switch (question.type) {
+            case 'MCQ':
+            case 'MMCQ':
+                return (
+                    <div className="space-y-4">
+                        <TiptapRenderer content={question.question} />
+                        <div className="space-y-2">
+                            {question.options?.map((option) => (
+                                <div 
+                                    key={option.optionId} 
+                                    className={cn(
+                                        "flex items-start space-x-3 p-3 rounded-lg transition-colors",
+                                        "hover:bg-muted/50 cursor-pointer",
+                                        userAnswers[question.id]?.includes(option.optionId) && 
+                                        "bg-primary/10 hover:bg-primary/20"
+                                    )}
+                                    onClick={() => {
+                                        if (question.type === 'MCQ') {
+                                            handleRadioChange(question.id, option.optionId);
+                                        } else {
+                                            handleAnswerChange(
+                                                question.id,
+                                                option.optionId,
+                                                !userAnswers[question.id]?.includes(option.optionId)
+                                            );
+                                        }
+                                    }}
+                                >
+                                    {question.type === 'MCQ' ? (
+                                        <RadioGroupItem 
+                                            value={option.optionId}
+                                            checked={userAnswers[question.id]?.[0] === option.optionId}
+                                        />
+                                    ) : (
+                                        <Checkbox
+                                            id={option.optionId}
+                                            checked={userAnswers[question.id]?.includes(option.optionId)}
+                                        />
+                                    )}
+                                    <div className="flex-1">
+                                        <TiptapRenderer content={option.option} />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                    <Progress value={(currentQuestionIndex + 1) / questions.length * 100} className="mt-2" />
+                );
+
+            case 'FILL_IN_BLANK':
+                return (
+                    <div className="space-y-4">
+                        <TiptapRenderer content={question.question} />
+                        <div>
+                            <Label htmlFor="answer">Your Answer</Label>
+                            <input
+                                type="text"
+                                id="answer"
+                                className="w-full p-2 mt-2 rounded-md border"
+                                value={userAnswers[question.id]?.[0] || ''}
+                                onChange={(e) => handleDescriptiveAnswer(question.id, e.target.value)}
+                                placeholder="Type your answer here..."
+                            />
+                        </div>
+                    </div>
+                );
+
+            case 'DESCRIPTIVE':
+                return (
+                    <div className="space-y-4">
+                        <TiptapRenderer content={question.question} />
+                        <div>
+                            <Label htmlFor="answer">Your Answer</Label>
+                            <Textarea
+                                id="answer"
+                                className="min-h-[200px] mt-2"
+                                value={userAnswers[question.id]?.[0] || ''}
+                                onChange={(e) => handleDescriptiveAnswer(question.id, e.target.value)}
+                                placeholder="Type your answer here..."
+                            />
+                        </div>
+                    </div>
+                );
+
+            default:
+                return <div>Unsupported question type</div>;
+        }
+    };
+
+    const calculateProgress = () => {
+        const answeredQuestions = questions.filter(q => 
+            userAnswers[q.id] && userAnswers[q.id].length > 0
+        ).length;
+        return (answeredQuestions / questions.length) * 100;
+    };
+
+    return (
+        <div className="container mx-auto p-4 max-w-3xl">
+            <Card className="mb-4">
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <CardTitle>{quiz.title}</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span className="font-medium">{formatTime(timeLeft || 0)}</span>
+                        </div>
+                    </div>
+                    <Progress 
+                        value={calculateProgress()} 
+                        className="mt-2"
+                    />
+                    <div className="flex justify-between text-sm text-muted-foreground mt-1">
+                        <span>{calculateProgress().toFixed(0)}% completed</span>
+                        <span>Question {currentQuestionIndex + 1} of {questions.length}</span>
+                    </div>
+                </CardHeader>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline">{currentQuestion.type}</Badge>
+                        <Badge>{currentQuestion.marks} marks</Badge>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <h2 className="text-xl font-semibold mb-4">
-                        <LatexPreview content={currentQuestion.question} />
-                    </h2>
-                    {
-                        currentQuestion.type === 'DESCRIPTIVE' ? (
-                            <div className="space-y-2">
-                                <Label htmlFor="answer">Your Answer</Label>
-                                <textarea
-                                    id="answer"
-                                    className="w-full min-h-[200px] p-2 border rounded-md"
-                                    value={userAnswers[currentQuestion.id]?.[0] || ''}
-                                    onChange={(e) => handleDescriptiveAnswer(currentQuestion.id, e.target.value)}
-                                    placeholder="Type your answer here..."
-                                />
-                            </div>
-                        ) : currentQuestion.type === 'MCQ' ? (
-                            <RadioGroup
-                                onValueChange={(value) => handleRadioChange(currentQuestion.id, value)}
-                                value={userAnswers[currentQuestion.id]?.[0] || ''}
-                            >
-                                {currentQuestion.options?.map((option) => (
-                                    <div key={option.optionId} className="flex items-center space-x-2 mb-2">
-                                        <RadioGroupItem value={option.optionId} id={option.optionId} />
-                                        <Label htmlFor={option.optionId}>
-                                            <LatexPreview content={option.option} />
-                                        </Label>
-                                    </div>
-                                ))}
-                            </RadioGroup>
-                        ) : (
-                            currentQuestion.options?.map((option) => (
-                                <div key={option.optionId} className="flex items-center space-x-2 mb-2">
-                                    <Checkbox
-                                        id={option.optionId}
-                                        checked={userAnswers[currentQuestion.id]?.includes(option.optionId)}
-                                        onCheckedChange={(checked) =>
-                                            handleAnswerChange(currentQuestion.id, option.optionId, checked as boolean)
-                                        }
-                                    />
-                                    <Label htmlFor={option.optionId}>
-                                        <LatexPreview content={option.option} />
-                                    </Label>
-                                </div>
-                            ))
-                        )
-                    }
+                    {renderQuestion(currentQuestion)}
                 </CardContent>
-                <CardFooter className="flex justify-between">
-                    <Button onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
+                <CardFooter className="flex justify-between pt-6 border-t">
+                    <Button 
+                        variant="outline"
+                        onClick={handlePreviousQuestion} 
+                        disabled={currentQuestionIndex === 0}
+                    >
                         <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                     </Button>
-                    {
-                        currentQuestionIndex === questions.length - 1 ? (
-                            <Dialog>
-                                <DialogTrigger className='border-2 p-2 px-4 rounded-lg bg-black text-white dark:bg-white dark:text-black '>Submit</DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Are you absolutely sure?</DialogTitle>
-                                        <DialogDescription>
-                                            This action cannot be undone. This will submit your response.
-                                        </DialogDescription>
-                                        <Button onClick={handleSubmitQuiz}>Submit Quiz</Button>
-                                    </DialogHeader>
-                                </DialogContent>
-                            </Dialog>
-                        ) : (
-                            <Button onClick={handleNextQuestion}>
-                                Next <ChevronRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        )
-                    }
+                    {currentQuestionIndex === questions.length - 1 ? (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="default">
+                                    Submit Quiz
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Submit Quiz</DialogTitle>
+                                    <DialogDescription>
+                                        You have answered {Object.keys(userAnswers).length} out of {questions.length} questions.
+                                        Are you sure you want to submit?
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="flex justify-end gap-2">
+                                    <DialogClose asChild>
+                                        <Button variant="outline">Cancel</Button>
+                                    </DialogClose>
+                                    <Button 
+                                        variant="default"
+                                        onClick={handleSubmitQuiz}
+                                    >
+                                        Submit
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    ) : (
+                        <Button onClick={handleNextQuestion}>
+                            Next <ChevronRight className="ml-2 h-4 w-4" />
+                        </Button>
+                    )}
                 </CardFooter>
             </Card>
         </div>
