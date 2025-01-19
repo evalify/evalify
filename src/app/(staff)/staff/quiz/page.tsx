@@ -21,6 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 type Course = {
     id: string;
@@ -145,6 +146,17 @@ const QuizCard = ({ quiz, onEdit, onDelete, router }: {
 }) => {
     const { icon, color, text } = getQuizStatus(quiz.startTime, quiz.endTime);
 
+    const formatDateTime = (date: Date) => {
+        return date.toLocaleString('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        }).replace(',', ' -');
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -180,33 +192,56 @@ const QuizCard = ({ quiz, onEdit, onDelete, router }: {
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 my-4">
-                <div className="flex items-center text-gray-700 dark:text-gray-300">
-                    <Calendar className="h-5 w-5 mr-2" />
-                    <span className="text-sm">{quiz.startTime.toLocaleDateString()}</span>
+            <div className="grid grid-cols-2 gap-4 my-4">
+                <div className="space-y-3">
+                    <div className="flex items-center text-gray-700 dark:text-gray-300">
+                        <Calendar className="h-5 w-5 mr-2" />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium">Start</span>
+                            <span className="text-sm">{formatDateTime(quiz.startTime)}</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center text-gray-700 dark:text-gray-300">
+                        <Calendar className="h-5 w-5 mr-2" />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium">End</span>
+                            <span className="text-sm">{formatDateTime(quiz.endTime)}</span>
+                        </div>
+                    </div>
                 </div>
-                <div className="flex items-center text-gray-700 dark:text-gray-300">
-                    <Clock className="h-5 w-5 mr-2" />
-                    <span className="text-sm">
-                        {quiz.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                </div>
-                <div className="flex items-center text-gray-700 dark:text-gray-300">
-                    <TimerReset className="h-5 w-5 mr-2" />
-                    <span className="text-sm">{quiz.duration} minutes</span>
+                <div className="space-y-3">
+                    <div className="flex items-center text-gray-700 dark:text-gray-300">
+                        <TimerReset className="h-5 w-5 mr-2" />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium">Duration</span>
+                            <span className="text-sm">{quiz.duration} minutes</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center text-gray-700 dark:text-gray-300">
+                        <SlidersHorizontal className="h-5 w-5 mr-2" />
+                        <div className="flex flex-col">
+                            <span className="text-sm font-medium">Show Result</span>
+                            <span className="text-sm">
+                                {quiz.settings.showResult ? "True" : "False"}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <div className="flex justify-between items-center mt-4">
-                <div className="flex flex-wrap gap-2">
-                    {quiz.courses.map((course) => (
-                        <span
-                            key={course.id}
-                            className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 text-xs font-medium px-2.5 py-0.5 rounded-full"
-                        >
-                            {course.code}
-                        </span>
-                    ))}
+                <div className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Assigned Classes</span>
+                    <div className="flex flex-wrap gap-2">
+                        {quiz.courses.map((course) => (
+                            <span
+                                key={course.id}
+                                className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 text-xs font-medium px-2.5 py-0.5 rounded-full"
+                            >
+                                {course.code} - {course.class.name}
+                            </span>
+                        ))}
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     <Button
@@ -288,6 +323,8 @@ export default function QuizPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState<'date' | 'title' | 'status'>('date');
     const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'active' | 'completed'>('all');
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [quizToDelete, setQuizToDelete] = useState<string | null>(null);
 
     useEffect(() => {
         fetchQuizzes();
@@ -468,6 +505,11 @@ export default function QuizPage() {
         }
     };
 
+    const handleDeleteClick = (id: string) => {
+        setQuizToDelete(id);
+        setDeleteDialogOpen(true);
+    };
+
     const handleDelete = async (id: string) => {
         try {
             const response = await fetch(`/api/staff/quiz?id=${id}`, {
@@ -493,6 +535,9 @@ export default function QuizPage() {
         } catch (error) {
             console.log('Delete error:', error);
             toast.error(error instanceof Error ? error.message : 'Failed to delete quiz');
+        } finally {
+            setDeleteDialogOpen(false);
+            setQuizToDelete(null);
         }
     };
 
@@ -797,7 +842,7 @@ export default function QuizPage() {
                                                                 Results
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem
-                                                                onClick={() => handleDelete(quiz.id)}
+                                                                onClick={() => handleDeleteClick(quiz.id)}
                                                                 className="text-red-600 dark:text-red-400 dark:hover:bg-red-900/20"
                                                             >
                                                                 <Trash2 className="h-4 w-4 mr-2" />
@@ -821,7 +866,7 @@ export default function QuizPage() {
                                     key={quiz.id}
                                     quiz={quiz}
                                     onEdit={handleEdit}
-                                    onDelete={handleDelete}
+                                    onDelete={handleDeleteClick}
                                     router={router}
                                 />
                             ))}
@@ -829,6 +874,25 @@ export default function QuizPage() {
                     </div>
                 )}
             </div>
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Quiz</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this quiz? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => quizToDelete && handleDelete(quizToDelete)}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

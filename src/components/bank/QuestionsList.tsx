@@ -236,7 +236,6 @@ export default function QuestionsList({
                                         <DropdownMenuItem onClick={() => handleEdit({
                                             ...question,
                                             id: questionId,
-                                            content: question.question, // Make sure to map question content correctly
                                             topics: question.topics || [],
                                             options: question.options || [],
                                             answer: question.answer || [],

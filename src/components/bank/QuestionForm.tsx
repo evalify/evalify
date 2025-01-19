@@ -198,12 +198,11 @@ export default function EnhancedQuestionForm({
             const questionData = {
                 type,
                 difficulty,
-                mark: parseInt(marks),
-                content: content,
-                question: content, // Add both content and question fields
+                marks: parseInt(marks),
+                question: content,
                 explanation: explanation.trim(),
-                ...(requireTopics ? { topics: selectedTopics } : {}),
-                // Add specific fields based on question type
+                topics: selectedTopics,
+                bankId,
                 ...(type === 'MCQ' || type === 'TRUE_FALSE' ? {
                     options: optionsWithIds,
                     answer: correctOptions.map(index => optionsWithIds[index].optionId)
@@ -215,13 +214,17 @@ export default function EnhancedQuestionForm({
                 ...(type === 'FILL_IN_BLANK' ? {
                     expectedAnswer: correctAnswer
                 } : {}),
-                // Include existing ID if editing
                 ...(editingQuestion?._id ? { _id: editingQuestion._id } : {}),
                 ...(editingQuestion?.id ? { id: editingQuestion.id } : {})
             };
 
             await onSave(questionData);
+            toast({
+                title: "Success",
+                description: editingQuestion ? "Question updated successfully" : "Question added successfully",
+            });
         } catch (error) {
+            console.error('Error saving question:', error);
             toast({
                 title: "Error",
                 description: error instanceof Error ? error.message : "Failed to save question",

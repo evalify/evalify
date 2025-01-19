@@ -55,23 +55,41 @@ export async function POST(
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const question = await req.json();
+        const questionData = await req.json();
+        console.log(questionData)
+        // Ensure bankId is set
+        questionData.bankId = id;
         
-        const newQuestion = {
-            ...question,
-            createdBy: session.user.id,
-            createdAt: new Date().toISOString(),
-            bankId: id
-        };
+        // Add creation metadata
+        questionData.createdBy = session.user.id;
+        questionData.createdAt = new Date().toISOString();
+
+        // For MCQ questions, ensure options have IDs
+        if (questionData.type === 'MCQ' && Array.isArray(questionData.options)) {
+            questionData.options = questionData.options.map(opt => ({
+                ...opt,
+                optionId: opt.optionId || crypto.randomUUID().replace(/-/g, '')
+            }));
+        }
 
         const result = await (await clientPromise)
             .db()
             .collection('QUESTION_BANK')
-            .insertOne(newQuestion);
+            .insertOne(questionData);
 
-        return NextResponse.json(result, { status: 201 });
+        if (!result.acknowledged) {
+            throw new Error('Failed to insert question');
+        }
+
+        return NextResponse.json({ 
+            message: "Question created successfully",
+            questionId: result.insertedId 
+        }, { status: 201 });
+
     } catch (error) {
-        console.log('error:', error);
-        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+        console.error('Error creating question:', error);
+        return NextResponse.json({ 
+            message: "Failed to create question" 
+        }, { status: 500 });
     }
 }

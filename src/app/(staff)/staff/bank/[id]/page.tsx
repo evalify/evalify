@@ -187,6 +187,33 @@ const QuestionsPage = () => {
         }
     };
 
+    const handleSaveQuestion = async (questionData: Question) => {
+        try {
+            const endpoint = questionData._id
+                ? `/api/staff/bank/${params.id}/questions/${questionData._id}`
+                : `/api/staff/bank/${params.id}/questions`;
+
+            const method = questionData._id ? 'PATCH' : 'POST';
+            console.log({ endpoint,method,questionData })
+
+            const response = await fetch(endpoint, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(questionData),
+            });
+
+
+            // Refresh questions list
+            fetchQuestions(selectedTopics);
+            setIsAddingQuestion(false);
+            setEditingQuestion(null);
+
+        } catch (error) {
+            console.error('Error saving question:', error);
+            throw error;
+        }
+    };
+
     return (
         <>
             <div className="grid grid-cols-[280px_1fr] h-[88vh]">
@@ -288,7 +315,7 @@ const QuestionsPage = () => {
                         </div>
                     </div>
                 </div>
-                
+
                 <div className="p-6">
                     {selectedTopics.length > 0 ? (
                         <div className="space-y-6">
@@ -320,8 +347,8 @@ const QuestionsPage = () => {
                                     setEditingQuestion(null);
                                 }
                             }}>
-                                <SheetContent 
-                                    side="right" 
+                                <SheetContent
+                                    side="right"
                                     className="w-[1200px] sm:max-w-[1200px] overflow-y-auto"
                                 >
                                     <SheetHeader className="sticky top-0 bg-background z-10 pb-4">
@@ -335,11 +362,7 @@ const QuestionsPage = () => {
                                                 setIsAddingQuestion(false);
                                                 setEditingQuestion(null);
                                             }}
-                                            onSave={() => {
-                                                setIsAddingQuestion(false);
-                                                setEditingQuestion(null);
-                                                fetchQuestions(selectedTopics);
-                                            }}
+                                            onSave={handleSaveQuestion}
                                             editingQuestion={editingQuestion}
                                             allTopics={selectedTopics.map(t => t.name)}
                                             selectedTopicIds={selectedTopics.map(t => t.id)}
