@@ -33,8 +33,6 @@ export default function UserProfilePage() {
     const { toast } = useToast()
     const router = useRouter()
 
-    const search = new URLSearchParams(window.location.search).get('profile')
-
     const [isEditing, setIsEditing] = useState(false)
     const [user, setUser] = useState<UserData | null>(null)
     const [formData, setFormData] = useState({
@@ -56,7 +54,7 @@ export default function UserProfilePage() {
             if (!session?.user?.email) return
 
             try {
-                const response = await fetch(`/api/profile?email=${search || session.user.email}`)
+                const response = await fetch(`/api/profile?email=${session.user.email}`)
                 const data = await response.json()
                 if (response.ok) {
                     setUser(data.user)

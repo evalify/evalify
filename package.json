@@ -6,7 +6,7 @@
     "test": "next dev -H 172.17.9.74 -p 80",
     "dev": "next dev",
     "build": "next build",
-    "start": "NODE_ENV=production node server.js",
+    "start": "next start",
     "lint": "next lint"
   },
   "type": "module",
