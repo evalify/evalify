@@ -69,9 +69,9 @@ function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void, quizId: string) {
         // If quiz has expired
         if (now >= endTime) {
             setTimeLeft(0);
-            if (autoSubmit) {
-                onTimeUp();
-            }
+            // if (autoSubmit) {
+            //     onTimeUp();
+            // }
             return;
         }
 
@@ -87,9 +87,9 @@ function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void, quizId: string) {
 
             if (remaining <= 0) {
                 clearInterval(interval);
-                if (autoSubmit) {
-                    onTimeUp();
-                }
+                // if (autoSubmit) {
+                //     onTimeUp();
+                // }
             }
         }, 1000);
 
@@ -160,6 +160,7 @@ const QuizPage = () => {
             Object.keys(localStorage)
                 .filter(key => key.startsWith(`quiz_${quizId}_`))
                 .forEach(key => localStorage.removeItem(key));
+            localStorage.clear()
 
             router.push('/student/quiz')
         } catch (error) {
