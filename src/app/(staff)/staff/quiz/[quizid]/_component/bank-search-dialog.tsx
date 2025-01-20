@@ -32,6 +32,8 @@ interface Topic {
 
 interface BankSearchDialogProps {
     onQuestionsAdd: (questions: Question[]) => void;
+    existingQuestions: Question[];
+    quizId: string; // Add quizId prop
 }
 
 interface Analytics {
@@ -51,7 +53,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
     return shuffled;
 };
 
-export function BankSearchDialog({ onQuestionsAdd }: BankSearchDialogProps) {
+export function BankSearchDialog({ onQuestionsAdd, existingQuestions, quizId }: BankSearchDialogProps) {
     const [banks, setBanks] = useState<Bank[]>([]);
     const [selectedBank, setSelectedBank] = useState<string>('');
     const [topics, setTopics] = useState<Topic[]>([]);
@@ -133,6 +135,7 @@ export function BankSearchDialog({ onQuestionsAdd }: BankSearchDialogProps) {
     const handleFetchQuestions = async () => {
         try {
             setIsLoading(true);
+            
             const response = await fetch('/api/staff/bank/search-questions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -142,16 +145,16 @@ export function BankSearchDialog({ onQuestionsAdd }: BankSearchDialogProps) {
                     difficulty: selectedDifficulty === '_ANY' ? [] : selectedDifficulty ? [selectedDifficulty] : [],
                     types: selectedType === '_ANY' ? [] : selectedType ? [selectedType] : [],
                     count: questionCount,
-                    random: true 
+                    random: true,
+                    quizId // Pass quizId instead of existingQuestions
                 })
             });
 
             if (!response.ok) throw new Error('Failed to fetch questions');
 
-            const { questions, analytics } = await response.json();
+            const { questions } = await response.json();
             // Shuffle the questions before setting them
             setFetchedQuestions(shuffleArray(questions).slice(0, questionCount));
-            setAnalytics(analytics);
         } catch (error) {
             toast.error("Failed to fetch questions");
             console.error('Fetch error:', error);
@@ -209,7 +212,6 @@ export function BankSearchDialog({ onQuestionsAdd }: BankSearchDialogProps) {
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-2 gap-4">
 
-
                         <div className="space-y-2">
                             <Label>Question Bank</Label>
                             <Select value={selectedBank} onValueChange={setSelectedBank}>
@@ -219,7 +221,7 @@ export function BankSearchDialog({ onQuestionsAdd }: BankSearchDialogProps) {
                                 <SelectContent>
                                     {banks.map(bank => (
                                         <SelectItem key={bank.id} value={bank.id}>
-                                            {bank.name}
+                                            {bank.name} - ({bank.description || 'No description'})
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -233,7 +235,7 @@ export function BankSearchDialog({ onQuestionsAdd }: BankSearchDialogProps) {
                                     <SelectValue placeholder="Select topic" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="_ANY">Any Topic (Random)</SelectItem>
+                                    <SelectItem value="_ANY">Any Topic</SelectItem>
                                     {topics.map(topic => (
                                         <SelectItem key={topic.id} value={topic.id}>
                                             {topic.name}

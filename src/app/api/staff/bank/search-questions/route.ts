@@ -10,7 +10,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const { bankIds, topics, difficulty, types, count, random } = await req.json();
+        const { bankIds, topics, difficulty, types, count, random, quizId } = await req.json();
+        const requestedCount = parseInt(count) || 50;
 
         // Validate staff has access to these banks
         const staff = await prisma.staff.findFirst({
@@ -29,112 +30,55 @@ export async function POST(req: Request) {
 
         const authorizedBankIds = accessibleBanks.map(bank => bank.id);
 
-        // Build MongoDB query
+        // Get existing quiz questions
+        const existingQuizQuestions = await (await clientPromise)
+            .db()
+            .collection('NEW_QUESTIONS')
+            .find({ quizId })
+            .project({ question: 1, content: 1, type: 1 })
+            .toArray();
+
+        // Create lookup set for fast duplicate checking
+        const existingKeys = new Set(
+            existingQuizQuestions.map(q => {
+                const content = (q.question || q.content || '').toLowerCase().trim();
+                return `${content}::${q.type.toLowerCase()}`;
+            })
+        );
+
+        // Build base query
         let searchQuery: any = {
             bankId: { $in: authorizedBankIds }
         };
 
-        // Only add filters if they are not empty
-        if (topics && topics.length > 0) {
-            searchQuery.topics = { $in: topics };
-        }
+        if (topics?.length > 0) searchQuery.topics = { $in: topics };
+        if (difficulty?.length > 0) searchQuery.difficulty = { $in: difficulty };
+        if (types?.length > 0) searchQuery.type = { $in: types };
 
-        if (difficulty && difficulty.length > 0) {
-            searchQuery.difficulty = { $in: difficulty };
-        }
-
-        if (types && types.length > 0) {
-            searchQuery.type = { $in: types };
-        }
-
-        // Modified aggregation pipeline
+        // First fetch more questions than needed to account for duplicates
         const pipeline = [
             { $match: searchQuery }
         ];
 
         if (random) {
-            pipeline.push({ $sample: { size: parseInt(count) || 50 } });
+            // Fetch 3x the requested amount to ensure we have enough after filtering
+            pipeline.push({ $sample: { size: requestedCount * 3 } });
         }
 
-        // First get the questions
-        const questions = await (await clientPromise)
+        let questions = await (await clientPromise)
             .db()
             .collection('QUESTION_BANK')
             .aggregate(pipeline)
             .toArray();
 
-        // Then get analytics with a separate aggregation
-        const analyticsAgg = await (await clientPromise)
-            .db()
-            .collection('QUESTION_BANK')
-            .aggregate([
-                { $match: searchQuery },
-                {
-                    $group: {
-                        _id: null,
-                        totalQuestions: { $sum: 1 },
-                        difficulties: { $addToSet: "$difficulty" },
-                        types: { $addToSet: "$type" },
-                        topics: { $addToSet: "$topics" }
-                    }
-                },
-                {
-                    $project: {
-                        _id: 0,
-                        totalQuestions: 1,
-                        byDifficulty: {
-                            $arrayToObject: {
-                                $map: {
-                                    input: "$difficulties",
-                                    as: "diff",
-                                    in: {
-                                        k: "$$diff",
-                                        v: {
-                                            $size: {
-                                                $filter: {
-                                                    input: questions,
-                                                    cond: { $eq: ["$$this.difficulty", "$$diff"] }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        byType: {
-                            $arrayToObject: {
-                                $map: {
-                                    input: "$types",
-                                    as: "type",
-                                    in: {
-                                        k: "$$type",
-                                        v: {
-                                            $size: {
-                                                $filter: {
-                                                    input: questions,
-                                                    cond: { $eq: ["$$this.type", "$$type"] }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            ]).toArray();
+        // Filter out duplicates and limit to requested count
+        questions = questions.filter(q => {
+            const content = (q.question || q.content || '').toLowerCase().trim();
+            const key = `${content}::${q.type.toLowerCase()}`;
+            return !existingKeys.has(key);
+        }).slice(0, requestedCount);
 
-        const analytics = analyticsAgg[0] || {
-            totalQuestions: questions.length,
-            byDifficulty: {},
-            byType: {},
-            byTopic: {}
-        };
-
-        return NextResponse.json({
-            questions,
-            analytics
-        }, { status: 200 });
+        return NextResponse.json({ questions }, { status: 200 });
     } catch (error) {
         console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });

@@ -104,16 +104,14 @@ export default function QuizPage() {
 
     const handleQuestionsFromBank = async (bankQuestions: Question[]) => {
         try {
-            // Add questions in batch
             const response = await fetch('/api/staff/quiz/questions/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     quizId: quizid,
-                    questions: bankQuestions.map(q => ({
+                    questions: bankQuestions.map(({ _id, id, ...q }) => ({
                         ...q,
                         bankId: q.bankId,
-                        topics: undefined // Remove topics for quiz questions
                     }))
                 }),
             });
@@ -175,7 +173,11 @@ export default function QuizPage() {
                         <Plus className="h-4 w-4 mr-2" />
                         Add Question
                     </Button>
-                    <BankSearchDialog onQuestionsAdd={handleQuestionsFromBank} />
+                    <BankSearchDialog 
+                        onQuestionsAdd={handleQuestionsFromBank} 
+                        existingQuestions={questions} // Add this prop
+                        quizId={quizid as string} // Add quizId prop
+                    />
                 </div>
             </div>
 
