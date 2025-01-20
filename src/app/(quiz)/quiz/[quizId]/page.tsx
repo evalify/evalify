@@ -47,17 +47,20 @@ interface Quiz {
     duration: number
 }
 
-function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void) {
+function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void, quizId: string) {
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+
+    const autoSubmit = quiz?.settings?.calculator || false;
 
     useEffect(() => {
         if (!quiz?.duration) return;
 
         // Get or set start time from localStorage
-        let startTime = localStorage.getItem(`quiz_${quiz.id}_startTime`);
+        let startTime = localStorage.getItem(`quiz_${quizId}_startTime`);
         if (!startTime) {
             startTime = Date.now().toString();
-            localStorage.setItem(`quiz_${quiz.id}_startTime`, startTime);
+            localStorage.setItem(`quiz_${quizId}_startTime`, startTime);
         }
 
         const endTime = parseInt(startTime) + (quiz.duration * 60 * 1000);
@@ -66,7 +69,9 @@ function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void) {
         // If quiz has expired
         if (now >= endTime) {
             setTimeLeft(0);
-            onTimeUp();
+            if (autoSubmit) {
+                onTimeUp();
+            }
             return;
         }
 
@@ -77,12 +82,14 @@ function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void) {
         const interval = setInterval(() => {
             const currentTime = Date.now();
             const remaining = Math.max(0, Math.floor((endTime - currentTime) / 1000));
-            
+
             setTimeLeft(remaining);
 
             if (remaining <= 0) {
                 clearInterval(interval);
-                onTimeUp();
+                if (autoSubmit) {
+                    onTimeUp();
+                }
             }
         }, 1000);
 
@@ -204,15 +211,13 @@ const QuizPage = () => {
         if (storedUserAnswers) setUserAnswers(JSON.parse(storedUserAnswers))
     }, [quizId, router])
 
-    const timeLeft = useQuizTimer(quiz, handleSubmitQuiz);
+    const timeLeft = useQuizTimer(quiz, handleSubmitQuiz, quizId);
 
     useEffect(() => {
         // Add time warning effect
-        if (timeLeft === 300) { // 5 minutes = 300 seconds
+        if (timeLeft <= 300) { // 5 minutes = 300 seconds
             setIsTimeWarning(true);
             setWarningMessage("Only 5 minutes remaining! Quiz will be auto-submitted after time is up.");
-            // Auto-hide warning after 10 seconds
-            setTimeout(() => setWarningMessage(null), 10000);
         }
     }, [timeLeft]);
 
@@ -231,7 +236,7 @@ const QuizPage = () => {
         setUserAnswers((prevAnswers) => {
             const currentAnswer = prevAnswers[questionId]?.[0];
             // If same option is clicked, deselect it
-            const newAnswers = currentAnswer === optionId 
+            const newAnswers = currentAnswer === optionId
                 ? { ...prevAnswers, [questionId]: [] }
                 : { ...prevAnswers, [questionId]: [optionId] };
             localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers));
@@ -458,8 +463,8 @@ const QuizPage = () => {
                             </div>
                             <div className={cn(
                                 "flex items-center gap-2 px-3 py-2 rounded-full transition-colors duration-300",
-                                isTimeWarning 
-                                    ? "bg-red-100 text-red-600 font-bold" 
+                                isTimeWarning
+                                    ? "bg-red-100 text-red-600 font-bold"
                                     : "bg-primary/10"
                             )}>
                                 <Clock className={cn(
@@ -491,7 +496,7 @@ const QuizPage = () => {
                                 {renderQuestion(questions[currentQuestionIndex])}
                             </CardContent>
                         </Card>
-                        
+
                         <div className="sticky bottom-0 left-0 right-0 mt-4 bg-background py-4 border-t">
                             <div className="flex justify-between items-center">
                                 <Button
@@ -509,7 +514,7 @@ const QuizPage = () => {
                                         Submit Quiz
                                     </Button>
                                 ) : (
-                                    <Button 
+                                    <Button
                                         onClick={() => {
                                             setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1));
                                             window.scrollTo(0, 0);
@@ -567,10 +572,10 @@ const QuizPage = () => {
                 </AlertDialogContent>
             </AlertDialog>
 
-            <ImagePreviewDialog 
-                image={selectedImage} 
-                isOpen={!!selectedImage} 
-                onClose={() => setSelectedImage(null)} 
+            <ImagePreviewDialog
+                image={selectedImage}
+                isOpen={!!selectedImage}
+                onClose={() => setSelectedImage(null)}
             />
         </div>
     )
