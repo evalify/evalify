@@ -39,7 +39,6 @@ export default function StudentQuizResultPage() {
     const { result, questions } = data
     // const responses = result.responses || {}
     const { responses, questionMarks } = result
-    console.log({ result, questions, responses, questionMarks })
 
     // Calculate total marks from questions array
     const totalMarks = questions.reduce((sum: number, q: any) => sum + (q.marks || 0), 0)
@@ -127,7 +126,6 @@ function QuestionResult({ question, response, index,mark }: {
                 {question.options.map((option: any, optIndex: number) => {
                     const isCorrectOption = correctAnswers.includes(option.optionId);
                     const isSelected = studentAnswers.includes(option.optionId) || false;
-                    console.log({ isCorrectOption, isSelected, correctAnswers, studentAnswers });
                     return (
                         <div
                             key={option.optionId}

@@ -10,11 +10,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const { bankIds, topics, difficulty, types } = await req.json();
+        const { bankIds, topics, difficulty, types, count, random, quizId } = await req.json();
+        const requestedCount = parseInt(count) || 50;
 
         // Validate staff has access to these banks
         const staff = await prisma.staff.findFirst({
-            where: { userId: session.user.id }
+            where: { id: session.user.id }
         });
 
         const accessibleBanks = await prisma.bank.findMany({
@@ -29,28 +30,53 @@ export async function POST(req: Request) {
 
         const authorizedBankIds = accessibleBanks.map(bank => bank.id);
 
-        // Build MongoDB query
-        let query: any = {
+        // Get existing quiz questions
+        const existingQuizQuestions = await (await clientPromise)
+            .db()
+            .collection('NEW_QUESTIONS')
+            .find({ quizId })
+            .project({ question: 1, content: 1, type: 1 })
+            .toArray();
+
+        // Create lookup set for fast duplicate checking
+        const existingKeys = new Set(
+            existingQuizQuestions.map(q => {
+                const content = (q.question || q.content || '').toLowerCase().trim();
+                return `${content}::${q.type.toLowerCase()}`;
+            })
+        );
+
+        // Build base query
+        let searchQuery: any = {
             bankId: { $in: authorizedBankIds }
         };
 
-        if (topics && topics.length > 0) {
-            query.topics = { $elemMatch: { $in: topics } };
+        if (topics?.length > 0) searchQuery.topics = { $in: topics };
+        if (difficulty?.length > 0) searchQuery.difficulty = { $in: difficulty };
+        if (types?.length > 0) searchQuery.type = { $in: types };
+
+        // First fetch more questions than needed to account for duplicates
+        const pipeline = [
+            { $match: searchQuery }
+        ];
+
+        if (random) {
+            // Fetch 3x the requested amount to ensure we have enough after filtering
+            pipeline.push({ $sample: { size: requestedCount * 3 } });
         }
 
-        if (difficulty && difficulty.length > 0) {
-            query.difficulty = { $in: difficulty };
-        }
-
-        if (types && types.length > 0) {
-            query.type = { $in: types };
-        }
-
-        const questions = await (await clientPromise)
+        let questions = await (await clientPromise)
             .db()
             .collection('QUESTION_BANK')
-            .find(query)
+            .aggregate(pipeline)
             .toArray();
+
+        // Filter out duplicates and limit to requested count
+        questions = questions.filter(q => {
+            const content = (q.question || q.content || '').toLowerCase().trim();
+            const key = `${content}::${q.type.toLowerCase()}`;
+            return !existingKeys.has(key);
+        }).slice(0, requestedCount);
 
         return NextResponse.json({ questions }, { status: 200 });
     } catch (error) {

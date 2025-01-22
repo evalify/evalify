@@ -1,9 +1,15 @@
-import NextAuth, { User } from "next-auth";
+import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "../db/prismadb";
-import { AdapterUser } from "next-auth/adapters";
 import { compare, hash } from "bcryptjs";
+import { type IUser } from "../types/next-auth";
 
+// Only log critical errors
+const logCriticalError = (error: unknown) => {
+    if (error instanceof Error) {
+        console.error("[Critical Error]", error.message);
+    }
+};
 
 declare module "next-auth/jwt" {
     interface JWT {
@@ -11,12 +17,12 @@ declare module "next-auth/jwt" {
     }
 }
 
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
     session: {
         strategy: "jwt",
         maxAge: 5 * 60 * 60,
     },
+    trustHost: true, // Explicitly trust the host
     secret: process.env.NEXTAUTH_SECRET,
     providers: [
         Credentials({
@@ -24,16 +30,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 rollNo: { label: "RollNumber", type: "text" },
                 password: { label: "Password", type: "password" },
             },
-            async authorize(credentials) {
+            async authorize(credentials): Promise<IUser | null> {
                 try {
                     if (!credentials?.rollNo || !credentials?.password) {
-                        throw new Error("Missing roll number or password");
+                        return null;
                     }
 
                     let user = await prisma.user.findFirst({
                         where: { rollNo: credentials.rollNo },
-                    });
+                    }).catch(() => null);
 
+                    // Admin creation code remains unchanged
                     if (!user && credentials.rollNo === "admin" && credentials.password === "admin") {
                         user = await prisma.user.create({
                             data: {
@@ -50,34 +57,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         })
                     }
 
-                    if (!user) {
-                        throw new Error("User not found");
+                    if (!user || !user.isActive) {
+                        return null;
                     }
 
-                    const isPasswordValid = await compare(String(credentials.password), String(user.password));
+                    const isPasswordValid = await compare(
+                        String(credentials.password),
+                        String(user.password)
+                    ).catch(() => false);
+
                     if (!isPasswordValid) {
-                        throw new Error("Invalid credentials");
+                        return null;
                     }
 
                     const { password, ...safeUser } = user;
 
                     if (safeUser.role === "STUDENT") {
                         const classId = await prisma.student.findFirst({
-                            where: { userId: safeUser.id },
+                            where: { id: safeUser.id },
                             select: { classId: true },
-                        })
-                        safeUser.classId = classId?.classId;
+                        });
+                        return {
+                            ...safeUser,
+                            classId: classId?.classId,
+                        } as IUser;
                     }
 
-                    return safeUser;
+                    return safeUser as IUser;
 
                 } catch (error) {
-                    if (error instanceof Error) {
-                        console.log("Authorization error:", error.message);
-                    } else {
-                        console.log("Authorization error:", error);
-                    }
-                    throw new Error("Invalid credentials");
+                    logCriticalError(error);
+                    return null;
                 }
             },
         }),
@@ -85,12 +95,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     callbacks: {
         async jwt({ token, user }) {
             if (user) {
-                token.user = user;
+                token.user = user as IUser;
             }
             return token;
         },
         async session({ session, token }) {
-            session.user = token.user as AdapterUser & User;
+            session.user = token.user;
             return session;
         },
     },

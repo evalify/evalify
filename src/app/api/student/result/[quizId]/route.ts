@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: { quizId: string }
         const result = await prisma.quizResult.findFirst({
             where: {
                 student:{
-                    userId: session.user.id
+                    id: session.user.id
                 },
                 quizId: param.quizId
             },

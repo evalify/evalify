@@ -17,7 +17,7 @@ export async function GET(req: Request) {
         const sort = searchParams.get('sort') || 'name'
 
         const staff = await prisma.staff.findFirst({
-            where: { userId: session.user.id }
+            where: { id: session.user.id }
         });
 
         // Try to get from cache first
@@ -88,7 +88,8 @@ export async function GET(req: Request) {
                             }
                         }
                     }
-                }
+                },
+                topics: true // Add this to include topics
             }
         })
 
@@ -97,12 +98,13 @@ export async function GET(req: Request) {
             isOwner: bank.bankOwners.some(owner => owner.id === staff.id)
         }))
 
-        // Get number of questions in each bank from mongoDB
+        // Get number of questions in each bank from mongoDB and include topic count
         const banksWithQuestions = await Promise.all(banksWithOwnership.map(async bank => {
             const questions = await (await clientPromise).db().collection('QUESTION_BANK').find({ bankId: bank.id }).toArray()
             return {
                 ...bank,
-                questions: questions.length
+                questions: questions.length,
+                topicsCount: bank.topics?.length || 0 // Use the actual topics array length
             }
         }))
 
@@ -125,7 +127,7 @@ export async function POST(req: Request) {
         // Get the staff record
         const staff = await prisma.staff.findFirst({
             where: {
-                userId: session.user.id
+                id: session.user.id
             }
         });
 

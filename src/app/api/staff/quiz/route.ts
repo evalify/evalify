@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
 
 
         return NextResponse.json(quiz);
-    } catch (error) {
-        console.log('API Error:', error);
+    } catch (error: any) {
+        console.error('API Error:', error?.message || 'Unknown error');
         return NextResponse.json({ error: "Failed to create quiz" }, { status: 500 });
     }
 }
@@ -96,7 +96,7 @@ export async function GET() {
             include: {
                 courses: {
                     include: {
-                        class: true
+                        class: true,
                     }
                 },
                 settings: true
@@ -107,8 +107,8 @@ export async function GET() {
             status: 200,
         });
 
-    } catch (error) {
-        console.log('API Error:', error);
+    } catch (error: any) {
+        console.error('API Error:', error?.message || 'Unknown error');
         return NextResponse.json({ error: "Failed to fetch quizzes" }, {
             status: 500,
         });
@@ -172,8 +172,8 @@ export async function PUT(request: NextRequest) {
                 }
             }
         );
-    } catch (error) {
-        console.log('Update error:', error);
+    } catch (error: any) {
+        console.error('Update error:', error?.message || 'Unknown error');
         return NextResponse.json(
             {
                 success: false,
@@ -201,15 +201,17 @@ export async function DELETE(request: NextRequest) {
         // First delete the quiz settings
         const quiz = await prisma.quiz.findUnique({
             where: { id },
-            select: { settingsId: true , courses: {
-                select: {
-                    class: {
-                        select: {
-                            id: true
+            select: {
+                settingsId: true, courses: {
+                    select: {
+                        class: {
+                            select: {
+                                id: true
+                            }
                         }
                     }
                 }
-            } }
+            }
         });
 
         if (!quiz) {
@@ -232,8 +234,8 @@ export async function DELETE(request: NextRequest) {
 
 
         return NextResponse.json({ success: true, message: "Quiz deleted successfully" });
-    } catch (error) {
-        console.log('Delete error:', error);
+    } catch (error: any) {
+        console.error('Delete error:', error?.message || 'Unknown error');
         return NextResponse.json({
             success: false,
             error: "Failed to delete quiz"

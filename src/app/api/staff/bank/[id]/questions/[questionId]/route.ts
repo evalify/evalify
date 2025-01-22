@@ -64,6 +64,19 @@ export async function PATCH(
         // Remove _id from the update data
         const { _id, id: questionId2, ...updateData } = updatedQuestion;
 
+        // Ensure options have IDs for MCQ questions
+        if (updateData.type === 'MCQ' && Array.isArray(updateData.options)) {
+            updateData.options = updateData.options.map(opt => {
+                if (!opt.optionId) {
+                    return {
+                        ...opt,
+                        optionId: crypto.randomUUID().replace(/-/g, '')
+                    };
+                }
+                return opt;
+            });
+        }
+
         const client = await clientPromise;
         const result = await client
             .db()

@@ -7,6 +7,13 @@ export async function middleware(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     const { pathname, origin } = req.nextUrl;
 
+    const absolute = (path: string) => `${origin}${path}`;
+
+    // Allow access to change-password page even when authenticated
+    if (pathname === '/auth/change-password') {
+        return NextResponse.next();
+    }
+
     if (pathname.startsWith("/quiz") && token?.user.role === "STUDENT") {
         return NextResponse.next();
     }
@@ -19,7 +26,6 @@ export async function middleware(req: NextRequest) {
     };
 
     // Create absolute URL helper
-    const absolute = (path: string) => `${origin}${path}`;
 
     if (pathname === "/") {
         if (!(token?.user)) {

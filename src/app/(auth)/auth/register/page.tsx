@@ -31,7 +31,7 @@ const formSchema = z.object({
     }),
     role: z.enum(["STUDENT", "STAFF", "ADMIN"]),
     phoneNo: z.string().optional(),
-    rollNo: z.string().optional(),
+    rollNo: z.string().min(1, { message: "Roll number is required" }),
     image: z.instanceof(File).optional(),
 })
 
@@ -183,8 +183,11 @@ export default function RegisterPage() {
                             <FormItem>
                                 <FormLabel>Roll Number</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Your Roll Number" {...field} />
+                                    <Input placeholder="Your Roll Number" {...field} required />
                                 </FormControl>
+                                <FormDescription>
+                                    This will be your unique identifier.
+                                </FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}

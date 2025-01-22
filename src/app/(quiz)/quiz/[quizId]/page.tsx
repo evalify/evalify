@@ -2,27 +2,27 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Checkbox } from "@/components/ui/checkbox"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-import { LatexPreview } from '@/components/latex-preview'
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
-
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from '@/components/ui/badge'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { ChevronLeft, ChevronRight, Clock, AlertTriangle, CheckCircle2, Search, X, ImageOff } from 'lucide-react'
+import Image from 'next/image'
+import { cn } from "@/lib/utils"
+import TiptapRenderer from '@/components/ui/tiptap-renderer'
+import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 interface Option {
     option: string
     optionId: string
+    image?: string
 }
 
 interface Question {
@@ -30,7 +30,8 @@ interface Question {
     question: string
     options?: Option[]
     marks: number
-    type: string
+    type: 'MCQ' | 'MMCQ' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'DESCRIPTIVE';
+    isMultiple?: boolean;
 }
 
 interface Quiz {
@@ -39,7 +40,93 @@ interface Quiz {
     description: string
     startTime: string
     endTime: string
+    settings: {
+        shuffle?: boolean;
+        // other settings...
+    };
     duration: number
+}
+
+function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void, quizId: string) {
+    const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+
+    const autoSubmit = quiz?.settings?.calculator || false;
+
+    useEffect(() => {
+        if (!quiz?.duration) return;
+
+        // Get or set start time from localStorage
+        let startTime = localStorage.getItem(`quiz_${quizId}_startTime`);
+        if (!startTime) {
+            startTime = Date.now().toString();
+            localStorage.setItem(`quiz_${quizId}_startTime`, startTime);
+        }
+
+        const endTime = parseInt(startTime) + (quiz.duration * 60 * 1000);
+        const now = Date.now();
+
+        // If quiz has expired
+        if (now >= endTime) {
+            setTimeLeft(0);
+            // if (autoSubmit) {
+            //     onTimeUp();
+            // }
+            return;
+        }
+
+        // Calculate initial time left
+        const initialTimeLeft = Math.floor((endTime - now) / 1000);
+        setTimeLeft(initialTimeLeft);
+
+        const interval = setInterval(() => {
+            const currentTime = Date.now();
+            const remaining = Math.max(0, Math.floor((endTime - currentTime) / 1000));
+
+            setTimeLeft(remaining);
+
+            if (remaining <= 0) {
+                clearInterval(interval);
+                // if (autoSubmit) {
+                //     onTimeUp();
+                // }
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [quiz, onTimeUp]);
+
+    return timeLeft;
+}
+
+function ImagePreviewDialog({ image, isOpen, onClose }: { image: string | null, isOpen: boolean, onClose: () => void }) {
+    if (!image) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-4xl w-[90vw] h-[90vh] p-0">
+                <div className="relative w-full h-full">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        className="absolute top-2 right-2 z-50"
+                        onClick={onClose}
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                    <div className="w-full h-full flex items-center justify-center">
+                        <Image
+                            src={image}
+                            alt="Preview"
+                            fill
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 const QuizPage = () => {
@@ -48,180 +135,123 @@ const QuizPage = () => {
     const [questions, setQuestions] = useState<Question[]>([])
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
     const [userAnswers, setUserAnswers] = useState<Record<string, string[]>>({})
-    const [timeLeft, setTimeLeft] = useState<number | null>(null)
-    const router = useRouter();
+    const [quizStartTime, setQuizStartTime] = useState<number | null>(null)
+    const [selectedImage, setSelectedImage] = useState<string | null>(null)
+    const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false)
+    const [imageLoadingStates, setImageLoadingStates] = useState<Record<string, boolean>>({})
+    const [imageErrorStates, setImageErrorStates] = useState<Record<string, boolean>>({})
+    const [isTimeWarning, setIsTimeWarning] = useState(false);
+    const [warningMessage, setWarningMessage] = useState<string | null>(null);
+    const router = useRouter()
 
-    const fetchQuiz = async () => {
+    // Update local storage key handling
+    const getStorageKey = (key: string) => `quiz_${quizId}_${key}`;
+
+    const handleSubmitQuiz = async () => {
         try {
-            if (!quizId) {
-                return;
-            }
-            const res = await fetch(`/api/quiz/get?quizId=${quizId}`);
-            if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            const data = await res.json();
-            console.log(data);
-            if (data.status === 404 || data.status === 400 || data.message === "Quiz already completed") {
-                router.push('/student/quiz')
-                alert("Quiz already completed")
-                return
-            }
-            setQuiz(data.quiz);
-            setQuestions(data.questions);
-            localStorage.setItem(`quiz_${quizId}`, JSON.stringify(data.quiz));
-            localStorage.setItem(`questions_${quizId}`, JSON.stringify(data.questions));
-        } catch (error: any) {
-            if (error.status === 404 || error.status === 400 || error.message === "Quiz already completed") {
-                router.push('/student/quiz')
-                alert("Quiz already completed")
-            }
-            console.log('Error fetching quiz:', error);
+            const res = await fetch('/api/quiz/save', {
+                method: 'POST',
+                body: JSON.stringify({ quizId, responses: userAnswers })
+            })
+
+            if (!res.ok) throw new Error('Failed to save quiz')
+
+            // Clear all quiz-related storage
+            Object.keys(localStorage)
+                .filter(key => key.startsWith(`quiz_${quizId}_`))
+                .forEach(key => localStorage.removeItem(key));
+            localStorage.clear()
+
+            router.push('/student/quiz')
+        } catch (error) {
+            console.error('Error saving quiz:', error)
         }
     }
 
     useEffect(() => {
-        const storedQuiz = localStorage.getItem(`quiz_${quizId}`);
-        const storedQuestions = localStorage.getItem(`questions_${quizId}`);
-        const storedUserAnswers = localStorage.getItem(`userAnswers_${quizId}`);
-        const storedTimeLeft = localStorage.getItem(`timeLeft_${quizId}`);
-        const storedViolations = localStorage.getItem(`violations_${quizId}`);
+        const fetchQuiz = async () => {
+            try {
+                if (!quizId) return
+                const res = await fetch(`/api/quiz/get?quizId=${quizId}`)
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+                const data = await res.json()
+                if (data.status === 404 || data.status === 400 || data.message === "Quiz already completed") {
+                    router.push('/student/quiz')
+                    alert("Quiz already completed")
+                    return
+                }
+                const quizData = {
+                    ...data.quiz,
+                    duration: data.quiz.duration
+                }
+                setQuiz(quizData)
+                setQuestions(data.questions)
+                localStorage.setItem(getStorageKey('quiz'), JSON.stringify(quizData))
+                localStorage.setItem(getStorageKey('questions'), JSON.stringify(data.questions))
+            } catch (error: any) {
+                console.error('Error fetching quiz:', error)
+                if (error.status === 404 || error.status === 400 || error.message === "Quiz already completed") {
+                    router.push('/student/quiz')
+                    alert("Quiz already completed")
+                }
+            }
+        }
+
+        const storedQuiz = localStorage.getItem(getStorageKey('quiz'))
+        const storedQuestions = localStorage.getItem(getStorageKey('questions'))
+        const storedUserAnswers = localStorage.getItem(getStorageKey('answers'))
 
         if (storedQuiz && storedQuestions) {
-            setQuiz(JSON.parse(storedQuiz));
-            setQuestions(JSON.parse(storedQuestions));
+            const parsedQuiz = JSON.parse(storedQuiz)
+            setQuiz(parsedQuiz)
+            setQuestions(JSON.parse(storedQuestions))
         } else {
-            fetchQuiz();
+            fetchQuiz()
         }
 
-        if (storedUserAnswers) {
-            setUserAnswers(JSON.parse(storedUserAnswers));
-        }
+        if (storedUserAnswers) setUserAnswers(JSON.parse(storedUserAnswers))
+    }, [quizId, router])
 
-        if (storedTimeLeft) {
-            setTimeLeft(Number(storedTimeLeft));
-        }
-
-        if (storedViolations) {
-            (window as any).globalState = {
-                violations: JSON.parse(storedViolations)
-            };
-        }
-    }, [quizId]);
+    const timeLeft = useQuizTimer(quiz, handleSubmitQuiz, quizId);
 
     useEffect(() => {
-        const storedViolations = localStorage.getItem(`violations_${quizId}`);
-
-        if (!(window as any).globalState) {
-            (window as any).globalState = { violations: [] };
+        // Add time warning effect
+        if (timeLeft <= 300) { // 5 minutes = 300 seconds
+            setIsTimeWarning(true);
+            setWarningMessage("Only 5 minutes remaining! Quiz will be auto-submitted after time is up.");
         }
-
-        if (storedViolations) {
-            (window as any).globalState.violations = JSON.parse(storedViolations);
-        }
-
-    }, [quizId]);
-
-    useEffect(() => {
-        if (timeLeft === null) return;
-
-        const timer = setInterval(() => {
-            setTimeLeft((prevTime) => {
-                if (prevTime === null || prevTime <= 0) {
-                    clearInterval(timer);
-                    return 0;
-                }
-                const newTimeLeft = prevTime - 1;
-                localStorage.setItem(`timeLeft_${quizId}`, newTimeLeft.toString());
-                return newTimeLeft;
-            });
-        }, 1000);
-        return () => clearInterval(timer);
     }, [timeLeft]);
 
     const handleAnswerChange = (questionId: string, optionId: string, isChecked: boolean) => {
         setUserAnswers((prevAnswers) => {
-            const currentAnswers = prevAnswers[questionId] || [];
+            const currentAnswers = prevAnswers[questionId] || []
             const newAnswers = isChecked
                 ? { ...prevAnswers, [questionId]: [...currentAnswers, optionId] }
-                : { ...prevAnswers, [questionId]: currentAnswers.filter(id => id !== optionId) };
-            localStorage.setItem(`userAnswers_${quizId}`, JSON.stringify(newAnswers));
-            return newAnswers;
-        });
+                : { ...prevAnswers, [questionId]: currentAnswers.filter(id => id !== optionId) }
+            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
+            return newAnswers
+        })
     }
 
     const handleRadioChange = (questionId: string, optionId: string) => {
         setUserAnswers((prevAnswers) => {
-            const newAnswers = { ...prevAnswers, [questionId]: [optionId] };
-            localStorage.setItem(`userAnswers_${quizId}`, JSON.stringify(newAnswers));
+            const currentAnswer = prevAnswers[questionId]?.[0];
+            // If same option is clicked, deselect it
+            const newAnswers = currentAnswer === optionId
+                ? { ...prevAnswers, [questionId]: [] }
+                : { ...prevAnswers, [questionId]: [optionId] };
+            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers));
             return newAnswers;
         });
-    }
+    };
 
     const handleDescriptiveAnswer = (questionId: string, answer: string) => {
         setUserAnswers((prevAnswers) => {
-            const newAnswers = { ...prevAnswers, [questionId]: [answer] };
-            localStorage.setItem(`userAnswers_${quizId}`, JSON.stringify(newAnswers));
-            return newAnswers;
-        });
+            const newAnswers = { ...prevAnswers, [questionId]: [answer] }
+            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
+            return newAnswers
+        })
     }
-
-    const handleNextQuestion = () => {
-        if (currentQuestionIndex < questions.length - 1) {
-            setCurrentQuestionIndex(currentQuestionIndex + 1)
-        }
-    }
-
-    const handlePreviousQuestion = () => {
-        if (currentQuestionIndex > 0) {
-            setCurrentQuestionIndex(currentQuestionIndex - 1)
-        }
-    }
-
-    const saveAnswers = async () => {
-        try {
-            const violations = (window as any).globalState?.violations || [];
-            const violationsString = violations
-                .map((v: { message: string; timestamp: Date }) =>
-                    `${new Date(v.timestamp).toLocaleString()}: ${v.message}`)
-                .join('\n');
-
-            const res = await fetch('/api/quiz/save', {
-                method: 'POST',
-                body: JSON.stringify({
-                    quizId,
-                    responses: userAnswers,
-                    violations: violationsString
-                })
-            });
-
-            if (!res.ok) {
-                console.log('Failed to save quiz');
-                return;
-            }
-
-            localStorage.removeItem(`quiz_${quizId}`);
-            localStorage.removeItem(`questions_${quizId}`);
-            localStorage.removeItem(`userAnswers_${quizId}`);
-            localStorage.removeItem(`timeLeft_${quizId}`);
-            localStorage.removeItem(`violations_${quizId}`);
-
-            router.push('/student/quiz');
-        } catch (error) {
-            console.log('Error saving quiz:', error);
-        }
-    };
-
-    const handleSubmitQuiz = () => {
-        console.log('Quiz submitted:', userAnswers)
-        saveAnswers()
-    }
-
-    if (!quiz || questions.length === 0) {
-        return <div>Loading...</div>
-    }
-
-    const currentQuestion = questions[currentQuestionIndex]
 
     const formatTime = (seconds: number) => {
         const minutes = Math.floor(seconds / 60)
@@ -229,97 +259,325 @@ const QuizPage = () => {
         return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
     }
 
-    return (
-        <div className="container mx-auto p-4 max-w-3xl">
-            <Card>
-                <CardHeader>
-                    <CardTitle>{quiz.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{quiz.description}</p>
-                    <div className="flex justify-between items-center mt-4">
-                        <div className="flex items-center">
-                            <Clock className="mr-2 h-4 w-4" />
-                            <span className="font-medium">{formatTime(timeLeft || 0)}</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                            Question {currentQuestionIndex + 1} of {questions.length}
-                        </div>
+    const calculateProgress = () => {
+        const answeredQuestions = questions.filter(q =>
+            userAnswers[q.id] && userAnswers[q.id].length > 0
+        ).length
+        return (answeredQuestions / questions.length) * 100
+    }
+
+    const handleImageLoad = (imageUrl: string) => {
+        setImageLoadingStates(prev => ({ ...prev, [imageUrl]: false }))
+    }
+
+    const handleImageError = (imageUrl: string) => {
+        setImageErrorStates(prev => ({ ...prev, [imageUrl]: true }))
+        setImageLoadingStates(prev => ({ ...prev, [imageUrl]: false }))
+    }
+
+    const ImageWithFallback = ({ src, alt, ...props }: any) => {
+        if (imageErrorStates[src]) {
+            return (
+                <div className="flex items-center justify-center bg-muted rounded-md p-4 min-h-[150px]">
+                    <div className="flex flex-col items-center text-muted-foreground">
+                        <ImageOff className="h-8 w-8 mb-2" />
+                        <span className="text-sm">Image not available</span>
                     </div>
-                    <Progress value={(currentQuestionIndex + 1) / questions.length * 100} className="mt-2" />
-                </CardHeader>
-                <CardContent>
-                    <h2 className="text-xl font-semibold mb-4">
-                        <LatexPreview content={currentQuestion.question} />
-                    </h2>
-                    {
-                        currentQuestion.type === 'DESCRIPTIVE' ? (
-                            <div className="space-y-2">
-                                <Label htmlFor="answer">Your Answer</Label>
-                                <textarea
-                                    id="answer"
-                                    className="w-full min-h-[200px] p-2 border rounded-md"
-                                    value={userAnswers[currentQuestion.id]?.[0] || ''}
-                                    onChange={(e) => handleDescriptiveAnswer(currentQuestion.id, e.target.value)}
-                                    placeholder="Type your answer here..."
-                                />
-                            </div>
-                        ) : currentQuestion.type === 'MCQ' ? (
+                </div>
+            )
+        }
+
+        return (
+            <div className="relative">
+                {imageLoadingStates[src] !== false && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-muted/50 rounded-md">
+                        <div className="animate-pulse w-8 h-8 bg-primary/20 rounded-full" />
+                    </div>
+                )}
+                <Image
+                    src={src}
+                    alt={alt}
+                    onLoadingComplete={() => handleImageLoad(src)}
+                    onError={() => handleImageError(src)}
+                    {...props}
+                />
+            </div>
+        )
+    }
+
+    const renderQuestion = (question: Question) => {
+        switch (question.type) {
+            case 'MCQ':
+            case 'TRUE_FALSE':
+                return (
+                    <div className="space-y-4">
+                        <TiptapRenderer content={question.question} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <RadioGroup
-                                onValueChange={(value) => handleRadioChange(currentQuestion.id, value)}
-                                value={userAnswers[currentQuestion.id]?.[0] || ''}
+                                value={userAnswers[question.id]?.[0] || ''}
+                                onValueChange={(value) => handleRadioChange(question.id, value)}
                             >
-                                {currentQuestion.options?.map((option) => (
-                                    <div key={option.optionId} className="flex items-center space-x-2 mb-2">
+                                {question.options?.map((option) => (
+                                    <div
+                                        key={option.optionId}
+                                        className={cn(
+                                            "flex items-start space-x-3 p-4 rounded-lg transition-colors",
+                                            "hover:bg-muted/50 cursor-pointer",
+                                            userAnswers[question.id]?.includes(option.optionId) &&
+                                            "bg-primary/10 hover:bg-primary/20"
+                                        )}
+                                    >
                                         <RadioGroupItem value={option.optionId} id={option.optionId} />
-                                        <Label htmlFor={option.optionId}>
-                                            <LatexPreview content={option.option} />
+                                        <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
+                                            <TiptapRenderer content={option.option} />
                                         </Label>
+                                        {option.image && option.image.length > 0 && (
+                                            <div
+                                                className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02] ml-16"
+                                                onClick={() => setSelectedImage(option.image)}
+                                            >
+                                                <ImageWithFallback
+                                                    src={option.image}
+                                                    alt={`Image for option: ${option.option}`}
+                                                    width={200}
+                                                    height={150}
+                                                    className="rounded-md object-cover"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </RadioGroup>
-                        ) : (
-                            currentQuestion.options?.map((option) => (
-                                <div key={option.optionId} className="flex items-center space-x-2 mb-2">
+                        </div>
+                    </div>
+                );
+
+            case 'MMCQ':
+                return (
+                    <div className="space-y-4">
+                        <TiptapRenderer content={question.question} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {question.options?.map((option) => (
+                                <div
+                                    key={option.optionId}
+                                    className={cn(
+                                        "flex items-start space-x-3 p-4 rounded-lg transition-colors",
+                                        "hover:bg-muted/50 cursor-pointer",
+                                        userAnswers[question.id]?.includes(option.optionId) &&
+                                        "bg-primary/10 hover:bg-primary/20"
+                                    )}
+                                >
                                     <Checkbox
                                         id={option.optionId}
-                                        checked={userAnswers[currentQuestion.id]?.includes(option.optionId)}
+                                        checked={userAnswers[question.id]?.includes(option.optionId)}
                                         onCheckedChange={(checked) =>
-                                            handleAnswerChange(currentQuestion.id, option.optionId, checked as boolean)
+                                            handleAnswerChange(question.id, option.optionId, checked as boolean)
                                         }
                                     />
-                                    <Label htmlFor={option.optionId}>
-                                        <LatexPreview content={option.option} />
+                                    <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
+                                        {option.image && option.image.length > 0 && (
+                                            <div
+                                                className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02]"
+                                                onClick={() => setSelectedImage(option.image)}
+                                            >
+                                                <ImageWithFallback
+                                                    src={option.image}
+                                                    alt={`Image for option: ${option.option}`}
+                                                    width={200}
+                                                    height={150}
+                                                    className="rounded-md object-cover"
+                                                />
+                                            </div>
+                                        )}
+                                        <TiptapRenderer content={option.option} />
                                     </Label>
                                 </div>
-                            ))
-                        )
-                    }
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                    <Button onClick={handlePreviousQuestion} disabled={currentQuestionIndex === 0}>
-                        <ChevronLeft className="mr-2 h-4 w-4" /> Previous
-                    </Button>
-                    {
-                        currentQuestionIndex === questions.length - 1 ? (
-                            <Dialog>
-                                <DialogTrigger className='border-2 p-2 px-4 rounded-lg bg-black text-white dark:bg-white dark:text-black '>Submit</DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Are you absolutely sure?</DialogTitle>
-                                        <DialogDescription>
-                                            This action cannot be undone. This will submit your response.
-                                        </DialogDescription>
-                                        <Button onClick={handleSubmitQuiz}>Submit Quiz</Button>
-                                    </DialogHeader>
-                                </DialogContent>
-                            </Dialog>
-                        ) : (
-                            <Button onClick={handleNextQuestion}>
-                                Next <ChevronRight className="ml-2 h-4 w-4" />
-                            </Button>
-                        )
-                    }
-                </CardFooter>
-            </Card>
+                            ))}
+                        </div>
+                    </div>
+                );
+
+            case 'FILL_IN_BLANK':
+                return (
+                    <div className="space-y-4">
+                        <TiptapRenderer content={question.question} />
+                        <div>
+                            <Label htmlFor="answer">Your Answer</Label>
+                            <input
+                                type="text"
+                                id="answer"
+                                className="w-full p-2 mt-2 rounded-md border"
+                                value={userAnswers[question.id]?.[0] || ''}
+                                onChange={(e) => handleDescriptiveAnswer(question.id, e.target.value)}
+                                placeholder="Type your answer here..."
+                            />
+                        </div>
+                    </div>
+                )
+
+            case 'DESCRIPTIVE':
+                return (
+                    <div className="space-y-4">
+                        <TiptapRenderer content={question.question} />
+                        <div>
+                            <Label htmlFor="answer">Your Answer</Label>
+                            <Textarea
+                                id="answer"
+                                className="min-h-[200px] mt-2"
+                                value={userAnswers[question.id]?.[0] || ''}
+                                onChange={(e) => handleDescriptiveAnswer(question.id, e.target.value)}
+                                placeholder="Type your answer here..."
+                            />
+                        </div>
+                    </div>
+                )
+
+            default:
+                return <div>Unsupported question type</div>
+        }
+    }
+
+    if (!quiz || questions.length === 0) {
+        return <div className="flex items-center justify-center h-screen">Loading...</div>
+    }
+
+    return (
+        <div className="h-[90vh] flex flex-col bg-background">
+            <header className="sticky top-0 z-10 bg-background border-b">
+                <div className="container mx-auto p-4">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-bold">{quiz.title}</h1>
+                            {warningMessage && (
+                                <div className="mt-2 text-sm text-red-600 bg-red-100 px-3 py-2 rounded-md animate-pulse">
+                                    {warningMessage}
+                                </div>
+                            )}
+                            <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                                <Progress value={calculateProgress()} className="w-40 mr-2" />
+                                <span>{Math.round(calculateProgress())}% complete</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="text-sm">
+                                Question {currentQuestionIndex + 1} of {questions.length}
+                            </div>
+                            <div className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-full transition-colors duration-300",
+                                isTimeWarning
+                                    ? "bg-red-100 text-red-600 font-bold"
+                                    : "bg-primary/10"
+                            )}>
+                                <Clock className={cn(
+                                    "h-4 w-4",
+                                    isTimeWarning && "animate-pulse"
+                                )} />
+                                <span className="font-medium">
+                                    {formatTime(timeLeft || 0)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main className="flex-1 container mx-auto p-4 overflow-hidden">
+                <div className="flex gap-8 h-[80vh]">
+                    <div className="w-3/4 flex flex-col h-[80vh]">
+                        <Card className="flex-1 flex flex-col overflow-hidden">
+                            <CardHeader className="border-b">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="outline">{questions[currentQuestionIndex].type}</Badge>
+                                        <Badge>{questions[currentQuestionIndex].mark} marks</Badge>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 overflow-y-auto mt-6">
+                                {renderQuestion(questions[currentQuestionIndex])}
+                            </CardContent>
+                        </Card>
+
+                        <div className="sticky bottom-0 left-0 right-0 mt-4 bg-background py-4 border-t">
+                            <div className="flex justify-between items-center">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
+                                        window.scrollTo(0, 0);
+                                    }}
+                                    disabled={currentQuestionIndex === 0}
+                                >
+                                    <ChevronLeft className="mr-2 h-4 w-4" /> Previous
+                                </Button>
+                                {currentQuestionIndex === questions.length - 1 ? (
+                                    <Button onClick={() => setIsSubmitDialogOpen(true)}>
+                                        Submit Quiz
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        onClick={() => {
+                                            setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1));
+                                            window.scrollTo(0, 0);
+                                        }}
+                                    >
+                                        Next <ChevronRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="w-1/4">
+                        <Card className="sticky">
+                            <CardHeader>
+                                <CardTitle>Questions</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ScrollArea className="h-[60vh]">
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {questions.map((q, index) => (
+                                            <Button
+                                                key={q.id}
+                                                variant={currentQuestionIndex === index ? "default" : "outline"}
+                                                className={cn(
+                                                    "w-10 h-10",
+                                                    userAnswers[q.id] && userAnswers[q.id].length > 0 && "bg-primary/20"
+                                                )}
+                                                onClick={() => setCurrentQuestionIndex(index)}
+                                            >
+                                                {index + 1}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </main>
+
+            <AlertDialog open={isSubmitDialogOpen} onOpenChange={setIsSubmitDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Submit Quiz</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            You have answered {Object.keys(userAnswers).length} out of {questions.length} questions.
+                            Are you sure you want to submit?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleSubmitQuiz}>Submit</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <ImagePreviewDialog
+                image={selectedImage}
+                isOpen={!!selectedImage}
+                onClose={() => setSelectedImage(null)}
+            />
         </div>
     )
 }

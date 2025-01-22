@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from "lucide-react";
+import UnderDev from '@/components/under-dev';
 
 interface Class {
     id: string;
@@ -52,6 +53,10 @@ export default function SharePointPage() {
         };
         fetchCourses();
     }, []);
+
+    return (
+        <UnderDev featureName="Sharepoint" message='Course-wise Files can be shared and accessed here.' />
+    )
 
     if (isLoading) {
         return (

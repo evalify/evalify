@@ -19,7 +19,7 @@ export async function GET() {
         }
 
         const student = await prisma.student.findFirst({
-            where: { userId: session.user.id },
+            where: { id: session.user.id },
             include: { class: true }
         });
 

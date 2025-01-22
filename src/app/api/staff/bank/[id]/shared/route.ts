@@ -15,7 +15,7 @@ export async function GET(
 
         const staff = await prisma.staff.findFirst({
             where: {
-                userId: session.user.id
+                id: session.user.id
             }
         });
 

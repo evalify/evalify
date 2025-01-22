@@ -19,12 +19,12 @@ export async function GET(
         let query = { bankId: id };
 
         if (topicsParam) {
-            const searchTopics = topicsParam.split(',').filter(Boolean).map(t => t.trim());
-            if (searchTopics.length > 0) {
+            const topicIds = topicsParam.split(',').filter(Boolean);
+            if (topicIds.length > 0) {
                 query = {
                     ...query,
                     topics: {
-                        $elemMatch: { $in: searchTopics }
+                        $in: topicIds 
                     }
                 };
             }
@@ -37,6 +37,7 @@ export async function GET(
             .toArray();
 
         return NextResponse.json({ questions }, { status: 200 });
+
     } catch (error) {
         console.log('error:', error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
@@ -54,24 +55,41 @@ export async function POST(
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const question = await req.json();
+        const questionData = await req.json();
+        console.log(questionData)
+        // Ensure bankId is set
+        questionData.bankId = id;
+        
+        // Add creation metadata
+        questionData.createdBy = session.user.id;
+        questionData.createdAt = new Date().toISOString();
 
-        const topics = Array.isArray(question.topics) ? question.topics : [question.topics].filter(Boolean);
+        // For MCQ questions, ensure options have IDs
+        if (questionData.type === 'MCQ' && Array.isArray(questionData.options)) {
+            questionData.options = questionData.options.map(opt => ({
+                ...opt,
+                optionId: opt.optionId || crypto.randomUUID().replace(/-/g, '')
+            }));
+        }
 
-        const { _id, ...questionData } = question;
-
-        const newQuestion = await (await clientPromise)
+        const result = await (await clientPromise)
             .db()
             .collection('QUESTION_BANK')
-            .insertOne({
-                ...questionData,
-                topics,
-                bankId: id,
-            });
+            .insertOne(questionData);
 
-        return NextResponse.json(newQuestion, { status: 201 });
+        if (!result.acknowledged) {
+            throw new Error('Failed to insert question');
+        }
+
+        return NextResponse.json({ 
+            message: "Question created successfully",
+            questionId: result.insertedId 
+        }, { status: 201 });
+
     } catch (error) {
-        console.log('error:', error);
-        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+        console.error('Error creating question:', error);
+        return NextResponse.json({ 
+            message: "Failed to create question" 
+        }, { status: 500 });
     }
 }

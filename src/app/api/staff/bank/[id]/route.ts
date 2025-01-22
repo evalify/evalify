@@ -8,18 +8,19 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
+        const { id } = await params;
         const session = await auth();
         if (!session?.user?.role || session.user.role !== "STAFF") {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
         const staff = await prisma.staff.findFirst({
-            where: { userId: session.user.id }
+            where: { id: session.user.id }
         });
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: params.id,
+                id: id,
                 bankOwners: {
                     some: {
                         id: staff.id
@@ -34,9 +35,8 @@ export async function PATCH(
 
         const body = await req.json()
         const { name, description, semester } = body
-
         const updatedBank = await prisma.bank.update({
-            where: { id: params.id },
+            where: { id: id },
             data: { name, description, semester }
         })
 
@@ -59,9 +59,9 @@ export async function DELETE(
         if (session?.user?.role !== "STAFF") {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
-
+        const { id } = await params;
         const staff = await prisma.staff.findFirst({
-            where: { userId: session.user.id }
+            where: { id: session.user.id }
         });
 
         if (!staff) {
@@ -70,7 +70,7 @@ export async function DELETE(
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: params.id,
+                id: id,
                 bankOwners: {
                     some: {
                         id: staff.id
@@ -85,7 +85,7 @@ export async function DELETE(
 
         await prisma.bank.delete({
             where: {
-                id: params.id
+                id: id
             }
         })
 

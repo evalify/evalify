@@ -10,10 +10,10 @@ datasource db {
 model User {
     id                 String    @id @default(cuid())
     name               String
+    rollNo             String    @unique
     email              String    @unique
     role               Role      @default(STUDENT)
     phoneNo            String?
-    rollNo             String?
     image              String?
     password           String
     createdAt          DateTime  @default(now())
@@ -41,9 +41,8 @@ model Class {
 }
 
 model Student {
-    id         String       @id @default(cuid())
-    user       User         @relation(fields: [userId], references: [id])
-    userId     String
+    id String @id @default(cuid())
+    user       User         @relation(fields: [id], references: [id])
     class      Class?       @relation(fields: [classId], references: [id])
     classId    String?
     QuizResult QuizResult[]
@@ -66,6 +65,8 @@ model Course {
 model Topic {
     id   String @id @default(cuid())
     name String
+
+    Bank Bank[]
 }
 
 model Bank {
@@ -75,7 +76,7 @@ model Bank {
     description String?
     semester    String?
 
-    topics String[]
+    topics Topic[]
 
     bankOwners Staff[] @relation("BankOwners")
     staffs     Staff[] @relation("BankStaffs")
@@ -83,8 +84,7 @@ model Bank {
 
 model Staff {
     id         String   @id @default(cuid())
-    user       User     @relation(fields: [userId], references: [id])
-    userId     String
+    user       User     @relation(fields: [id], references: [id])
     bank       Bank[]   @relation("BankOwners")
     bankStaffs Bank[]   @relation("BankStaffs")
     courses    Course[]
