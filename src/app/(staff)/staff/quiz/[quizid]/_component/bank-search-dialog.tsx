@@ -1,19 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { Plus, Search, Filter, Check, RefreshCcw, Trash2 } from "lucide-react";
+import { Plus, Search, Filter, Check, RefreshCcw } from "lucide-react";
 import { useState, useEffect } from "react";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { toast } from "sonner";
 import { Question } from "./types";
-import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import QuestionsList from '@/components/bank/QuestionsList';
@@ -33,7 +24,7 @@ interface Topic {
 interface BankSearchDialogProps {
     onQuestionsAdd: (questions: Question[]) => void;
     existingQuestions: Question[];
-    quizId: string; // Add quizId prop
+    quizId: string; 
 }
 
 interface Analytics {
@@ -43,7 +34,7 @@ interface Analytics {
     byTopic: Record<string, number>;
 }
 
-// Add this shuffle function near the top of the file
+
 const shuffleArray = <T,>(array: T[]): T[] => {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {

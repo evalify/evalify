@@ -38,6 +38,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination"
+import { createUserWithRole } from "@/lib/actions/user-actions";
 
 type Student = {
     id: string;
@@ -75,6 +76,8 @@ export default function StudentsPage() {
     const [totalPages, setTotalPages] = useState(1);
     const [isPending, startTransition] = useTransition();
     const [isSearching, setIsSearching] = useState(false);
+    const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [newStudent, setNewStudent] = useState({ name: '', email: '', rollNo: '' });
     const router = useRouter();
 
     const fetchStudents = async (currentPage: number, searchQuery: string = "") => {
@@ -83,7 +86,7 @@ export default function StudentsPage() {
             setError(null);
 
             const res = await fetch(
-                `/api/admin/students?search=${encodeURIComponent(searchQuery)}&page=${currentPage}&limit=10`,
+                `/api/admin/students?search=${encodeURIComponent(searchQuery)}&page=${currentPage}&limit=50`,
                 {
                     cache: 'no-store',
                     headers: {
@@ -216,6 +219,37 @@ export default function StudentsPage() {
         }
     };
 
+    const handleCreateStudent = async () => {
+        try {
+            if (!newStudent.rollNo) {
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Roll number is required"
+                });
+                return;
+            }
+            
+            await createUserWithRole({
+                ...newStudent,
+                role: 'STUDENT'
+            });
+            setCreateDialogOpen(false);
+            setNewStudent({ name: '', email: '', rollNo: '' });
+            fetchStudents(page);
+            toast({
+                title: "Success",
+                description: "Student created successfully"
+            });
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to create student"
+            });
+        }
+    };
+
     return (
         <div className="container mx-auto py-10">
             <div className="flex justify-between items-center mb-6">
@@ -247,6 +281,35 @@ export default function StudentsPage() {
                     )}
                 </div>
                 <div className="flex gap-2">
+                    <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button>Create Student</Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Create New Student</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex flex-col gap-4">
+                                <Input
+                                    placeholder="Name"
+                                    value={newStudent.name}
+                                    onChange={(e) => setNewStudent(prev => ({ ...prev, name: e.target.value }))}
+                                />
+                                <Input
+                                    placeholder="Email"
+                                    type="email"
+                                    value={newStudent.email}
+                                    onChange={(e) => setNewStudent(prev => ({ ...prev, email: e.target.value }))}
+                                />
+                                <Input
+                                    placeholder="Roll Number"
+                                    value={newStudent.rollNo}
+                                    onChange={(e) => setNewStudent(prev => ({ ...prev, rollNo: e.target.value }))}
+                                />
+                                <Button onClick={handleCreateStudent}>Create</Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                     <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
                             <Button disabled={selected.length === 0}>Assign to Class</Button>
