@@ -25,6 +25,18 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Student not found" }, { status: 404 });
         }
 
+        // Check if student has already submitted this quiz
+        const existingSubmission = await prisma.quizResult.findFirst({
+            where: {
+                studentId: studentId.id,
+                quizId: response.quizId
+            }
+        });
+
+        if (existingSubmission) {
+            return NextResponse.json({ error: "Quiz already submitted" }, { status: 400 });
+        }
+
         const save = await prisma.quizResult.create({
             data: {
                 studentId: studentId.id,

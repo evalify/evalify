@@ -22,7 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         strategy: "jwt",
         maxAge: 5 * 60 * 60,
     },
-    trustHost: true, // Explicitly trust the host
+    trustHost: true,
     secret: process.env.NEXTAUTH_SECRET,
     providers: [
         Credentials({

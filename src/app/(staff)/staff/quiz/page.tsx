@@ -50,6 +50,7 @@ type Quiz = {
         calculator: boolean;
         shuffle: boolean;
         showResult: boolean;
+        autoSubmit: boolean; // Add this line
     };
     courses: Course[];
 };
@@ -311,10 +312,11 @@ export default function QuizPage() {
         endTime: createSafeDate(new Date(Date.now() + 24 * 60 * 60 * 1000)),
         duration: 45,
         settings: {
-            fullscreen: false,
+            fullscreen: true,
             calculator: false,
-            shuffle: false,
+            shuffle: true,
             showResult: false,
+            autoSubmit: false, 
         },
         courseIds: [],
     });
@@ -394,11 +396,11 @@ export default function QuizPage() {
 
     const resetForm = () => {
         const now = new Date();
-        // Round to nearest future minute
+
         now.setSeconds(0, 0);
         now.setMinutes(now.getMinutes() + 1);
 
-        const endTime = new Date(now.getTime() + 45 * 60000); // 45 minutes from rounded now
+        const endTime = new Date(now.getTime() + 45 * 60000); 
 
         setFormData({
             title: '',
@@ -407,10 +409,11 @@ export default function QuizPage() {
             endTime: endTime,
             duration: 45,
             settings: {
-                fullscreen: false,
+                fullscreen: true,
                 calculator: false,
-                shuffle: false,
+                shuffle: true,
                 showResult: false,
+                autoSubmit: false,  
             },
             courseIds: [],
         });
@@ -420,7 +423,7 @@ export default function QuizPage() {
     const handleEdit = (quiz: Quiz) => {
         setEditMode(true);
         setFormData({
-            id: quiz.id, // Add this line to include quiz ID
+            id: quiz.id, 
             title: quiz.title,
             description: quiz.description,
             startTime: createSafeDate(quiz.startTime),
@@ -428,7 +431,7 @@ export default function QuizPage() {
             duration: quiz.duration,
             settings: {
                 ...quiz.settings,
-                id: quiz.settingsId // Add this line to include settings ID
+                id: quiz.settingsId 
             },
             courseIds: quiz.courses.map(course => course.id),
         });
@@ -442,7 +445,6 @@ export default function QuizPage() {
             const startTime = createSafeDate(formData.startTime);
             const endTime = createSafeDate(formData.endTime);
 
-            // Round dates to nearest minute for consistent comparison
             startTime.setSeconds(0, 0);
             endTime.setSeconds(0, 0);
 
@@ -577,7 +579,7 @@ export default function QuizPage() {
         });
     }, [quizzes, searchQuery, sortBy, filterStatus]);
 
-    const settingsFields = ['fullscreen', 'calculator', 'shuffle', 'showResult'];
+    const settingsFields = ['fullscreen', 'calculator', 'shuffle', 'showResult', 'autoSubmit'];
 
     return (
         <div className="min-h-screen bg-gradient-to-br p-8">
@@ -675,7 +677,7 @@ export default function QuizPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div>
+                                        {/* <div>
                                             <Label className="text-indigo-900 dark:text-indigo-100 mb-2 block">Classes</Label>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {courses.map(course => (
@@ -692,7 +694,7 @@ export default function QuizPage() {
                                                     </div>
                                                 ))}
                                             </div>
-                                        </div>
+                                        </div> */}
                                         <div className="space-y-2">
                                             <Label className="text-indigo-900 dark:text-indigo-100">Settings</Label>
                                             <div className="grid grid-cols-2 gap-4">

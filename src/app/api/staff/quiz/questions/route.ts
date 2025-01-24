@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/db/mongo";
-import { ObjectId } from 'mongodb';
 import { auth } from "@/lib/auth/auth";
-import { v4 as uuidv4 } from 'uuid';
+import { ObjectId } from 'mongodb';
 
 const QUESTIONS_COLLECTION = "NEW_QUESTIONS";
-const QUIZ_COLLECTION = "QUIZZES";
+
 
 export async function GET(request: NextRequest) {
     try {
@@ -20,20 +19,6 @@ export async function GET(request: NextRequest) {
 
         const client = await clientPromise;
         const db = client.db();
-
-        const quiz = await db.collection(QUIZ_COLLECTION).findOne({ _id: quizId });
-        if (!quiz) {
-            await db.collection(QUIZ_COLLECTION).insertOne({
-                _id: quizId,
-                metadata: {
-                    easy: 0,
-                    medium: 0,
-                    hard: 0
-                },
-                createdAt: new Date(),
-                updatedAt: new Date()
-            });
-        }
 
         const questions = await db
             .collection(QUESTIONS_COLLECTION)
@@ -54,9 +39,8 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Quiz ID is required" }, { status: 400 });
         }
 
-        // Add metadata
         const questionData = {
-            _id: uuidv4(),
+            // _id: uuidv4(),
             ...question,
             createdAt: new Date(),
             updatedAt: new Date()
@@ -73,7 +57,6 @@ export async function POST(request: Request) {
             _id: result.insertedId
         });
     } catch (error) {
-        // ...error handling...
         console.log(error)
     }
 }
@@ -96,12 +79,14 @@ export async function PUT(request: NextRequest) {
             ...questionData,
             question: questionData.content || questionData.question,
             mark: parseInt(questionData.mark?.toString() || '1'),
-            updatedAt: new Date()
+            updatedAt: new Date(),
         };
 
         // Remove any undefined or null values
-        Object.keys(updatedQuestion).forEach(key => 
+        Object.keys(updatedQuestion).forEach(key => {
             (updatedQuestion[key] === undefined || updatedQuestion[key] === null) && delete updatedQuestion[key]
+            delete updatedQuestion["id"]
+        }
         );
 
         const client = await clientPromise;
@@ -109,9 +94,9 @@ export async function PUT(request: NextRequest) {
             .db()
             .collection(QUESTIONS_COLLECTION)
             .updateOne(
-                { 
-                    _id: _id,
-                    quizId 
+                {
+                    _id: ObjectId(_id),
+                    quizId
                 },
                 { $set: updatedQuestion }
             );
@@ -120,13 +105,13 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ message: "Question not found" }, { status: 404 });
         }
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             message: "Question updated successfully",
-            success: true 
+            success: true
         });
     } catch (error) {
         console.error('PUT Question Error:', error);
-        return NextResponse.json({ 
+        return NextResponse.json({
             message: "Failed to update question",
             error: error instanceof Error ? error.message : "Unknown error"
         }, { status: 500 });
@@ -145,6 +130,7 @@ export async function DELETE(req: Request) {
 
         const { quizId, questionId } = await req.json();
 
+
         if (!quizId || !questionId) {
             return NextResponse.json(
                 { message: "Missing required fields" },
@@ -156,7 +142,7 @@ export async function DELETE(req: Request) {
             .db()
             .collection(QUESTIONS_COLLECTION)
             .deleteOne({
-                _id: questionId,
+                _id: ObjectId(questionId),
                 quizId: quizId
             });
 

@@ -44,11 +44,11 @@ interface QuestionsListProps {
     onDelete?: (questionId: string) => void; // Make onDelete optional
 }
 
-export default function QuestionsList({ 
-    questions, 
-    onEdit, 
-    bankId, 
-    topic, 
+export default function QuestionsList({
+    questions,
+    onEdit,
+    bankId,
+    topic,
     onQuestionUpdate,
     editingQuestion,
     requireTopics = true, // Add default value
@@ -206,7 +206,7 @@ export default function QuestionsList({
                 <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2 flex-1">
-                                <span className="font-medium">Question {index + 1}</span>
+                            <span className="font-medium">Question {index + 1}</span>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 {getQuestionIcon(question.type)}
                                 <span className="text-sm">{question.type}</span>
@@ -326,8 +326,8 @@ export default function QuestionsList({
                                             </div>
                                             {/* Option image if exists */}
                                             {option.image && (
-                                                <CustomImage 
-                                                    src={option.image} 
+                                                <CustomImage
+                                                    src={option.image}
                                                     alt={`Option ${option.option}`}
                                                     className="rounded"
                                                 />
@@ -360,6 +360,14 @@ export default function QuestionsList({
                             </div>
                         )}
                     </div>
+                    {
+                        question.explanation && (
+                            <div key={generateKey('explanation')} className="m-2 flex gap-2 flex-col">
+                                <h4 className="font-medium">Explanation:</h4>
+                                <TiptapRenderer content={question.explanation} />
+                            </div>
+                        )
+                    }
                 </CardContent>
             </Card>
         );
