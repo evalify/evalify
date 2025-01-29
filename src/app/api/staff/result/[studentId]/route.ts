@@ -67,24 +67,46 @@ export async function PUT(req: Request, { params }: { params: { studentId: strin
         }
 
         const body = await req.json();
-        const { responses, questionMarks } = body;
+        const { questionId, score, remarks, breakdown } = body;
 
-        // Calculate total score from questionMarks
-        const totalScore = Object.values(questionMarks).reduce((sum, mark) => sum + (Number(mark) || 0), 0);
+        const result = await prisma.quizResult.findUnique({
+            where: { id: param.studentId },
+            select: { responses: true }
+        });
 
-        const result = await prisma.quizResult.update({
+        if (!result) {
+            return NextResponse.json({ error: "Result not found" }, { status: 404 });
+        }
+
+        // Update the specific question's response
+        const updatedResponses = {
+            ...result.responses,
+            [questionId]: {
+                ...result.responses[questionId],
+                score,
+                remarks,
+                breakdown
+            }
+        };
+
+        // Calculate new total score
+        const totalScore = Object.values(updatedResponses).reduce(
+            (sum: number, response: any) => sum + (Number(response.score) || 0), 
+            0
+        );
+
+        const updatedResult = await prisma.quizResult.update({
             where: { id: param.studentId },
             data: {
-                responses,
-                questionMarks,
-                score: totalScore 
+                responses: updatedResponses,
+                score: totalScore
             }
         });
 
-        // Clear both student and quiz caches
-        await clearStudentResultCache(param.studentId, result.quizId);
+        // Clear cache
+        await clearStudentResultCache(param.studentId, updatedResult.quizId);
 
-        return NextResponse.json({ result });
+        return NextResponse.json({ result: updatedResult });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

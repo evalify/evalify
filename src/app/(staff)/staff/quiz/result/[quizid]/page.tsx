@@ -12,8 +12,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
 import * as XLSX from 'xlsx'
-import { Download } from 'lucide-react'
-
+import { Download, Settings } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function QuizPage() {
     const { quizid } = useParams()
@@ -31,6 +34,7 @@ export default function QuizPage() {
         questionAnalysis: true,
         markDistribution: true
     });
+    const [settings, setSettings] = useState<any>(null)
 
     const toggleChart = (chartName: keyof typeof chartVisibility) => {
         setChartVisibility(prev => ({
@@ -66,6 +70,35 @@ export default function QuizPage() {
         }
     }
 
+    const fetchSettings = async () => {
+        try {
+            const response = await fetch(`/api/staff/quiz/result/${quizid}/settings`)
+            const data = await response.json()
+            if (response.ok) {
+                setSettings(data)
+            }
+        } catch (error) {
+            toast.error('Failed to fetch settings')
+        }
+    }
+
+    const updateSetting = async (updates: Partial<typeof settings>) => {
+        try {
+            const response = await fetch(`/api/staff/quiz/result/${quizid}/settings`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...settings, ...updates })
+            })
+            const data = await response.json()
+            if (response.ok) {
+                setSettings(data)
+                toast.success('Settings updated')
+            }
+        } catch (error) {
+            toast.error('Failed to update settings')
+        }
+    }
+
     useEffect(() => {
         if (!quizid) {
             toast('Error', {
@@ -74,6 +107,12 @@ export default function QuizPage() {
             return
         }
         getQuizData(quizid)
+    }, [quizid])
+
+    useEffect(() => {
+        if (quizid) {
+            fetchSettings()
+        }
     }, [quizid])
 
     if (!quizid) {
@@ -241,7 +280,6 @@ export default function QuizPage() {
         }));
     };
 
-    // Add function to prepare mark distribution data
     const prepareMarkDistributionData = () => {
         if (!quiz?.QuizReport?.[0]?.markDistribution) return [];
         const dist = quiz.QuizReport[0].markDistribution as any;
@@ -250,26 +288,76 @@ export default function QuizPage() {
             { name: 'Good (60-79%)', value: dist.good || 0, color: '#3b82f6' },
             { name: 'Average (40-59%)', value: dist.average || 0, color: '#f59e0b' },
             { name: 'Poor (0-39%)', value: dist.poor || 0, color: '#ef4444' }
-        ].filter(item => item.value > 0); // Only show categories with values
+        ].filter(item => item.value > 0); 
     };
 
+    const renderSettingsButton = () => (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                    <Settings className="h-4 w-4" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-80 p-4" align="end">
+                <DropdownMenuLabel>Evaluation Settings</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between space-x-2">
+                        <Label htmlFor="negative-marking">Negative Marking</Label>
+                        <Switch
+                            id="negative-marking"
+                            checked={settings?.negativeMark || false}
+                            onCheckedChange={(checked) => updateSetting({ negativeMark: checked })}
+                        />
+                    </div>
+                    {/* <div className="flex items-center justify-between space-x-2">
+                        <Label htmlFor="mcq-partial">MCQ Partial Marks</Label>
+                        <Switch
+                            id="mcq-partial"
+                            checked={settings?.mcqPartialMark || false}
+                            onCheckedChange={(checked) => updateSetting({ mcqPartialMark: checked })}
+                        />
+                    </div> */}
+                    <div className="flex items-center justify-between space-x-2">
+                        <Label htmlFor="code-partial">Code Partial Marks</Label>
+                        <Switch
+                            id="code-partial"
+                            checked={settings?.codePartialMark || false}
+                            onCheckedChange={(checked) => updateSetting({ codePartialMark: checked })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>AI Model</Label>
+                        <Select
+                            value={settings?.evaluatorModel || 'llama3.3'}
+                            onValueChange={(value) => updateSetting({ evaluatorModel: value })}
+                        >
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="llama3.3">Llama 3.3 (70B)</SelectItem>
+                                <SelectItem value="deepseek">DeepSeek R1</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
 
     return (
         <div className="p-6 space-y-6">
-            <div>
+            <div className="flex justify-between items-center">
                 <Button variant="ghost" onClick={() => router.push('/staff/quiz')}>
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Quizzes
                 </Button>
+                {renderSettingsButton()}
             </div>
             {quiz && (
                 <>
                     <div className="text-2xl font-bold wrap-pretty text-center">{quiz.title}</div>
-                    {/* <pre>
-                        {
-                            JSON.stringify(quiz.QuizReport[0],null,2)
-                        }
-                    </pre> */}
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                         <Card>
                             <CardHeader>
@@ -359,22 +447,6 @@ export default function QuizPage() {
                 </CardHeader>
                 {chartVisibility.performance && (
                     <div>
-{/* 
-                        <CardContent className="h-[300px]">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={chartData}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                                    <XAxis dataKey="name" stroke="#ccc" tick={{ fill: "#ccc" }} hide />
-                                    <YAxis stroke="#ccc" tick={{ fill: "#ccc" }} domain={[0, stats?.total_mark]} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: "#333", borderColor: "#444", color: "#fff" }}
-                                        itemStyle={{ color: "#fff" }}
-                                        labelStyle={{ color: "#fff" }}
-                                    />
-                                    <Bar dataKey="score" fill="#4f46e5" />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </CardContent> */}
                         <CardContent>
                             <div className="text-center mb-4">
                                 <div>Average: {stats?.average.toFixed(2)}</div>
@@ -415,7 +487,7 @@ export default function QuizPage() {
                                         dataKey="frequency"
                                         stroke="red"
                                         strokeWidth={2}
-                                        dot={false}
+                                        dot={true}
                                     />
                                 </ComposedChart>
                             </ResponsiveContainer>

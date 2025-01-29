@@ -40,10 +40,9 @@ export async function POST(request: Request) {
         }
 
         const questionData = {
-            // _id: uuidv4(),
             ...question,
-            createdAt: new Date(),
-            updatedAt: new Date()
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         };
 
         const client = await clientPromise;
@@ -79,7 +78,7 @@ export async function PUT(request: NextRequest) {
             ...questionData,
             question: questionData.content || questionData.question,
             mark: parseInt(questionData.mark?.toString() || '1'),
-            updatedAt: new Date(),
+            updatedAt: new Date().toISOString(),
         };
 
         // Remove any undefined or null values

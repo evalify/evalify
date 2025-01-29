@@ -14,11 +14,11 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const quizid = searchParams.get('quizid');
 
-        // Try to get from cache first
-        const cached = await redis.get(CACHE_KEYS.quizResults(quizid));
-        if (cached) {
-            return NextResponse.json(JSON.parse(cached));
-        }
+        // // Try to get from cache first
+        // const cached = await redis.get(CACHE_KEYS.quizResults(quizid));
+        // if (cached) {
+        //     return NextResponse.json(JSON.parse(cached));
+        // }
 
         if (!quizid) {
             return NextResponse.json({ error: "QuizID not found" }, { status: 404 });
@@ -58,12 +58,12 @@ export async function GET(req: Request) {
 
         const response = { quiz, quizResults, questions };
 
-        // Cache the response
-        await redis.setex(
-            CACHE_KEYS.quizResults(quizid),
-            3600, // 1 hour
-            JSON.stringify(response)
-        );
+        // // Cache the response
+        // await redis.setex(
+        //     CACHE_KEYS.quizResults(quizid),
+        //     3600, // 1 hour
+        //     JSON.stringify(response)
+        // );
 
         return NextResponse.json(response);
 
@@ -81,8 +81,17 @@ export async function PUT(req: Request) {
 
         const body = await req.json();
         const { quizId } = body;
+        const URL = `${process.env.EVALUATION_API}/evaluate`;
+        console.log({ quizId, URL });
+        await fetch(URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ quiz_id: quizId })
+        })
 
-        fetch(`${process.env.EVALUATION_API}/`)
+        return NextResponse.json({ success: true });
 
     } catch (error) {
         console.log('Evaluation error:', error);

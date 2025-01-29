@@ -11,10 +11,12 @@ import { LatexPreview } from '@/components/latex-preview'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import TiptapRenderer from '@/components/ui/tiptap-renderer'
 
 type Option = {
     option: string;
     optionId: string;
+    image?: string;
 }
 
 type Question = {
@@ -22,7 +24,7 @@ type Question = {
     question: string;
     options: Option[];
     answer: string[];
-    marks: number;
+    mark: number;
     type: string;
     explanation?: string;
 }
@@ -31,6 +33,8 @@ type Response = {
     negative_score: number;
     score: number;
     student_answer: string[];
+    remarks?: string;
+    breakdown?: string;
 }
 
 type StudentResult = {
@@ -42,7 +46,6 @@ type StudentResult = {
     }
     score: number
     responses: Record<string, Response>
-    questionMarks: Record<string, number>
 }
 
 export default function StudentResultPage() {
@@ -72,34 +75,22 @@ export default function StudentResultPage() {
         }
     }
 
-    const handleMarkUpdate = async (questionId: string, marks: number) => {
-        if (!data) return;
-
-        // Update questionMarks
-        const updatedQuestionMarks = {
-            ...data.result.questionMarks,
-            [questionId]: marks
-        };
-
-        // Calculate new total score
-        const totalScore = Object.values(updatedQuestionMarks).reduce(
-            (sum, mark) => sum + Number(mark), 0
-        );
-
+    const handleMarkUpdate = async (questionId: string, score: number, remarks?: string, breakdown?: string) => {
         try {
             const response = await fetch(`/api/staff/result/${studentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    responses,
-                    questionMarks: updatedQuestionMarks,
-                    totalScore
+                    questionId,
+                    score,
+                    remarks,
+                    breakdown
                 })
             });
 
             if (response.ok) {
                 toast.success('Marks updated successfully');
-                fetchData(); // Refresh data to get updated totals
+                fetchData(); // Refresh data
             } else {
                 toast.error('Failed to update marks');
             }
@@ -127,15 +118,14 @@ export default function StudentResultPage() {
                             return (
                                 <div
                                     key={option.optionId}
-                                    className={`p-4 rounded-lg border ${
-                                        isCorrect && isSelected
+                                    className={`p-4 rounded-lg border ${isCorrect && isSelected
                                             ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                                             : isSelected && !isCorrect
-                                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                                            : isCorrect
-                                            ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10'
-                                            : 'border-gray-200 dark:border-gray-700'
-                                    }`}
+                                                ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                                                : isCorrect
+                                                    ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10'
+                                                    : 'border-gray-200 dark:border-gray-700'
+                                        }`}
                                 >
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium">{String.fromCharCode(65 + index)}.</span>
@@ -160,14 +150,73 @@ export default function StudentResultPage() {
                         <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
                             <div className="font-medium mb-2">Student's Answer:</div>
                             <div className="whitespace-pre-wrap">
-                                {studentResponse.student_answer[0] || "No response"}
+                                <TiptapRenderer content={studentResponse.student_answer[0] || "No response"} />
                             </div>
                         </div>
+
+                        {editingQuestion === question._id ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Remarks</label>
+                                    <textarea
+                                        className="w-full p-2 border rounded-md"
+                                        value={studentResponse.remarks || ''}
+                                        onChange={(e) => {
+                                            const updatedResponse = {
+                                                ...studentResponse,
+                                                remarks: e.target.value
+                                            };
+                                            handleMarkUpdate(
+                                                question._id,
+                                                studentResponse.score || 0,
+                                                e.target.value,
+                                                studentResponse.breakdown
+                                            );
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">Mark Breakdown</label>
+                                    <textarea
+                                        className="w-full p-2 border rounded-md"
+                                        value={studentResponse.breakdown || ''}
+                                        onChange={(e) => {
+                                            const updatedResponse = {
+                                                ...studentResponse,
+                                                breakdown: e.target.value
+                                            };
+                                            handleMarkUpdate(
+                                                question._id,
+                                                studentResponse.score || 0,
+                                                studentResponse.remarks,
+                                                e.target.value
+                                            );
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                {studentResponse.remarks && (
+                                    <div className="bg-blue-50 rounded-lg p-4 dark:bg-blue-900/20">
+                                        <div className="font-medium mb-2">Remarks:</div>
+                                        <div>{studentResponse.remarks}</div>
+                                    </div>
+                                )}
+                                {studentResponse.breakdown && (
+                                    <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
+                                        <div className="font-medium mb-2">Mark Breakdown:</div>
+                                        <div>{studentResponse.breakdown}</div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
                         {question.expectedAnswer && (
                             <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
                                 <div className="font-medium mb-2">Expected Answer:</div>
-                                <div className="whitespace-pre-wrap">
-                                    <LatexPreview content={question.expectedAnswer} />
+                                <div>
+                                    <TiptapRenderer content={question.expectedAnswer} />
                                 </div>
                             </div>
                         )}
@@ -255,9 +304,9 @@ export default function StudentResultPage() {
                 <ArrowLeft className="w-4 h-4" />
                 Back
             </Button>
-            <pre>
-                {JSON.stringify(data,null,2)}
-            </pre>
+            {/* <pre>
+                {JSON.stringify(data, null, 2)}
+            </pre> */}
             <Card>
                 <CardHeader>
                     <CardTitle>Student Result</CardTitle>
@@ -303,7 +352,7 @@ export default function StudentResultPage() {
                         handleEditQuestion={handleEditQuestion}
                         handleMarkUpdate={handleMarkUpdate}
                         renderOptions={renderOptions}
-                        data={data}  
+                        data={data}
                     />
                 </TabsContent>
                 <TabsContent value="incorrect">
@@ -315,7 +364,7 @@ export default function StudentResultPage() {
                         handleEditQuestion={handleEditQuestion}
                         handleMarkUpdate={handleMarkUpdate}
                         renderOptions={renderOptions}
-                        data={data} 
+                        data={data}
                     />
                 </TabsContent>
             </Tabs>
@@ -325,39 +374,23 @@ export default function StudentResultPage() {
 
 function QuestionList({
     questions,
-    questionMap,  
+    questionMap,
     responses,
     editingQuestion,
     handleEditQuestion,
     handleMarkUpdate,
     renderOptions,
-    data 
+    data
 }: {
     questions: Question[]
-    questionMap: Record<string, number>  
+    questionMap: Record<string, number>
     responses: Record<string, Response>
     editingQuestion: string | null
     handleEditQuestion: (questionId: string) => void
     handleMarkUpdate: (questionId: string, marks: number) => void
     renderOptions: (question: Question, studentAnswer: string) => React.ReactNode
-    data: { result: StudentResult; questions: Question[] }  
+    data: { result: StudentResult; questions: Question[] }
 }) {
-    const isQuestionCorrect = (question: Question, response: Response) => {
-        if (!response) return false;
-
-        const studentAnswers = Array.isArray(response)
-            ? response
-            : response?.answer || [];
-
-        const correctAnswers = Array.isArray(question.answer)
-            ? question.answer
-            : [question.answer];
-
-        const sortedStudentAnswers = [...studentAnswers].sort();
-        const sortedCorrectAnswers = [...correctAnswers].sort();
-
-        return JSON.stringify(sortedStudentAnswers) === JSON.stringify(sortedCorrectAnswers);
-    }
 
     return (
         <ScrollArea className="rounded-md border p-4">
@@ -382,9 +415,9 @@ function QuestionList({
                             <div className="space-y-4">
                                 <div>
                                     <strong>Question:</strong>
-                                    <p className="mt-2">
-                                        <LatexPreview content={question.question} />
-                                    </p>
+                                    <div className="mt-2">
+                                        <TiptapRenderer content={question.question} />
+                                    </div>
                                 </div>
 
                                 {/* Render the options and student responses */}
@@ -395,7 +428,7 @@ function QuestionList({
                                     <div className="mt-4 pt-4 border-t">
                                         <strong>Explanation:</strong>
                                         <div className="mt-2">
-                                            <LatexPreview content={question.explanation} />
+                                            <TiptapRenderer content={question.explanation} />
                                         </div>
                                     </div>
                                 )}
@@ -408,30 +441,24 @@ function QuestionList({
                                             editingQuestion === question._id ? (
                                                 <Input
                                                     type="number"
-                                                    value={data.result.questionMarks?.[question._id] || 0}
+                                                    value={data.result.responses?.[question._id].score || data.result.responses?.[question._id].negative_score || 0}
                                                     onChange={(e) => handleMarkUpdate(question._id, parseFloat(e.target.value))}
                                                     className="w-24"
-                                                    min={0}
-                                                    max={question.marks}
+                                                    max={question.mark}
                                                     onBlur={() => handleEditQuestion(null)}
                                                 />
                                             ) : (
-                                                <span>{data.result.questionMarks?.[question._id] || 0}</span>
+                                                <span>{data.result.responses?.[question._id].score || data.result.responses?.[question._id].negative_score || 0}</span>
                                             )
                                         }
-                                        <span>/ {question.marks}</span>
+                                        <span>/ {question.mark}</span>
                                     </div>
                                 </div>
                             </div>
                         </CardContent>
-                        {!isQuestionCorrect(question, responses[question._id]) && (
-                            <div className="absolute top-0 right-0 m-4">
-                                <AlertCircle className="w-5 h-5 text-red-500" />
-                            </div>
-                        )}
+
                     </Card>
                 ))}
-                {/* ...existing empty state... */}
             </div>
         </ScrollArea>
     )
