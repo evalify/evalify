@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Question } from "@/types/questions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, Edit2, Trash2, Code, FileText, ListChecks, Type, Plus, X } from "lucide-react";
+import { MoreVertical, Edit2, Trash2, Code, FileText, ListChecks, Type, Plus, X, Upload, FileDown } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -189,6 +189,7 @@ export default function QuestionsList({
             case 'FILL_IN_BLANK': return <Type className="h-4 w-4" />;
             case 'DESCRIPTIVE': return <FileText className="h-4 w-4" />;
             case 'CODING': return <Code className="h-4 w-4" />;
+            case 'FILE_UPLOAD': return <Upload className="h-4 w-4" />;
             default: return null;
         }
     };
@@ -357,6 +358,19 @@ export default function QuestionsList({
                                         <div>Expected Output: {testCase.output}</div>
                                     </div>
                                 ))}
+                            </div>
+                        )}
+                        {question.type === 'FILE_UPLOAD' && question.attachedFile && (
+                            <div className="mt-2">
+                                <a
+                                    href={question.attachedFile}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:underline inline-flex items-center"
+                                >
+                                    <FileDown className="h-4 w-4 mr-2" />
+                                    Download Attached File
+                                </a>
                             </div>
                         )}
                     </div>

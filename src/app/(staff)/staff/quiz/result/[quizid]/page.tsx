@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, Line, ComposedChart } from 'recharts'
 import { Input } from '@/components/ui/input'
 import { ChevronUp, ChevronDown, ChevronsUpDown, ArrowLeft } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -85,21 +85,21 @@ export default function QuizPage() {
         )
     }
 
-    // Calculate statistics
     const calculateStats = () => {
         if (!quizResults.length) return null
         const scores = quizResults.map((result: any) => result.score)
         return {
-            average: scores.reduce((a: number, b: number) => a + b, 0) / scores.length,
-            highest: Math.max(...scores),
-            lowest: Math.min(...scores),
-            total: quizResults.length
+            total_mark: quiz.QuizReport[0]?.totalScore,
+            average: quiz.QuizReport[0]?.avgScore || 0,
+            highest: quiz.QuizReport[0]?.maxScore,
+            lowest: quiz.QuizReport[0]?.minScore,
+            total: quizResults.length,
+            total_sub: quizResults.filter((r) => r.isSubmitted).length
         }
     }
 
     const stats = calculateStats()
 
-    // Prepare chart data
     const chartData = quizResults.map((result: any) => ({
         name: result.student.user.name,
         score: result.score
@@ -134,7 +134,6 @@ export default function QuizPage() {
             )
         }
 
-        // Apply sorting
         if (sortConfig.key && sortConfig.direction) {
             filtered.sort((a, b) => {
                 let aValue, bValue
@@ -264,40 +263,49 @@ export default function QuizPage() {
                 </Button>
             </div>
             {quiz && (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">Quiz Title</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{quiz.title}</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">Average Score</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats?.average.toFixed(2) || 'N/A'}</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">Highest Score</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats?.highest || 'N/A'}</div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm font-medium">Total Submissions</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats?.total || 0}</div>
-                        </CardContent>
-                    </Card>
-                </div>
+                <>
+                    <div className="text-2xl font-bold wrap-pretty text-center">{quiz.title}</div>
+                    {/* <pre>
+                        {
+                            JSON.stringify(quiz.QuizReport[0],null,2)
+                        }
+                    </pre> */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats?.average.toFixed(2) || 'N/A'}</div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">Highest Score</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats?.highest || 'N/A'}</div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">Submissions</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats?.total_sub || 0} / {stats?.total || 0}</div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm font-medium">Total Marks</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{stats?.total_mark || 0}</div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </>
+
             )}
 
             <div className="flex justify-end gap-4">
@@ -350,21 +358,69 @@ export default function QuizPage() {
                     </div>
                 </CardHeader>
                 {chartVisibility.performance && (
-                    <CardContent className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#444" />
-                                <XAxis dataKey="name" stroke="#ccc" tick={{ fill: "#ccc" }} />
-                                <YAxis stroke="#ccc" tick={{ fill: "#ccc" }} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: "#333", borderColor: "#444", color: "#fff" }}
-                                    itemStyle={{ color: "#fff" }}
-                                    labelStyle={{ color: "#fff" }}
-                                />
-                                <Bar dataKey="score" fill="#4f46e5" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </CardContent>
+                    <div>
+{/* 
+                        <CardContent className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
+                                    <XAxis dataKey="name" stroke="#ccc" tick={{ fill: "#ccc" }} hide />
+                                    <YAxis stroke="#ccc" tick={{ fill: "#ccc" }} domain={[0, stats?.total_mark]} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: "#333", borderColor: "#444", color: "#fff" }}
+                                        itemStyle={{ color: "#fff" }}
+                                        labelStyle={{ color: "#fff" }}
+                                    />
+                                    <Bar dataKey="score" fill="#4f46e5" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent> */}
+                        <CardContent>
+                            <div className="text-center mb-4">
+                                <div>Average: {stats?.average.toFixed(2)}</div>
+                                <div>Standard Deviation: {
+                                    Math.sqrt(
+                                        chartData.reduce((acc, curr) =>
+                                            acc + Math.pow(curr.score - stats?.average, 2), 0
+                                        ) / chartData.length
+                                    ).toFixed(2)
+                                }</div>
+                            </div>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <ComposedChart
+                                    data={
+                                        chartData.reduce((acc: any[], curr) => {
+                                            const score = Math.floor(curr.score);
+                                            const existingBin = acc.find(b => b.score === score);
+                                            if (existingBin) {
+                                                existingBin.frequency++;
+                                            } else {
+                                                acc.push({ score, frequency: 1 });
+                                            }
+                                            return acc;
+                                        }, []).sort((a, b) => a.score - b.score)
+                                    }
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#444" />
+                                    <XAxis dataKey="score" stroke="#ccc" label={{ value: "Score", position: "bottom", fill: "#ccc" }} />
+                                    <YAxis stroke="#ccc" label={{ value: "Frequency", angle: -90, position: "insideLeft", fill: "#ccc" }} domain={[0, ]} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: "#333", borderColor: "#444" }}
+                                        itemStyle={{ color: "#fff" }}
+                                        labelStyle={{ color: "#fff" }}
+                                    />
+                                    <Bar dataKey="frequency" fill="#4f46e5" />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="frequency"
+                                        stroke="red"
+                                        strokeWidth={2}
+                                        dot={false}
+                                    />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </div>
                 )}
             </Card>
 
@@ -386,7 +442,7 @@ export default function QuizPage() {
                             >
                                 <CartesianGrid strokeDasharray="3 3" stroke="#444" />
                                 <XAxis dataKey="question" stroke="#ccc" />
-                                <YAxis stroke="#ccc" />
+                                <YAxis stroke="#ccc" domain={[0, stats?.total]} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: "#333", borderColor: "#444" }}
                                     itemStyle={{ color: "#fff" }}

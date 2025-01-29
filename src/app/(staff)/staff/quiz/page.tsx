@@ -53,6 +53,7 @@ type Quiz = {
         autoSubmit: boolean; // Add this line
     };
     courses: Course[];
+    courseIds:string[]
 };
 
 const getQuizStatus = (startTime: Date, endTime: Date): { icon: React.ReactNode; color: string; text: string } => {
@@ -279,22 +280,9 @@ const validateDateTime = (startTime: Date, endTime: Date, duration: number): str
     startDate.setSeconds(0, 0);
     endDate.setSeconds(0, 0);
 
-    // Allow start time to be within the current minute
-    if (startDate < now) {
-        const diffInMinutes = (now.getTime() - startDate.getTime()) / (1000 * 60);
-        if (diffInMinutes > 1) {
-            return "Start time cannot be in the past";
-        }
-    }
 
     if (endDate <= startDate) {
         return "End time must be after start time";
-    }
-
-    const durationInMs = duration * 60 * 1000;
-    const timeDiff = endDate.getTime() - startDate.getTime();
-    if (timeDiff < durationInMs) {
-        return "Time window must be greater than quiz duration";
     }
 
     return null;

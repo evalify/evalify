@@ -99,6 +99,7 @@ model EvaluationSettings {
     evaluatorModel  String?
     negativeMark    Boolean @default(false)
     codePartialMark Boolean @default(false)
+    mcqPartialMark  Boolean @default(false)
 }
 
 model Quiz {
@@ -117,6 +118,8 @@ model Quiz {
     courses           Course[]
     QuizReport        QuizReport[]
     evaluationSetting EvaluationSettings?
+
+    isEvaluated EvaluationStatus @default(UNEVALUATED)
 }
 
 model QuizSettings {
@@ -128,6 +131,13 @@ model QuizSettings {
     autoSubmit Boolean @default(false)
 
     Quiz Quiz[]
+}
+
+enum EvaluationStatus {
+    PENDING
+    EVALUATED
+    UNEVALUATED
+    EVALUATING
 }
 
 model QuizResult {
@@ -145,8 +155,13 @@ model QuizResult {
     totalScore  Float     @default(0)
     submittedAt DateTime?
 
+    isEvaluated EvaluationStatus @default(UNEVALUATED)
+
     violations String?
     ip         String?
+
+    @@unique([studentId, quizId], name: "studentId_quizId")
+    @@index([studentId, quizId, isSubmitted])
 }
 
 model QuizReport {
@@ -161,4 +176,6 @@ model QuizReport {
     totalStudents    Int
     questionStats    Json
     markDistribution Json
+
+    evaluatedAt DateTime
 }

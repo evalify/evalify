@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db/prismadb";
 import { redis } from "@/lib/db/redis";
 import { NextResponse } from "next/server";
 
-
 export async function GET(req: Request) {
     try {
         const session = await auth();
@@ -21,97 +20,136 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "QuizID not found" }, { status: 404 });
         }
 
-        // check if the student completed the quiz
-        const studentQuiz = await prisma.quizResult.findFirst({
-            where: {
-                quizId: quizId,
-                student: {
-                    id: id
+        // Parallel fetch of quiz data, student attempt, and cached data
+        const [quiz, studentQuiz, cachedQuestions, userShuffledQuestions] = await Promise.all([
+            prisma.quiz.findUnique({
+                where: { id: quizId },
+                select: {
+                    title: true,
+                    settings: true,
+                    duration: true,
+                    startTime: true,
+                    endTime: true
                 }
-            }
-        });
+            }),
+            prisma.quizResult.findFirst({
+                where: {
+                    quizId: quizId,
+                    student: { id: id }
+                }
+            }),
+            redis.get(`QUIZ_${quizId}`),
+            redis.get(`QUIZ_${quizId}_${id}_questions`)
+        ]);
 
-        if (studentQuiz) {
+        if (studentQuiz?.isSubmitted) {
             return NextResponse.json({ message: "Quiz already completed" }, { status: 400 });
         }
 
-        const quiz = await prisma.quiz.findUnique({
-            where: {
-                id: quizId
-            },
-            select:{
-                settings: true,
-                duration: true,
+        if (!quiz) {
+            return NextResponse.json({ message: "Quiz not found" }, { status: 404 });
+        }
+
+        const currTime = new Date();
+        if (!(currTime >= quiz.startTime && currTime <= quiz.endTime)) {
+            return NextResponse.json({ message: "Quiz is not available at this time" }, { status: 403 });
+        }
+
+        // Create or get existing quiz attempt with transaction
+        const quizAttempt = await prisma.$transaction(async (tx) => {
+            const existing = await tx.quizResult.findUnique({
+                where: {
+                    studentId_quizId: {
+                        studentId: id,
+                        quizId: quizId
+                    }
+                }
+            });
+
+            if (!existing) {
+                return await tx.quizResult.create({
+                    data: {
+                        studentId: id,
+                        quizId: quizId,
+                        score: 0,
+                        totalScore: 0,
+                        startTime: new Date(),
+                        isSubmitted: false,
+                        isEvaluated: 'UNEVALUATED'
+                    }
+                });
             }
+
+            if (existing.isSubmitted) {
+                throw new Error("Quiz already submitted");
+            }
+
+            return existing;
         });
 
-        if (!quiz) {
-            return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
+        // Return user-specific shuffled questions if they exist
+        if (userShuffledQuestions) {
+            return NextResponse.json({
+                quiz,
+                questions: JSON.parse(userShuffledQuestions),
+                quizAttempt: {
+                    startTime: quizAttempt.startTime
+                }
+            }, { status: 200 });
         }
 
-        const cache = await redis.get(`QUIZ_${quizId}`);
+        // Use cached questions or fetch from MongoDB
+        let questions;
+        if (cachedQuestions) {
+            questions = JSON.parse(cachedQuestions);
+        } else {
+            const rawQuestions = await (await clientPromise)
+                .db()
+                .collection('NEW_QUESTIONS')
+                .find({ quizId: quizId })
+                .toArray();
 
-        if (cache) {
-            if (quiz.settings?.shuffle){
-                const questions = JSON.parse(cache);
-                questions.sort(() => Math.random() - 0.5);
-                return NextResponse.json({ quiz, questions }, { status: 200 });
-            }
-            return NextResponse.json({ quiz, questions: JSON.parse(cache) }, { status: 200 });
-        }
-
-        const questions = await (await clientPromise).db().collection('NEW_QUESTIONS').find({ quizId: quizId }).toArray();
-
-        const safeQuestion = questions.map((question: any) => {
-            const baseFields = {
+            questions = rawQuestions.map((question: any) => ({
                 id: question._id,
                 question: question.question,
                 mark: question.mark || question.marks,
-                type: question.type,
-                quizId: question.quizId
-            };
+                type: Array.isArray(question.answer) && question.answer.length > 1 ? 'MMCQ' : question.type,
+                quizId: question.quizId,
+                ...(question.options && { options: question.options }),
+                ...(question.attachedFile && { attachedFile: question.attachedFile })
+            }));
 
-            switch (question.type) {
-                case 'DESCRIPTIVE':
-                    return {
-                        ...baseFields,
-                        guidelines: question.guidelines
-                    };
-                case 'FILL_IN_BLANK':
-                    return baseFields;
-                case 'TRUE_FALSE':
-                    return {
-                        ...baseFields,
-                        options: question.options
-                    };
-                case 'MCQ':
-                    // Convert MCQ with multiple answers to MMCQ
-                    if (Array.isArray(question.answer) && question.answer.length > 1) {
-                        return {
-                            ...baseFields,
-                            type: 'MMCQ',
-                            options: question.options
-                        };
-                    }
-                    return {
-                        ...baseFields,
-                        options: question.options
-                    };
-                default:
-                    return {
-                        ...baseFields,
-                        options: question.options
-                    };
+            // Cache the original questions
+            await redis.set(
+                `QUIZ_${quizId}`, 
+                JSON.stringify(questions), 
+                'EX', 
+                5 * 60 * 60
+            );
+        }
+
+        // Shuffle if needed and cache user-specific order
+        if (quiz.settings?.shuffle) {
+            const shuffledQuestions = [...questions].sort(() => Math.random() - 0.5);
+            await redis.set(
+                `QUIZ_${quizId}_${id}_questions`,
+                JSON.stringify(shuffledQuestions),
+                'EX',
+                quiz.duration * 60 * 2// Cache for quiz duration
+            );
+            questions = shuffledQuestions;
+        }
+
+        return NextResponse.json({
+            quiz,
+            questions,
+            quizAttempt: {
+                startTime: quizAttempt.startTime
             }
-        });
-
-        await redis.set(`QUIZ_${quizId}`, JSON.stringify(safeQuestion), 'EX', 2 * 60 * 60);
-
-        return NextResponse.json({ quiz, questions: safeQuestion }, { status: 200 });
+        }, { status: 200 });
 
     } catch (error) {
-        console.log('Error fetching quiz:', error);
+        console.error('Error fetching quiz:', error instanceof Error ? error.message : 'Unknown error');
         return NextResponse.json({ error: "Failed to fetch quiz" }, { status: 500 });
-
     }
 }

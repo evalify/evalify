@@ -28,7 +28,9 @@ type Question = {
 }
 
 type Response = {
-    [key: string]: string[];
+    negative_score: number;
+    score: number;
+    student_answer: string[];
 }
 
 type StudentResult = {
@@ -72,7 +74,7 @@ export default function StudentResultPage() {
 
     const handleMarkUpdate = async (questionId: string, marks: number) => {
         if (!data) return;
-        
+
         // Update questionMarks
         const updatedQuestionMarks = {
             ...data.result.questionMarks,
@@ -110,82 +112,139 @@ export default function StudentResultPage() {
         setEditingQuestion(questionId === editingQuestion ? null : questionId);
     };
 
-    const renderOptions = (question: Question, studentResponses: Response) => {
-        if (!question.options) return (
-            <div className="mt-4 text-pretty bg-slate-100 rounded-lg p-3 dark:bg-slate-900 ">
-                <strong>Student's Answer:</strong>
-                <pre className='ml-8'>
-                    {
-                        (studentResponses && typeof studentResponses[0] === 'string') ? studentResponses[0] : "No response"
-                    }
-                </pre>
-            </div>
-        )
+    const renderOptions = (question: Question, studentResponse: Response) => {
+        if (!studentResponse) return null;
 
-        // Ensure we have an array of student answers
-        const studentAnswers = Array.isArray(studentResponses)
-            ? studentResponses
-            : studentResponses?.answer || [];
+        switch (question.type) {
+            case 'MCQ':
+            case 'TRUE_FALSE':
+                return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        {question.options.map((option, index) => {
+                            const isCorrect = question.answer.includes(option.optionId);
+                            const isSelected = studentResponse.student_answer.includes(option.optionId);
 
-        return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                {question.options.map((option, index) => {
-                    const isCorrect = question.answer.includes(option.optionId)
-                    const isSelected = Array.isArray(studentAnswers) && studentAnswers.includes(option.optionId)
+                            return (
+                                <div
+                                    key={option.optionId}
+                                    className={`p-4 rounded-lg border ${
+                                        isCorrect && isSelected
+                                            ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                                            : isSelected && !isCorrect
+                                            ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                                            : isCorrect
+                                            ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10'
+                                            : 'border-gray-200 dark:border-gray-700'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-medium">{String.fromCharCode(65 + index)}.</span>
+                                        <LatexPreview content={option.option} />
+                                        {isCorrect && isSelected && (
+                                            <CheckCircle className="w-4 h-4 text-green-500" />
+                                        )}
+                                        {!isCorrect && isSelected && (
+                                            <X className="w-4 h-4 text-red-500" />
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
 
-                    return (
-                        <div
-                            key={option.optionId}
-                            className={`p-4 rounded-lg border ${isCorrect && isSelected
-                                ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                                : isSelected && !isCorrect
-                                    ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                                    : isCorrect
-                                        ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10'
-                                        : 'border-gray-200 dark:border-gray-700'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium">{String.fromCharCode(65 + index)}.</span>
-                                <LatexPreview content={option.option} />
-                                {isCorrect && isSelected && (
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                )}
-                                {!isCorrect && isSelected && (
-                                    <X className="w-4 h-4 text-red-500" />
-                                )}
+            case 'FILL_IN_BLANK':
+            case 'DESCRIPTIVE':
+                return (
+                    <div className="mt-4 space-y-4">
+                        <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                            <div className="font-medium mb-2">Student's Answer:</div>
+                            <div className="whitespace-pre-wrap">
+                                {studentResponse.student_answer[0] || "No response"}
                             </div>
                         </div>
-                    )
-                })}
-            </div>
-        )
-    }
+                        {question.expectedAnswer && (
+                            <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
+                                <div className="font-medium mb-2">Expected Answer:</div>
+                                <div className="whitespace-pre-wrap">
+                                    <LatexPreview content={question.expectedAnswer} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+
+            case 'CODING':
+                return (
+                    <div className="mt-4 space-y-4">
+                        <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                            <div className="font-medium mb-2">Student's Code:</div>
+                            <pre className="overflow-x-auto">
+                                {studentResponse.student_answer[0] || "No code submitted"}
+                            </pre>
+                        </div>
+                        {question.testCases && (
+                            <div className="bg-slate-50 rounded-lg p-4 dark:bg-slate-800">
+                                <div className="font-medium mb-2">Test Cases:</div>
+                                {question.testCases.map((testCase, idx) => (
+                                    <div key={idx} className="mb-2 p-2 border rounded">
+                                        <div>Input: {testCase.input}</div>
+                                        <div>Expected Output: {testCase.output}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+
+            case 'FILE_UPLOAD':
+                return (
+                    <div className="mt-4">
+                        <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                            <div className="font-medium mb-2">Submitted File:</div>
+                            {studentResponse.student_answer[0] ? (
+                                <a
+                                    href={studentResponse.student_answer[0]}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:underline inline-flex items-center"
+                                >
+                                    <FileDown className="h-4 w-4 mr-2" />
+                                    Download Submitted File
+                                </a>
+                            ) : (
+                                "No file submitted"
+                            )}
+                        </div>
+                    </div>
+                );
+
+            default:
+                return null;
+        }
+    };
 
     if (!data) return <div className="flex justify-center items-center h-screen">Loading...</div>
 
-    const totalMarks = data.questions.reduce((sum, question) => sum + question.marks, 0)
+    const totalMarks = data.questions.reduce((sum, question) => sum + question.mark, 0)
     const scorePercentage = (data.result.score / totalMarks) * 100
 
-    const isAnswerCorrect = (question: Question, studentResponses: Response) => {
-        if (!studentResponses) return false;
-        
-        const studentAnswers = Array.isArray(studentResponses)
-            ? studentResponses
-            : studentResponses?.answer || [];
+    const isAnswerCorrect = (question: Question, response: Response) => {
+        if (!response) return false;
 
-        const correctAnswers = Array.isArray(question.answer)
-            ? question.answer
-            : [question.answer];
+        // For MCQ and TRUE_FALSE, compare arrays
+        if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
+            const sortedStudentAnswers = [...response.student_answer].sort();
+            const sortedCorrectAnswers = [...question.answer].sort();
+            return JSON.stringify(sortedStudentAnswers) === JSON.stringify(sortedCorrectAnswers);
+        }
 
-        const sortedStudentAnswers = [...studentAnswers].sort();
-        const sortedCorrectAnswers = [...correctAnswers].sort();
-
-        return JSON.stringify(sortedStudentAnswers) === JSON.stringify(sortedCorrectAnswers);
+        // For other types, check if score is full marks
+        return response.score === question.marks;
     };
 
     const filterQuestions = (questions: Question[]) => {
-        return questions.filter(q => 
+        return questions.filter(q =>
             q.question.toLowerCase().includes(questionSearch.toLowerCase())
         );
     };
@@ -196,6 +255,9 @@ export default function StudentResultPage() {
                 <ArrowLeft className="w-4 h-4" />
                 Back
             </Button>
+            <pre>
+                {JSON.stringify(data,null,2)}
+            </pre>
             <Card>
                 <CardHeader>
                     <CardTitle>Student Result</CardTitle>
@@ -241,7 +303,7 @@ export default function StudentResultPage() {
                         handleEditQuestion={handleEditQuestion}
                         handleMarkUpdate={handleMarkUpdate}
                         renderOptions={renderOptions}
-                        data={data}  // Pass data prop
+                        data={data}  
                     />
                 </TabsContent>
                 <TabsContent value="incorrect">
@@ -253,7 +315,7 @@ export default function StudentResultPage() {
                         handleEditQuestion={handleEditQuestion}
                         handleMarkUpdate={handleMarkUpdate}
                         renderOptions={renderOptions}
-                        data={data}  // Pass data prop
+                        data={data} 
                     />
                 </TabsContent>
             </Tabs>
@@ -263,26 +325,26 @@ export default function StudentResultPage() {
 
 function QuestionList({
     questions,
-    questionMap,  // Add this prop
+    questionMap,  
     responses,
     editingQuestion,
     handleEditQuestion,
     handleMarkUpdate,
     renderOptions,
-    data  // Add data to props
+    data 
 }: {
     questions: Question[]
-    questionMap: Record<string, number>  // Add this type
+    questionMap: Record<string, number>  
     responses: Record<string, Response>
     editingQuestion: string | null
     handleEditQuestion: (questionId: string) => void
     handleMarkUpdate: (questionId: string, marks: number) => void
     renderOptions: (question: Question, studentAnswer: string) => React.ReactNode
-    data: { result: StudentResult; questions: Question[] }  // Add type definition
+    data: { result: StudentResult; questions: Question[] }  
 }) {
     const isQuestionCorrect = (question: Question, response: Response) => {
         if (!response) return false;
-        
+
         const studentAnswers = Array.isArray(response)
             ? response
             : response?.answer || [];
@@ -342,19 +404,21 @@ function QuestionList({
                                 <div className="mt-4 pt-4 border-t">
                                     <div className="flex items-center gap-2">
                                         <strong>Marks:</strong>
-                                        {editingQuestion === question._id ? (
-                                            <Input
-                                                type="number"
-                                                value={data.result.questionMarks?.[question._id] || 0}
-                                                onChange={(e) => handleMarkUpdate(question._id, parseFloat(e.target.value))}
-                                                className="w-24"
-                                                min={0}
-                                                max={question.marks}
-                                                onBlur={() => handleEditQuestion(null)}
-                                            />
-                                        ) : (
-                                            <span>{data.result.questionMarks?.[question._id] || 0}</span>
-                                        )}
+                                        {
+                                            editingQuestion === question._id ? (
+                                                <Input
+                                                    type="number"
+                                                    value={data.result.questionMarks?.[question._id] || 0}
+                                                    onChange={(e) => handleMarkUpdate(question._id, parseFloat(e.target.value))}
+                                                    className="w-24"
+                                                    min={0}
+                                                    max={question.marks}
+                                                    onBlur={() => handleEditQuestion(null)}
+                                                />
+                                            ) : (
+                                                <span>{data.result.questionMarks?.[question._id] || 0}</span>
+                                            )
+                                        }
                                         <span>/ {question.marks}</span>
                                     </div>
                                 </div>

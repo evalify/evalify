@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/hooks/use-toast";
-import { Code, FileText, ListChecks, ToggleLeft, Type, Edit2, Plus, X, AlertTriangle, Check, ChevronDown, Sparkles, ImageIcon } from 'lucide-react';
+import { Code, FileText, ListChecks, ToggleLeft, Type, Edit2, Plus, X, AlertTriangle, Check, ChevronDown, Sparkles, ImageIcon, Upload } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Question, QuestionType, DifficultyLevel } from "@/types/questions";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,6 +68,7 @@ export default function EnhancedQuestionForm({
     const [testCases, setTestCases] = useState(editingQuestion?.testCases || "");
     const [guidelines, setGuidelines] = useState(editingQuestion?.guidelines || "");
     const [isGenerating, setIsGenerating] = useState(false);
+    const [attachedFile, setAttachedFile] = useState<string>(editingQuestion?.attachedFile || '');
 
     const initializeOptions = () => {
         if (editingQuestion?.options) {
@@ -179,11 +180,44 @@ export default function EnhancedQuestionForm({
         }
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+    
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+    
+            const response = await fetch('/api/upload/quiz-file', {
+                method: 'POST',
+                body: formData,
+            });
+    
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+    
+            const { url } = await response.json();
+            setAttachedFile(url);
+            toast({
+                title: "Success",
+                description: "File uploaded successfully"
+            });
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to upload file",
+                variant: "destructive"
+            });
+        }
+    };
+
     const questionTypes = [
         { value: 'MCQ', label: 'Multiple Choice', icon: ListChecks },
         { value: 'TRUE_FALSE', label: 'True/False', icon: ToggleLeft },
         { value: 'FILL_IN_BLANK', label: 'Fill in Blank', icon: Type },
         { value: 'DESCRIPTIVE', label: 'Descriptive', icon: FileText },
+        { value: 'FILE_UPLOAD', label: 'File Upload', icon: Upload },
         // { value: 'CODING', label: 'Coding', icon: Code }
     ];
 
@@ -311,6 +345,9 @@ export default function EnhancedQuestionForm({
                 } : {}),
                 ...(type === 'FILL_IN_BLANK' ? {
                     expectedAnswer: correctAnswer
+                } : {}),
+                ...(type === 'FILE_UPLOAD' ? {
+                    attachedFile: attachedFile
                 } : {}),
                 ...(editingQuestion?._id ? { _id: editingQuestion._id } : {}),
                 ...(editingQuestion?.id ? { id: editingQuestion.id } : {})
@@ -617,6 +654,36 @@ export default function EnhancedQuestionForm({
                                     onChange={(e) => setTestCases(e.target.value)}
                                     placeholder="Enter test cases"
                                     className="min-h-[100px] font-mono"
+                                />
+                            </div>
+                        )}
+
+                        {type === "FILE_UPLOAD" && (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => document.getElementById('file-upload')?.click()}
+                                    >
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        {attachedFile ? 'Change File' : 'Upload File'}
+                                    </Button>
+                                    {attachedFile && (
+                                        <a 
+                                            href={attachedFile} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-blue-500 hover:underline"
+                                        >
+                                            View Uploaded File
+                                        </a>
+                                    )}
+                                </div>
+                                <input
+                                    type="file"
+                                    id="file-upload"
+                                    className="hidden"
+                                    onChange={handleFileUpload}
                                 />
                             </div>
                         )}

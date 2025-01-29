@@ -132,6 +132,8 @@ export async function PUT(request: NextRequest) {
                 fullscreen: body.settings.fullscreen,
                 calculator: body.settings.calculator,
                 shuffle: body.settings.shuffle,
+                autoSubmit: body.settings.autoSubmit,
+                showResult: body.settings.showResult
             }
         });
 

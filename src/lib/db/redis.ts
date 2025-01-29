@@ -2,7 +2,6 @@ import Redis, { Redis as RedisType } from 'ioredis';
 
 interface Question {
     id: string;
-    // Add other question properties based on your actual data structure
 }
 
 class RedisClient {
