@@ -80,6 +80,65 @@ export async function uploadQuestionImage(file: Buffer, fileName: string, fileTy
     }
 }
 
+export async function uploadQuizFile(file: Buffer, fileName: string, fileType: string): Promise<string> {
+    try {
+        const bucketName = 'quiz-files';
+        const bucketExists = await minioClient.bucketExists(bucketName);
+        if (!bucketExists) {
+            await minioClient.makeBucket(bucketName, 'us-east-1');
+        }
+
+        await minioClient.putObject(bucketName, fileName, file, undefined, {
+            'Content-Type': fileType,
+            'Cache-Control': 'max-age=31536000',
+        });
+
+        const url = `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}/${bucketName}/${fileName}`;
+        return url;
+    } catch (error) {
+        console.log('Error uploading quiz file:', error);
+        throw error;
+    }
+}
+
+export async function uploadQuizSubmission(file: Buffer, quizId: string, questionId: string, rollNo: string, fileType: string): Promise<{url: string, fileInfo: any}> {
+    try {
+        // Check file size (10MB)
+        if (file.length > 10 * 1024 * 1024) {
+            throw new Error('File size must be less than 10MB');
+        }
+
+        const bucketName = 'quiz-submissions';
+        const bucketExists = await minioClient.bucketExists(bucketName);
+        if (!bucketExists) {
+            await minioClient.makeBucket(bucketName, 'us-east-1');
+        }
+
+        // Create folder structure: quiz-submissions/quizId/questionId/rollNo_questionId.ext
+        const fileExtension = fileType.split('/').pop() || 'file';
+        const fileName = `${quizId}/${questionId}/${rollNo}_${questionId}.${fileExtension}`;
+
+        await minioClient.putObject(bucketName, fileName, file, undefined, {
+            'Content-Type': fileType,
+            'X-Original-Filename': fileName,
+        });
+
+        const url = `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}/${bucketName}/${fileName}`;
+        
+        const fileInfo = {
+            name: fileName,
+            size: file.length,
+            type: fileType,
+            url: url
+        };
+
+        return { url, fileInfo };
+    } catch (error) {
+        console.error('Error uploading quiz submission:', error);
+        throw error;
+    }
+}
+
 export async function listFiles(bucketName: string, prefix: string = '') {
     try {
         const bucketExists = await minioClient.bucketExists(bucketName);
@@ -128,6 +187,24 @@ export async function deleteFile(fileName: string, bucketName: string) {
         await minioClient.removeObject(bucketName, fileName);
     } catch (error) {
         console.log('Error deleting from MinIO:', error);
+        throw error;
+    }
+}
+
+export async function deleteQuizSubmission(quizId: string, questionId: string, rollNo: string) {
+    try {
+        const bucketName = 'quiz-submissions';
+        // List all files in the question directory to find the exact file
+        const stream = minioClient.listObjects(bucketName, `${quizId}/${questionId}/`, true);
+        
+        for await (const file of stream) {
+            if (file.name.includes(rollNo)) {
+                await minioClient.removeObject(bucketName, file.name);
+                break;
+            }
+        }
+    } catch (error) {
+        console.error('Error deleting quiz submission:', error);
         throw error;
     }
 }

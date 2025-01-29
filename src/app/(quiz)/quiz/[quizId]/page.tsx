@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -12,12 +12,24 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ChevronLeft, ChevronRight, Clock, AlertTriangle, CheckCircle2, Search, X, ImageOff } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, X, ImageOff, AlertTriangle, LoaderCircle, Download, Upload, FileIcon, CodeXml, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from "@/lib/utils"
 import TiptapRenderer from '@/components/ui/tiptap-renderer'
-import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { toast } from 'sonner'
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { LatexPreview } from '@/components/latex-preview'
+import CodeEditor from '@/components/codeEditor/CodeEditor'
+import { nanoid } from 'nanoid'
+import { UploadDropzone } from "@/components/UploadDropzone";
+
+interface CodeFile {
+    id: string
+    name: string
+    language: string
+    content: string
+}
 
 interface Option {
     option: string
@@ -29,9 +41,10 @@ interface Question {
     id: string
     question: string
     options?: Option[]
-    marks: number
-    type: 'MCQ' | 'MMCQ' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'DESCRIPTIVE';
+    mark: number
+    type: 'MCQ' | 'MMCQ' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'DESCRIPTIVE' | 'FILE_UPLOAD';
     isMultiple?: boolean;
+    attachedFile?: string;
 }
 
 interface Quiz {
@@ -42,36 +55,41 @@ interface Quiz {
     endTime: string
     settings: {
         shuffle?: boolean;
-        // other settings...
+        autoSubmit: Boolean;
+        fullscreen: Boolean;
+        calculator: Boolean;
     };
     duration: number
 }
 
-function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void, quizId: string) {
+interface Violation {
+    message: string;
+    timestamp: Date;
+}
+
+function useQuizTimer(
+    quiz: Quiz | null,
+    quizStartTime: Date | null,
+    onTimeUp: () => void,
+    setIsTimeWarning: (value: boolean) => void,
+    setWarningMessage: (value: string | null) => void
+) {
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
-
-
-    const autoSubmit = quiz?.settings?.calculator || false;
+    const autoSubmit = quiz?.settings?.autoSubmit || false;
 
     useEffect(() => {
-        if (!quiz?.duration) return;
+        if (!quiz?.duration || !quizStartTime) return;
 
-        // Get or set start time from localStorage
-        let startTime = localStorage.getItem(`quiz_${quizId}_startTime`);
-        if (!startTime) {
-            startTime = Date.now().toString();
-            localStorage.setItem(`quiz_${quizId}_startTime`, startTime);
-        }
-
-        const endTime = parseInt(startTime) + (quiz.duration * 60 * 1000);
+        const startTimeMs = new Date(quizStartTime).getTime();
+        const endTime = startTimeMs + (quiz.duration * 60 * 1000);
         const now = Date.now();
 
         // If quiz has expired
         if (now >= endTime) {
             setTimeLeft(0);
-            // if (autoSubmit) {
-            //     onTimeUp();
-            // }
+            if (autoSubmit) {
+                onTimeUp();
+            }
             return;
         }
 
@@ -85,16 +103,20 @@ function useQuizTimer(quiz: Quiz | null, onTimeUp: () => void, quizId: string) {
 
             setTimeLeft(remaining);
 
+            if (remaining <= 300) { // 5 minutes = 300 seconds
+                setIsTimeWarning(true);
+            }
+
             if (remaining <= 0) {
                 clearInterval(interval);
-                // if (autoSubmit) {
-                //     onTimeUp();
-                // }
+                if (autoSubmit) {
+                    onTimeUp();
+                }
             }
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [quiz, onTimeUp]);
+    }, [quiz, quizStartTime, onTimeUp, autoSubmit, setIsTimeWarning]);
 
     return timeLeft;
 }
@@ -129,98 +151,283 @@ function ImagePreviewDialog({ image, isOpen, onClose }: { image: string | null, 
     );
 }
 
+// Move getStorageKey outside the component since it doesn't depend on component state
+const getStorageKey = (quizId: string | string[], key: string) => `quiz_${quizId}_${key}`;
+
 const QuizPage = () => {
-    const { quizId } = useParams()
-    const [quiz, setQuiz] = useState<Quiz | null>(null)
-    const [questions, setQuestions] = useState<Question[]>([])
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
-    const [userAnswers, setUserAnswers] = useState<Record<string, string[]>>({})
-    const [quizStartTime, setQuizStartTime] = useState<number | null>(null)
-    const [selectedImage, setSelectedImage] = useState<string | null>(null)
-    const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false)
-    const [imageLoadingStates, setImageLoadingStates] = useState<Record<string, boolean>>({})
-    const [imageErrorStates, setImageErrorStates] = useState<Record<string, boolean>>({})
+    const params = useParams() as { quizId: string };
+    const searchParams = useSearchParams();
+    const quizId = params.quizId;
+    const router = useRouter();
+
+    // Group all state hooks together
+    const [quiz, setQuiz] = useState<Quiz | null>(null);
+
+    // Update fullscreen check to include quiz settings
+    const isFullscreenRequired = quiz?.settings?.fullscreen ?? false;
+    const isAutoSubmitEnabled = quiz?.settings?.autoSubmit ?? false;
+    const isCalculatorEnabled = quiz?.settings.calculator ?? false;
+
+    const [questions, setQuestions] = useState<Question[]>([]);
+    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [userAnswers, setUserAnswers] = useState<Record<string, string[]>>({});
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
+    const [imageLoadingStates, setImageLoadingStates] = useState<Record<string, boolean>>({});
+    const [imageErrorStates, setImageErrorStates] = useState<Record<string, boolean>>({});
     const [isTimeWarning, setIsTimeWarning] = useState(false);
-    const [warningMessage, setWarningMessage] = useState<string | null>(null);
-    const router = useRouter()
+    const [warningMessage, setWarningMessage] = useState<string | null>("Only 5 minutes remaining!");
+    const [violations, setViolations] = useState<Violation[]>([]);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [hasPermission, setHasPermission] = useState(false);
+    const [quizStartTime, setQuizStartTime] = useState<Date | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Update local storage key handling
-    const getStorageKey = (key: string) => `quiz_${quizId}_${key}`;
+    // Initialize editor files without localStorage
+    const [editorFiles, setEditorFiles] = useState<CodeFile[]>([
+        { id: nanoid(), name: 'file', language: 'octave', content: '' }
+    ]);
+    const [activeEditorFile, setActiveEditorFile] = useState(editorFiles[0].id);
 
-    const handleSubmitQuiz = async () => {
+    // Load editor state from localStorage on mount
+    useEffect(() => {
+        const savedFiles = localStorage.getItem(`calculator_files_${quizId}`);
+        const savedActiveFile = localStorage.getItem(`calculator_active_file_${quizId}`);
+
+        if (savedFiles) {
+            setEditorFiles(JSON.parse(savedFiles));
+        }
+        if (savedActiveFile) {
+            setActiveEditorFile(savedActiveFile);
+        }
+    }, [quizId]);
+
+    // Save editor state to localStorage when it changes
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(`calculator_files_${quizId}`, JSON.stringify(editorFiles));
+        }
+    }, [editorFiles, quizId]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(`calculator_active_file_${quizId}`, activeEditorFile);
+        }
+    }, [activeEditorFile, quizId]);
+
+    // Define handlers first using useCallback
+    const handleSubmitQuiz = useCallback(async () => {
+        setIsSubmitting(true);
         try {
             const res = await fetch('/api/quiz/save', {
                 method: 'POST',
-                body: JSON.stringify({ quizId, responses: userAnswers })
-            })
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    quizId,
+                    responses: userAnswers,
+                    violations: violations.map(v => `${new Date(v.timestamp).toISOString()}: ${v.message}`).join('\n')
+                })
+            });
 
-            if (!res.ok) throw new Error('Failed to save quiz')
+            const data = await res.json().catch(() => null);
 
-            // Clear all quiz-related storage
-            Object.keys(localStorage)
-                .filter(key => key.startsWith(`quiz_${quizId}_`))
-                .forEach(key => localStorage.removeItem(key));
+            if (!res.ok) {
+                throw new Error(data?.error || 'Failed to submit quiz');
+            }
+
+            localStorage.removeItem(getStorageKey(quizId, 'answers'));
+            localStorage.removeItem(`violations_${quizId}`);
+            localStorage.removeItem(`calculator_files_${quizId}`);
+            localStorage.removeItem(`calculator_active_file_${quizId}`);
             localStorage.clear()
-
-            router.push('/student/quiz')
+            router.push('/student/quiz');
         } catch (error) {
-            console.error('Error saving quiz:', error)
+            console.error('Error saving quiz:', error);
+            toast.error(error instanceof Error ? error.message : "Failed to submit quiz");
+            setIsSubmitting(false);
         }
-    }
+    }, [quizId, userAnswers, violations, router]);
 
+    const updateAnswers = useCallback(async (answers: Record<string, string[]>) => {
+        try {
+            await fetch('/api/quiz/update-response', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quizId, responses: answers })
+            });
+        } catch (error) {
+            console.error('Error updating responses:', error);
+        }
+    }, [quizId]);
+
+    // Now we can use handleSubmitQuiz in useQuizTimer
+    const timeLeft = useQuizTimer(quiz, quizStartTime, handleSubmitQuiz, setIsTimeWarning, setWarningMessage);
+
+    // Group related effects together
     useEffect(() => {
         const fetchQuiz = async () => {
             try {
-                if (!quizId) return
-                const res = await fetch(`/api/quiz/get?quizId=${quizId}`)
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-                const data = await res.json()
-                if (data.status === 404 || data.status === 400 || data.message === "Quiz already completed") {
-                    router.push('/student/quiz')
-                    alert("Quiz already completed")
-                    return
+                if (!quizId) return;
+                const res = await fetch(`/api/quiz/get?quizId=${quizId}`);
+                const data = await res.json();
+
+                if (!res.ok) {
+                    switch (res.status) {
+                        case 402:
+                        case 404:
+                        case 400:
+                            router.push('/student/quiz')
+                            toast.error(data.message || "Cannot access quiz")
+                            return
+                        default:
+                            throw new Error(data.error || "Failed to fetch quiz")
+                    }
                 }
-                const quizData = {
-                    ...data.quiz,
-                    duration: data.quiz.duration
+
+                setQuiz(data.quiz);
+                setQuestions(data.questions);
+                if (data.quizAttempt?.startTime) {
+                    setQuizStartTime(new Date(data.quizAttempt.startTime));
                 }
-                setQuiz(quizData)
-                setQuestions(data.questions)
-                localStorage.setItem(getStorageKey('quiz'), JSON.stringify(quizData))
-                localStorage.setItem(getStorageKey('questions'), JSON.stringify(data.questions))
-            } catch (error: any) {
-                console.error('Error fetching quiz:', error)
-                if (error.status === 404 || error.status === 400 || error.message === "Quiz already completed") {
-                    router.push('/student/quiz')
-                    alert("Quiz already completed")
-                }
+            } catch (error) {
+                console.error('Error:', error)
+                toast.error("Failed to load quiz")
+                router.push('/student/quiz')
             }
+        };
+
+        const storedAnswers = localStorage.getItem(getStorageKey(quizId, 'answers'));
+        if (storedAnswers) {
+            setUserAnswers(JSON.parse(storedAnswers));
         }
 
-        const storedQuiz = localStorage.getItem(getStorageKey('quiz'))
-        const storedQuestions = localStorage.getItem(getStorageKey('questions'))
-        const storedUserAnswers = localStorage.getItem(getStorageKey('answers'))
+        fetchQuiz();
+        const fetchInterval = setInterval(fetchQuiz, 5 * 60 * 1000);
+        return () => clearInterval(fetchInterval);
+    }, [quizId, router]);
 
-        if (storedQuiz && storedQuestions) {
-            const parsedQuiz = JSON.parse(storedQuiz)
-            setQuiz(parsedQuiz)
-            setQuestions(JSON.parse(storedQuestions))
-        } else {
-            fetchQuiz()
-        }
+    // Answer update effect
+    useEffect(() => {
+        if (!quizId || !userAnswers || Object.keys(userAnswers).length === 0) return;
 
-        if (storedUserAnswers) setUserAnswers(JSON.parse(storedUserAnswers))
-    }, [quizId, router])
+        const saveInterval = setInterval(() => {
+            updateAnswers(userAnswers);
+        }, 60000);
 
-    const timeLeft = useQuizTimer(quiz, handleSubmitQuiz, quizId);
+        updateAnswers(userAnswers);
+        return () => clearInterval(saveInterval);
+    }, [quizId, userAnswers, updateAnswers]);
 
     useEffect(() => {
-        // Add time warning effect
-        if (timeLeft <= 300) { // 5 minutes = 300 seconds
-            setIsTimeWarning(true);
-            setWarningMessage("Only 5 minutes remaining! Quiz will be auto-submitted after time is up.");
+        const loadViolations = () => {
+            const stored = localStorage.getItem(`violations_${quizId}`);
+            if (stored) {
+                try {
+                    setViolations(JSON.parse(stored));
+                } catch (error) {
+                    localStorage.removeItem(`violations_${quizId}`);
+                }
+            }
+        };
+
+        const setupSecurityListeners = () => {
+            const handleFullscreenChange = () => {
+                const isFs = !!document.fullscreenElement;
+                setIsFullscreen(isFs);
+                // Only track violation if fullscreen is required
+                if (!isFs && isFullscreenRequired) {
+                    handleViolation("Fullscreen mode exited");
+                }
+            };
+
+            const handleVisibilityChange = () => {
+                if (document.hidden) {
+                    handleViolation("Tab switching is not allowed");
+                }
+            };
+
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.key === 'Escape') {
+                    e.preventDefault()
+                }
+                if (e.ctrlKey && e.shiftKey && e.key === "i") {
+                    e.preventDefault()
+                    handleViolation("Developer tools shortcut detected")
+                }
+            }
+
+            const handleContextMenu = (e: MouseEvent) => {
+                e.preventDefault()
+            }
+
+            document.addEventListener("fullscreenchange", handleFullscreenChange);
+            document.addEventListener("visibilitychange", handleVisibilityChange);
+            document.addEventListener("keydown", handleKeyDown);
+            document.addEventListener("contextmenu", handleContextMenu);
+
+            return () => {
+                document.removeEventListener("fullscreenchange", handleFullscreenChange);
+                document.removeEventListener("visibilitychange", handleVisibilityChange);
+                document.removeEventListener("keydown", handleKeyDown);
+                document.removeEventListener("contextmenu", handleContextMenu);
+            };
+        };
+
+        loadViolations();
+        const cleanup = setupSecurityListeners();
+        return () => cleanup();
+    }, [quizId, isFullscreenRequired]);
+
+    const handleViolation = (message: string) => {
+        const violation = { message, timestamp: new Date() }
+        setViolations(prev => {
+            const updated = [...prev, violation]
+            localStorage.setItem(`violations_${quizId}`, JSON.stringify(updated))
+            return updated
+        })
+    }
+
+    const requestFullscreen = async () => {
+        try {
+            await document.documentElement.requestFullscreen();
+            setIsFullscreen(true);
+            setHasPermission(true);
+        } catch (err) {
+            if (!isFullscreenRequired) {
+                setHasPermission(true);
+            }
+            console.error("Fullscreen permission denied:", err);
         }
-    }, [timeLeft]);
+    };
+
+    if (!hasPermission || (isFullscreenRequired && !isFullscreen)) {
+        return (
+            <div className="fixed inset-0 bg-background flex items-center justify-center">
+                <div className="p-6 rounded-lg shadow-lg max-w-md text-center">
+                    <h2 className="text-xl font-bold mb-4">
+                        {isFullscreenRequired ? 'Fullscreen Required' : 'Fullscreen Recommended'}
+                    </h2>
+                    <p className="mb-4">
+                        {isFullscreenRequired
+                            ? 'Please enable fullscreen mode to continue with the quiz.'
+                            : 'It is recommended to take the quiz in fullscreen mode for better experience.'}
+                    </p>
+                    <div className="space-x-4">
+                        <Button onClick={requestFullscreen}>
+                            Enter Fullscreen
+                        </Button>
+                        {!isFullscreenRequired && (
+                            <Button variant="outline" onClick={() => setHasPermission(true)}>
+                                Continue Without Fullscreen
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const handleAnswerChange = (questionId: string, optionId: string, isChecked: boolean) => {
         setUserAnswers((prevAnswers) => {
@@ -228,7 +435,7 @@ const QuizPage = () => {
             const newAnswers = isChecked
                 ? { ...prevAnswers, [questionId]: [...currentAnswers, optionId] }
                 : { ...prevAnswers, [questionId]: currentAnswers.filter(id => id !== optionId) }
-            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
+            localStorage.setItem(getStorageKey(quizId, 'answers'), JSON.stringify(newAnswers))
             return newAnswers
         })
     }
@@ -236,22 +443,25 @@ const QuizPage = () => {
     const handleRadioChange = (questionId: string, optionId: string) => {
         setUserAnswers((prevAnswers) => {
             const currentAnswer = prevAnswers[questionId]?.[0];
-            // If same option is clicked, deselect it
             const newAnswers = currentAnswer === optionId
                 ? { ...prevAnswers, [questionId]: [] }
                 : { ...prevAnswers, [questionId]: [optionId] };
-            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers));
+            localStorage.setItem(getStorageKey(quizId, 'answers'), JSON.stringify(newAnswers));
             return newAnswers;
         });
     };
 
-    const handleDescriptiveAnswer = (questionId: string, answer: string) => {
+    // Update handleDescriptiveAnswer to handle both string and array inputs
+    const handleDescriptiveAnswer = (questionId: string, answer: string | string[]) => {
         setUserAnswers((prevAnswers) => {
-            const newAnswers = { ...prevAnswers, [questionId]: [answer] }
-            localStorage.setItem(getStorageKey('answers'), JSON.stringify(newAnswers))
-            return newAnswers
-        })
-    }
+            const newAnswers = {
+                ...prevAnswers,
+                [questionId]: Array.isArray(answer) ? answer : [answer]
+            };
+            localStorage.setItem(getStorageKey(quizId, 'answers'), JSON.stringify(newAnswers));
+            return newAnswers;
+        });
+    };
 
     const formatTime = (seconds: number) => {
         const minutes = Math.floor(seconds / 60)
@@ -305,6 +515,7 @@ const QuizPage = () => {
         )
     }
 
+
     const renderQuestion = (question: Question) => {
         switch (question.type) {
             case 'MCQ':
@@ -329,12 +540,12 @@ const QuizPage = () => {
                                     >
                                         <RadioGroupItem value={option.optionId} id={option.optionId} />
                                         <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
-                                            <TiptapRenderer content={option.option} />
+                                            <LatexPreview content={option.option} />
                                         </Label>
                                         {option.image && option.image.length > 0 && (
                                             <div
                                                 className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02] ml-16"
-                                                onClick={() => setSelectedImage(option.image)}
+                                                onClick={() => setSelectedImage(option.image || "")}
                                             >
                                                 <ImageWithFallback
                                                     src={option.image}
@@ -378,7 +589,7 @@ const QuizPage = () => {
                                         {option.image && option.image.length > 0 && (
                                             <div
                                                 className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02]"
-                                                onClick={() => setSelectedImage(option.image)}
+                                                onClick={() => setSelectedImage(option.image || "")}
                                             >
                                                 <ImageWithFallback
                                                     src={option.image}
@@ -432,10 +643,380 @@ const QuizPage = () => {
                     </div>
                 )
 
+            case 'FILE_UPLOAD':
+                return (
+                    <div className="space-y-4" >
+                        <TiptapRenderer content={question.question} />
+                        <div className="mt-4" >
+                            <FileUpload 
+                                quizId={quizId}
+                                questionId={question.id}
+                                onUpload={(url) => handleDescriptiveAnswer(question.id, [url])}
+                                currentFile={userAnswers[question.id]?.[0]}
+                            />
+                        </div>
+                    </div>
+                );
+
             default:
                 return <div>Unsupported question type</div>
         }
     }
+
+    interface FileUploadProps {
+        quizId: string;
+        questionId: string;
+        onUpload: (url: string) => void;
+        currentFile?: string;
+    }
+    
+    const FileUpload = ({ quizId, questionId, onUpload, currentFile }: FileUploadProps) => {
+        const [isUploading, setIsUploading] = useState(false);
+        const [dragActive, setDragActive] = useState(false);
+        const [loadingState, setLoadingState] = useState<'uploading' | 'removing' | 'processing' | 'completing' | 'idle'>('idle');
+        const [uploadProgress, setUploadProgress] = useState(0);
+        const [operationProgress, setOperationProgress] = useState(0);
+        const inputRef = useRef<HTMLInputElement>(null);
+        const [fileInputKey, setFileInputKey] = useState(Date.now());
+        const operationProgressRef = useRef<NodeJS.Timeout | null>(null);
+    
+        const handleDownload = () => {
+            if (currentFile) {
+                window.open(currentFile, '_blank');
+            }
+        };
+    
+        const handleDrag = (e: React.DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.type === "dragenter" || e.type === "dragleave") {
+                setDragActive(true);
+            } else if (e.type === "dragleave") {
+                setDragActive(false);
+            }
+        };
+    
+        const simulateProgress = () => {
+            setUploadProgress(0);
+            const interval = setInterval(() => {
+                setUploadProgress(prev => {
+                    if (prev >= 95) {
+                        clearInterval(interval);
+                        return prev;
+                    }
+                    return prev + 5;
+                });
+            }, 100);
+            return interval;
+        };
+
+        const startOperationProgress = () => {
+            setOperationProgress(0);
+            return setInterval(() => {
+                setOperationProgress(prev => {
+                    if (prev >= 100) return prev;
+                    return prev + 2;
+                });
+            }, 50);
+        };
+    
+        const handleUpload = async (file: File) => {
+            if (file.size > 10 * 1024 * 1024) {
+                toast.error('File size must be less than 10MB');
+                return;
+            }
+        
+            // If there's an existing file, delete it first
+            if (currentFile) {
+                await handleRemove();
+            }
+        
+            setLoadingState('uploading');
+            const progressInterval = simulateProgress();
+            operationProgressRef.current = startOperationProgress();
+        
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('quizId', quizId);
+                formData.append('questionId', questionId);
+        
+                const response = await fetch('/api/quiz/upload-response', {
+                    method: 'POST',
+                    body: formData,
+                });
+        
+                if (!response.ok) {
+                    throw new Error('Upload failed');
+                }
+        
+                setLoadingState('processing');
+                setUploadProgress(100);
+        
+                const data = await response.json();
+                
+                setLoadingState('completing');
+                await new Promise(resolve => 
+                    toast.success('File uploaded successfully', {
+                        onAutoClose: resolve,
+                        onDismiss: resolve
+                    })
+                );
+                
+                onUpload(data.url);
+            } catch (error) {
+                console.error('Upload error:', error);
+                toast.error('Failed to upload file');
+            } finally {
+                clearInterval(progressInterval);
+                if (operationProgressRef.current) {
+                    clearInterval(operationProgressRef.current);
+                    operationProgressRef.current = null;
+                }
+                setLoadingState('idle');
+                setUploadProgress(0);
+                setOperationProgress(0);
+                setDragActive(false);
+            }
+        };
+    
+        const handleRemove = async () => {
+            setLoadingState('removing');
+            operationProgressRef.current = startOperationProgress();
+    
+            try {
+                // Delete from MinIO first
+                await fetch('/api/quiz/delete-response', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        quizId,
+                        questionId,
+                    }),
+                });
+    
+                setLoadingState('completing');
+                await new Promise(resolve => 
+                    toast.success('File removed successfully', {
+                        onAutoClose: resolve,
+                        onDismiss: resolve
+                    })
+                );
+    
+                onUpload("");
+            } catch (error) {
+                console.error('Remove error:', error);
+                toast.error('Failed to remove file');
+            } finally {
+                if (operationProgressRef.current) {
+                    clearInterval(operationProgressRef.current);
+                    operationProgressRef.current = null;
+                }
+                setLoadingState('idle');
+                setOperationProgress(0);
+            }
+        };
+    
+        const handleDrop = async (e: React.DragEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const file = e.dataTransfer.files?.[0];
+            if (file) {
+                await handleUpload(file);
+            }
+        };
+    
+        const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+            console.log('Change event triggered', e);
+            console.log('Files:', e.target.files);
+            
+            const files = e.target.files;
+            if (!files || files.length === 0) {
+                console.log('No files selected');
+                return;
+            }
+    
+            const file = files[0];
+            console.log('Selected file:', file.name, file.type, file.size);
+            handleUpload(file);
+            
+            if (inputRef.current) {
+                inputRef.current.value = '';
+            }
+        };
+    
+        const handleClick = useCallback(() => {
+            console.log('Click handler triggered');
+            if (inputRef.current) {
+                setFileInputKey(Date.now());
+                setTimeout(() => {
+                    inputRef.current?.click();
+                }, 0);
+            }
+        }, []);
+    
+        return (
+            <div className="space-y-4 relative">
+                {loadingState !== 'idle' && (
+                    <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                        <div className="w-64 space-y-4">
+                            <div className="space-y-2 text-center">
+                                <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                                <p className="text-sm">
+                                    {loadingState === 'uploading' && `Uploading... ${uploadProgress}%`}
+                                    {loadingState === 'processing' && 'Processing file...'}
+                                    {loadingState === 'removing' && 'Removing file...'}
+                                    {loadingState === 'completing' && 'Finishing up...'}
+                                </p>
+                            </div>
+                            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                <div 
+                                    className="h-full bg-primary transition-all duration-300"
+                                    style={{ 
+                                        width: `${loadingState === 'uploading' ? uploadProgress : operationProgress}%` 
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {/* Rest of your component JSX */}
+                <div className="flex items-center gap-4">
+                    {!currentFile && (
+                        <>
+                            <input
+                                key={fileInputKey}
+                                ref={inputRef}
+                                type="file"
+                                className="hidden"
+                                onChange={handleChange}
+                                disabled={loadingState !== 'idle'}
+                            />
+                            <div 
+                                className={cn(
+                                    "relative w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors",
+                                    dragActive 
+                                        ? "border-primary/50 bg-primary/5" 
+                                        : "border-muted-foreground/20 hover:border-muted-foreground/40",
+                                    loadingState !== 'idle' && "pointer-events-none opacity-80"
+                                )}
+                                onDragEnter={handleDrag}
+                                onDragLeave={handleDrag}
+                                onDragOver={handleDrag}
+                                onDrop={handleDrop}
+                                onClick={handleClick}
+                            >
+                                {loadingState !== 'idle' ? (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                        {loadingState === 'uploading' ? (
+                                            <>
+                                                <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
+                                                    <div 
+                                                        className="h-full bg-primary transition-all duration-300"
+                                                        style={{ width: `${uploadProgress}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-sm text-muted-foreground">
+                                                    Uploading... {uploadProgress}%
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <span className="text-sm text-muted-foreground animate-pulse">
+                                                Processing file...
+                                            </span>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground">
+                                            Drag and drop or click to upload
+                                        </p>
+                                        <p className="text-xs text-muted-foreground/60 mt-1">
+                                            Any file up to 10MB
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                        </>
+                    )}
+                    {currentFile && (
+                        <div className="flex items-center gap-4 w-full">
+                            <div className="flex-1 p-3 border rounded-lg bg-muted/10">
+                                <div className="flex items-center gap-2">
+                                    <FileIcon className="h-4 w-4 text-muted-foreground" />
+                                    <span className="text-sm text-muted-foreground truncate">
+                                        {currentFile.split('/').pop()}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleRemove}
+                                    disabled={loadingState !== 'idle'}
+                                >
+                                    {loadingState === 'removing' ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <X className="h-4 w-4" />
+                                    )}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={handleDownload}
+                                    disabled={loadingState !== 'idle'}
+                                >
+                                    <Download className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const ViolationsCounter = () => (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                        "fixed top-2 right-36 z-50",
+                        violations.length > 0 && "bg-red-100 hover:bg-red-200 border-red-500 text-red-600"
+                    )}
+                >
+                    <AlertTriangle className="h-4 w-4 mr-1" />
+                    {violations.length} Violations
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+                <div className="space-y-2">
+                    <h4 className="font-medium">Violations Log</h4>
+                    <ScrollArea className="h-[200px]">
+                        {violations.map((v, idx) => (
+                            <div key={idx} className="text-sm py-1 border-b last:border-0">
+                                <span className="text-muted-foreground text-xs">
+                                    {new Date(v.timestamp).toLocaleTimeString()}:
+                                </span>{' '}
+                                {v.message}
+                            </div>
+                        ))}
+                    </ScrollArea>
+                </div>
+            </PopoverContent>
+        </Popover>
+    )
 
     if (!quiz || questions.length === 0) {
         return <div className="flex items-center justify-center h-screen">Loading...</div>
@@ -443,12 +1024,13 @@ const QuizPage = () => {
 
     return (
         <div className="h-[90vh] flex flex-col bg-background">
+            {isFullscreenRequired && <ViolationsCounter />}
             <header className="sticky top-0 z-10 bg-background border-b">
                 <div className="container mx-auto p-4">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h1 className="text-2xl font-bold">{quiz.title}</h1>
-                            {warningMessage && (
+                            <h1 className="text-2xl font-bold mb-2">{quiz?.title || 'Loading...'}</h1>
+                            {isTimeWarning && warningMessage && (
                                 <div className="mt-2 text-sm text-red-600 bg-red-100 px-3 py-2 rounded-md animate-pulse">
                                     {warningMessage}
                                 </div>
@@ -462,19 +1044,25 @@ const QuizPage = () => {
                             <div className="text-sm">
                                 Question {currentQuestionIndex + 1} of {questions.length}
                             </div>
-                            <div className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-full transition-colors duration-300",
-                                isTimeWarning
-                                    ? "bg-red-100 text-red-600 font-bold"
-                                    : "bg-primary/10"
-                            )}>
-                                <Clock className={cn(
-                                    "h-4 w-4",
-                                    isTimeWarning && "animate-pulse"
-                                )} />
-                                <span className="font-medium">
-                                    {formatTime(timeLeft || 0)}
-                                </span>
+                            <div className="flex flex-col items-end gap-1">
+                                <div className={cn(
+                                    "flex items-center gap-2 px-3 py-2 rounded-full transition-colors duration-300",
+                                    isTimeWarning
+                                        ? "bg-red-100 text-red-600 font-bold"
+                                        : "bg-primary/10"
+                                )}>
+                                    <Clock className={cn(
+                                        "h-4 w-4",
+                                        isTimeWarning && "animate-pulse"
+                                    )} />
+                                    <span className="font-medium">
+                                        {timeLeft ? formatTime(timeLeft) : "--:--"}
+                                    </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                    {isAutoSubmitEnabled
+                                        && "* Auto-submission enabled"}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -491,6 +1079,26 @@ const QuizPage = () => {
                                         <Badge variant="outline">{questions[currentQuestionIndex].type}</Badge>
                                         <Badge>{questions[currentQuestionIndex].mark} marks</Badge>
                                     </div>
+                                    {
+                                        isCalculatorEnabled && (
+                                            <div className="flex items-center gap-2">
+                                                <Dialog>
+                                                    <DialogTrigger>
+                                                        <CodeXml className="h-4 w-4" />
+                                                    </DialogTrigger>
+                                                    <DialogContent className="w-[90%] max-w-[1400px] mx-auto">
+                                                        <DialogTitle>Calculator</DialogTitle>
+                                                        <CodeEditor
+                                                            files={editorFiles}
+                                                            activeFileId={activeEditorFile}
+                                                            onFileChange={setEditorFiles}
+                                                            onActiveFileChange={setActiveEditorFile}
+                                                        />
+                                                    </DialogContent>
+                                                </Dialog>
+                                            </div>
+                                        )
+                                    }
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-1 overflow-y-auto mt-6">
@@ -547,9 +1155,7 @@ const QuizPage = () => {
                                                 onClick={() => setCurrentQuestionIndex(index)}
                                             >
                                                 {index + 1}
-                                            </Button>
-                                        ))}
-                                    </div>
+                                            </Button>                                        ))}                                    </div>
                                 </ScrollArea>
                             </CardContent>
                         </Card>
@@ -567,11 +1173,30 @@ const QuizPage = () => {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSubmitQuiz}>Submit</AlertDialogAction>
+                        <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleSubmitQuiz}
+                            disabled={isSubmitting}
+                            className="relative"
+                        >
+                            {isSubmitting && (
+                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            {isSubmitting ? 'Submitting...' : 'Submit'}
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Show overlay when submitting */}
+            {isSubmitting && (
+                <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
+                    <div className="flex flex-col items-center gap-2">
+                        <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-sm text-muted-foreground">Submitting your quiz...</p>
+                    </div>
+                </div>
+            )}
 
             <ImagePreviewDialog
                 image={selectedImage}

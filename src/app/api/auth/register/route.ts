@@ -8,7 +8,6 @@ export async function POST(req: NextRequest) {
         const formData = await req.formData();
         type Role = 'STUDENT' | 'ADMIN' | 'STAFF';
 
-
         const name = formData.get('name')?.toString();
         const email = formData.get('email')?.toString();
         const password = formData.get('password')?.toString();
@@ -16,11 +15,18 @@ export async function POST(req: NextRequest) {
         const phoneNo = formData.get('phoneNo')?.toString();
         const rollNo = formData.get('rollNo')?.toString();
         const imageFile = formData.get('image') as File | null;
+        const key = formData.get('key')?.toString();
 
+        if (key !== process.env.REGISTRATION_KEY) {
+            return NextResponse.json(
+                { error: 'Invalid registration key.' },
+                { status: 401 }
+            );
+        }
 
         if (!name || !email || !password) {
-            return new NextResponse(
-                JSON.stringify({ error: 'Name, email, and password are required.' }),
+            return NextResponse.json(
+                { error: 'Name, email, and password are required.' },
                 { status: 400 }
             );
         }
@@ -32,8 +38,7 @@ export async function POST(req: NextRequest) {
                 const fileName = `${Date.now()}-${imageFile.name}`;
                 imageUrl = await uploadFile(buffer, fileName, imageFile.type, 'profile-pics');
             } catch (uploadError) {
-                console.log('Image upload failed:', uploadError);
-
+                console.error('Image upload failed:', uploadError);
             }
         }
 
@@ -51,7 +56,6 @@ export async function POST(req: NextRequest) {
             lastPasswordChange: now,
             isActive: true
         };
-
 
         const newUser = await prisma.$transaction(async (tx) => {
             const user = await tx.user.create({ data: userData });
@@ -73,37 +77,25 @@ export async function POST(req: NextRequest) {
             return user;
         });
 
-
         const { password: _, ...userResponse } = newUser;
 
-        return new NextResponse(
-            JSON.stringify({
-                message: 'User registered successfully.',
-                user: userResponse
-            }),
-            {
-                status: 201,
-                headers: { 'Content-Type': 'application/json' }
-            }
-        );
+        return NextResponse.json({
+            message: 'User registered successfully.',
+            user: userResponse
+        }, { status: 201 });
+
     } catch (error: any) {
         if (error.code === 'P2002') {
-            return new NextResponse(
-                JSON.stringify({ error: 'Email already exists.' }),
-                {
-                    status: 409,
-                    headers: { 'Content-Type': 'application/json' }
-                }
+            return NextResponse.json(
+                { error: 'Email already exists.' },
+                { status: 409 }
             );
         }
 
-        console.log('Registration error:', error);
-        return new NextResponse(
-            JSON.stringify({ error: 'Internal server error' }),
-            {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            }
+        console.error('Registration error:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
         );
     }
 }

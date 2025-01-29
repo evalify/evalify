@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Question } from "@/types/questions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MoreVertical, Edit2, Trash2, Code, FileText, ListChecks, Type, Plus, X } from "lucide-react";
+import { MoreVertical, Edit2, Trash2, Code, FileText, ListChecks, Type, Plus, X, Upload, FileDown } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -44,11 +44,11 @@ interface QuestionsListProps {
     onDelete?: (questionId: string) => void; // Make onDelete optional
 }
 
-export default function QuestionsList({ 
-    questions, 
-    onEdit, 
-    bankId, 
-    topic, 
+export default function QuestionsList({
+    questions,
+    onEdit,
+    bankId,
+    topic,
     onQuestionUpdate,
     editingQuestion,
     requireTopics = true, // Add default value
@@ -189,6 +189,7 @@ export default function QuestionsList({
             case 'FILL_IN_BLANK': return <Type className="h-4 w-4" />;
             case 'DESCRIPTIVE': return <FileText className="h-4 w-4" />;
             case 'CODING': return <Code className="h-4 w-4" />;
+            case 'FILE_UPLOAD': return <Upload className="h-4 w-4" />;
             default: return null;
         }
     };
@@ -206,7 +207,7 @@ export default function QuestionsList({
                 <CardHeader className="space-y-4">
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2 flex-1">
-                                <span className="font-medium">Question {index + 1}</span>
+                            <span className="font-medium">Question {index + 1}</span>
                             <div className="flex items-center gap-2 text-muted-foreground">
                                 {getQuestionIcon(question.type)}
                                 <span className="text-sm">{question.type}</span>
@@ -326,8 +327,8 @@ export default function QuestionsList({
                                             </div>
                                             {/* Option image if exists */}
                                             {option.image && (
-                                                <CustomImage 
-                                                    src={option.image} 
+                                                <CustomImage
+                                                    src={option.image}
                                                     alt={`Option ${option.option}`}
                                                     className="rounded"
                                                 />
@@ -359,7 +360,28 @@ export default function QuestionsList({
                                 ))}
                             </div>
                         )}
+                        {question.type === 'FILE_UPLOAD' && question.attachedFile && (
+                            <div className="mt-2">
+                                <a
+                                    href={question.attachedFile}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-500 hover:underline inline-flex items-center"
+                                >
+                                    <FileDown className="h-4 w-4 mr-2" />
+                                    Download Attached File
+                                </a>
+                            </div>
+                        )}
                     </div>
+                    {
+                        question.explanation && (
+                            <div key={generateKey('explanation')} className="m-2 flex gap-2 flex-col">
+                                <h4 className="font-medium">Explanation:</h4>
+                                <TiptapRenderer content={question.explanation} />
+                            </div>
+                        )
+                    }
                 </CardContent>
             </Card>
         );

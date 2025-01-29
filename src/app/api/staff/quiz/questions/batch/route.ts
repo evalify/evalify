@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         }
 
         const { quizId, questions } = await req.json();
-        
+
         if (!quizId || !Array.isArray(questions)) {
             return NextResponse.json({ error: "Invalid request data" }, { status: 400 });
         }
@@ -24,13 +24,11 @@ export async function POST(req: Request) {
             ...q,
             quizId,
             questionHash: generateQuestionHash(q.question || q.content, q.type),
-            createdAt: new Date(),
-            createdBy: session.user.id
         }));
 
         // Check for duplicates using questionHash
         const existingHashes = await db.collection('NEW_QUESTIONS')
-            .find({ 
+            .find({
                 quizId,
                 questionHash: { $in: questionsToInsert.map(q => q.questionHash) }
             })
@@ -38,7 +36,7 @@ export async function POST(req: Request) {
             .toArray();
 
         // Filter out questions that already exist
-        const uniqueQuestions = questionsToInsert.filter(q => 
+        const uniqueQuestions = questionsToInsert.filter(q =>
             !existingHashes.some(existing => existing.questionHash === q.questionHash)
         );
 
@@ -46,9 +44,9 @@ export async function POST(req: Request) {
             await db.collection('NEW_QUESTIONS').insertMany(uniqueQuestions);
         }
 
-        return NextResponse.json({ 
-            success: true, 
-            count: uniqueQuestions.length 
+        return NextResponse.json({
+            success: true,
+            count: uniqueQuestions.length
         });
     } catch (error) {
         console.error('Batch questions error:', error);

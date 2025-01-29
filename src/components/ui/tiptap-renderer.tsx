@@ -31,6 +31,7 @@ const TiptapRenderer = ({ content }: TiptapRendererProps) => {
         ],
         content: content || '', // Add default empty string
         editable: false,
+        immediatelyRender: false,
     });
 
     if (!editor) return null;

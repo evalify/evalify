@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/hooks/use-toast";
-import { Code, FileText, ListChecks, ToggleLeft, Type, Edit2, Plus, X, AlertTriangle, Check, ChevronDown, Sparkles, ImageIcon } from 'lucide-react';
+import { Code, FileText, ListChecks, ToggleLeft, Type, Edit2, Plus, X, AlertTriangle, Check, ChevronDown, Sparkles, ImageIcon, Upload } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Question, QuestionType, DifficultyLevel } from "@/types/questions";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,27 +36,31 @@ interface OptionWithImage {
     image?: string;
 }
 
-export default function EnhancedQuestionForm({ 
-    editingQuestion, 
-    topics = [], // Add default value
-    bankId = '', // Add default value
-    onCancel, 
-    onSave, 
+export default function EnhancedQuestionForm({
+    editingQuestion,
+    topics = [],
+    bankId = '',
+    onCancel,
+    onSave,
     selectedTopicIds = [],
-    requireTopics = true, // Add default value
-    isQuiz = false, // Add default value
-    quizId // Add this prop
+    requireTopics = true,
+    isQuiz = false,
+    quizId
 }: QuestionFormProps) {
     const { toast } = useToast();
     const [type, setType] = useState<QuestionType>(editingQuestion?.type || "MCQ");
     const [content, setContent] = useState(editingQuestion?.content || editingQuestion?.question || "");
-    const [difficulty, setDifficulty] = useState<DifficultyLevel>(editingQuestion?.difficulty || "MEDIUM");
-    const [marks, setMarks] = useState(editingQuestion?.marks?.toString() || "1");
+    const [difficulty, setDifficulty] = useState<DifficultyLevel | ''>(
+        editingQuestion?.difficulty || ''
+    );
+    const [marks, setMarks] = useState(
+        editingQuestion?.mark ? editingQuestion.mark.toString() : ''
+    );
     const [selectedTopics, setSelectedTopics] = useState<string[]>(() => {
         if (editingQuestion?.topics) {
             return editingQuestion.topics;
         }
-        return selectedTopicIds; // Use the selected topic IDs instead of empty array
+        return selectedTopicIds;
     });
     const [explanation, setExplanation] = useState(editingQuestion?.explanation || "");
     const [correctAnswer, setCorrectAnswer] = useState(editingQuestion?.expectedAnswer || "");
@@ -64,8 +68,8 @@ export default function EnhancedQuestionForm({
     const [testCases, setTestCases] = useState(editingQuestion?.testCases || "");
     const [guidelines, setGuidelines] = useState(editingQuestion?.guidelines || "");
     const [isGenerating, setIsGenerating] = useState(false);
+    const [attachedFile, setAttachedFile] = useState<string>(editingQuestion?.attachedFile || '');
 
-    // Add helper for true/false options initialization
     const initializeOptions = () => {
         if (editingQuestion?.options) {
             return editingQuestion.options.map(opt => ({
@@ -87,11 +91,10 @@ export default function EnhancedQuestionForm({
         }));
     };
 
-    // Update correct options initialization to handle editing mode
     const initializeCorrectOptions = () => {
         if (editingQuestion?.answer) {
             const optionIds = editingQuestion.options?.map(opt => opt.optionId) || [];
-            return editingQuestion.answer.map(answerId => 
+            return editingQuestion.answer.map(answerId =>
                 optionIds.findIndex(id => id === answerId)
             ).filter(index => index !== -1);
         }
@@ -177,11 +180,44 @@ export default function EnhancedQuestionForm({
         }
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+    
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+    
+            const response = await fetch('/api/upload/quiz-file', {
+                method: 'POST',
+                body: formData,
+            });
+    
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+    
+            const { url } = await response.json();
+            setAttachedFile(url);
+            toast({
+                title: "Success",
+                description: "File uploaded successfully"
+            });
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to upload file",
+                variant: "destructive"
+            });
+        }
+    };
+
     const questionTypes = [
         { value: 'MCQ', label: 'Multiple Choice', icon: ListChecks },
         { value: 'TRUE_FALSE', label: 'True/False', icon: ToggleLeft },
         { value: 'FILL_IN_BLANK', label: 'Fill in Blank', icon: Type },
         { value: 'DESCRIPTIVE', label: 'Descriptive', icon: FileText },
+        { value: 'FILE_UPLOAD', label: 'File Upload', icon: Upload },
         // { value: 'CODING', label: 'Coding', icon: Code }
     ];
 
@@ -191,70 +227,25 @@ export default function EnhancedQuestionForm({
         HARD: "bg-red-100 text-red-800"
     };
 
-    const handleSubmit = async () => {
-        if (!validateForm()) return;
-
-        try {
-            const questionData = {
-                type,
-                difficulty,
-                mark: parseInt(marks),
-                question: content,
-                explanation: explanation.trim(),
-                topics: selectedTopics,
-                bankId,
-                ...(type === 'MCQ' || type === 'TRUE_FALSE' ? {
-                    options: optionsWithIds,
-                    answer: correctOptions.map(index => optionsWithIds[index].optionId)
-                } : {}),
-                ...(type === 'DESCRIPTIVE' ? {
-                    expectedAnswer: sampleAnswer,
-                    guidelines: guidelines
-                } : {}),
-                ...(type === 'FILL_IN_BLANK' ? {
-                    expectedAnswer: correctAnswer
-                } : {}),
-                ...(editingQuestion?._id ? { _id: editingQuestion._id } : {}),
-                ...(editingQuestion?.id ? { id: editingQuestion.id } : {})
-            };
-
-            await onSave(questionData);
+    const validateForm = () => {
+        if (!difficulty) {
             toast({
-                title: "Success",
-                description: editingQuestion ? "Question updated successfully" : "Question added successfully",
-            });
-        } catch (error) {
-            console.error('Error saving question:', error);
-            toast({
-                title: "Error",
-                description: error instanceof Error ? error.message : "Failed to save question",
+                title: "Validation Error",
+                description: "Please select difficulty level",
                 variant: "destructive"
             });
+            return false;
         }
-    };
 
-    const topicMap = useMemo(() => {
-        const map = new Map();
-        topics.forEach(t => map.set(t.id, t.name));
-        return map;
-    }, [topics]);
-
-    const handleAddTopic = (topicId: string) => {
-        if (!selectedTopics.includes(topicId)) {
-            setSelectedTopics([...selectedTopics, topicId]);
+        if (!marks || parseInt(marks) < 1) {
+            toast({
+                title: "Validation Error",
+                description: "Please enter valid marks (minimum 1)",
+                variant: "destructive"
+            });
+            return false;
         }
-    };
 
-    const handleRemoveTopic = (topicId: string) => {
-        setSelectedTopics(selectedTopics.filter(t => t !== topicId));
-    };
-
-    const availableTopics = useMemo(() =>
-        topics.filter(topic => !selectedTopics.includes(topic.id)),
-        [topics, selectedTopics]
-    );
-
-    const validateForm = () => {
         if (!content.trim()) {
             toast({
                 title: "Validation Error",
@@ -332,6 +323,72 @@ export default function EnhancedQuestionForm({
         return true;
     };
 
+    const handleSubmit = async () => {
+        if (!validateForm()) return;
+
+        try {
+            const questionData = {
+                type,
+                difficulty,
+                mark: parseInt(marks),
+                question: content,
+                explanation: explanation.trim(),
+                topics: selectedTopics,
+                bankId,
+                ...(type === 'MCQ' || type === 'TRUE_FALSE' ? {
+                    options: optionsWithIds,
+                    answer: correctOptions.map(index => optionsWithIds[index].optionId)
+                } : {}),
+                ...(type === 'DESCRIPTIVE' ? {
+                    expectedAnswer: sampleAnswer,
+                    guidelines: guidelines
+                } : {}),
+                ...(type === 'FILL_IN_BLANK' ? {
+                    expectedAnswer: correctAnswer
+                } : {}),
+                ...(type === 'FILE_UPLOAD' ? {
+                    attachedFile: attachedFile
+                } : {}),
+                ...(editingQuestion?._id ? { _id: editingQuestion._id } : {}),
+                ...(editingQuestion?.id ? { id: editingQuestion.id } : {})
+            };
+
+            await onSave(questionData);
+            toast({
+                title: "Success",
+                description: editingQuestion ? "Question updated successfully" : "Question added successfully",
+            });
+        } catch (error) {
+            console.error('Error saving question:', error);
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to save question",
+                variant: "destructive"
+            });
+        }
+    };
+
+    const topicMap = useMemo(() => {
+        const map = new Map();
+        topics.forEach(t => map.set(t.id, t.name));
+        return map;
+    }, [topics]);
+
+    const handleAddTopic = (topicId: string) => {
+        if (!selectedTopics.includes(topicId)) {
+            setSelectedTopics([...selectedTopics, topicId]);
+        }
+    };
+
+    const handleRemoveTopic = (topicId: string) => {
+        setSelectedTopics(selectedTopics.filter(t => t !== topicId));
+    };
+
+    const availableTopics = useMemo(() =>
+        topics.filter(topic => !selectedTopics.includes(topic.id)),
+        [topics, selectedTopics]
+    );
+
     const handleOptionChange = (index: number, value: string) => {
         if (type !== "TRUE_FALSE") {
             const newOptions = [...optionsWithIds];
@@ -377,6 +434,18 @@ export default function EnhancedQuestionForm({
         }
     };
 
+    const handleAddOption = () => {
+        setOptionsWithIds(prev => [...prev, {
+            optionId: uuidv4().replace(/-/g, ''),
+            option: ''
+        }]);
+    };
+
+    const handleDeleteOption = (index: number) => {
+        setOptionsWithIds(prev => prev.filter((_, i) => i !== index));
+        setCorrectOptions(prev => prev.filter(i => i !== index).map(i => i > index ? i - 1 : i));
+    };
+
     return (
         <ScrollArea className="h-full">
             <div className="space-y-8 px-2 pb-8">
@@ -416,26 +485,41 @@ export default function EnhancedQuestionForm({
 
                         <div className="space-y-2">
                             <Label className="text-lg font-semibold">Explanation</Label>
-                            <Textarea
-                                value={explanation}
-                                onChange={(e) => setExplanation(e.target.value)}
+                            <RichTextEditor
+                                content={explanation}
+                                onChange={setExplanation}
                                 placeholder="Enter an explanation for this question..."
-                                className="min-h-[100px]"
                             />
                         </div>
 
                         {(type === "MCQ" || type === "TRUE_FALSE") && (
                             <div className="space-y-4">
-                                <Label className="text-lg font-semibold">
-                                    {type === "TRUE_FALSE" ? "Select the correct answer" : "Options"}
-                                </Label>
-                                <div className={`grid ${type === "TRUE_FALSE" ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2"} gap-4`}>
+                                <div className="flex justify-between">
+                                    <Label className="text-lg font-semibold">
+                                        {type === "TRUE_FALSE" ? "Select the correct answer" : "Options"}
+                                    </Label>
+                                    {type === "MCQ" && (
+                                        <Button
+                                            variant="outline"
+                                            className=" border-dashed"
+                                            onClick={handleAddOption}
+                                        >
+                                            <Plus className=" w-5 mr-2" />
+                                            Add Option
+                                        </Button>
+                                    )}
+                                </div>
+
+                                <div className={`grid ${type === "TRUE_FALSE" ? "grid-cols-2" : "grid-cols-1 md:grid-cols-1"} gap-4`}>
                                     {optionsWithIds.map((option, index) => (
                                         <div key={option.optionId}
                                             className={`flex flex-col gap-2 ${type === "TRUE_FALSE"
                                                 ? "justify-center p-4 hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer"
                                                 : "bg-gray-50 dark:bg-gray-900 p-3"
-                                                } rounded-md`}
+                                                } rounded-md ${correctOptions.includes(index)
+                                                    ? "bg-green-100 dark:bg-green-900 border-2 border-green-500"
+                                                    : ""
+                                                }`}
                                         >
                                             <div className="flex items-center gap-2">
                                                 <Checkbox
@@ -456,29 +540,46 @@ export default function EnhancedQuestionForm({
                                                     <span className="text-lg">{option.option}</span>
                                                 ) : (
                                                     <div className="flex-1 space-y-2">
-                                                        <Input
-                                                            value={option.option}
-                                                            onChange={(e) => handleOptionChange(index, e.target.value)}
-                                                            placeholder={`Option ${index + 1}`}
-                                                        />
+                                                        <div className="flex items-center gap-2">
+                                                            <Textarea
+                                                                value={option.option}
+                                                                onChange={(e) => handleOptionChange(index, e.target.value)}
+                                                                placeholder={`Option ${index + 1}`}
+                                                            />
+                                                        </div>
                                                         <div className="text-sm text-muted-foreground p-2 bg-background rounded">
                                                             <LatexPreview content={option.option} />
                                                         </div>
                                                     </div>
                                                 )}
-                                                <Button variant="outline" className="relative overflow-hidden">
-                                                    <input
-                                                        type="file"
-                                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                                        accept="image/*"
-                                                        onChange={(e) => handleOptionImageUpload(index, e)}
-                                                    />
-                                                    <ImageIcon className="h-4 w-4" />
-                                                </Button>
+                                                {
+                                                    type === "MCQ" && (
+                                                        <div className="flex flex-col">
+                                                            <Button variant="outline" className="relative overflow-hidden" size="icon">
+                                                                <input
+                                                                    type="file"
+                                                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                                                    accept="image/*"
+                                                                    onChange={(e) => handleOptionImageUpload(index, e)}
+                                                                />
+                                                                <ImageIcon className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="hover:bg-destructive hover:text-white"
+                                                                onClick={() => handleDeleteOption(index)}
+                                                                disabled={optionsWithIds.length <= 2}
+                                                            >
+                                                                <X className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    )
+                                                }
                                             </div>
                                             {option.image && (
-                                                <CustomImage 
-                                                    src={option.image} 
+                                                <CustomImage
+                                                    src={option.image}
                                                     alt={`Option ${index + 1}`}
                                                     className="rounded"
                                                 />
@@ -556,23 +657,111 @@ export default function EnhancedQuestionForm({
                                 />
                             </div>
                         )}
+
+                        {type === "FILE_UPLOAD" && (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => document.getElementById('file-upload')?.click()}
+                                    >
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        {attachedFile ? 'Change File' : 'Upload File'}
+                                    </Button>
+                                    {attachedFile && (
+                                        <a 
+                                            href={attachedFile} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-blue-500 hover:underline"
+                                        >
+                                            View Uploaded File
+                                        </a>
+                                    )}
+                                </div>
+                                <input
+                                    type="file"
+                                    id="file-upload"
+                                    className="hidden"
+                                    onChange={handleFileUpload}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-6">
                         <div className="p-4 rounded-lg space-y-4">
-                            <h3 className="text-lg font-semibold flex items-center gap-2">
-                                <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                                Settings
-                            </h3>
+                            {/* Only show topics section if required */}
+                            {requireTopics && (
+                                <div className="space-y-2">
+                                    <Label className="text-lg font-semibold">Topics</Label>
+                                    <Select
+                                        onValueChange={handleAddTopic}
+                                        disabled={availableTopics.length === 0}
+                                    >
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder={
+                                                availableTopics.length === 0
+                                                    ? "All topics selected"
+                                                    : "Add topic..."
+                                            } />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {availableTopics.map(topic => (
+                                                <SelectItem
+                                                    key={topic.id}
+                                                    value={topic.id}
+                                                >
+                                                    {topic.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    {selectedTopics.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {selectedTopics.map(topicId => {
+                                                const topic = topics.find(t => t.id === topicId);
+                                                if (!topic) return null;
+
+                                                return (
+                                                    <Badge
+                                                        key={topicId}
+                                                        variant="secondary"
+                                                        className="flex items-center gap-1 py-1 px-2"
+                                                    >
+                                                        {topic.name}
+                                                        <X
+                                                            className="h-3 w-3 cursor-pointer hover:text-destructive"
+                                                            onClick={() => handleRemoveTopic(topicId)}
+                                                        />
+                                                    </Badge>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            {
+                                requireTopics && selectedTopics.length === 0 && (
+                                    <p className="text-sm text-destructive flex items-center gap-2">
+                                        <AlertTriangle className="h-4 w-4" />
+                                        At least one topic is required
+                                    </p>
+                                )
+                            }
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label>Difficulty</Label>
+                                    <Label className="flex items-center gap-1">
+                                        Difficulty
+                                        <span className="text-destructive">*</span>
+                                    </Label>
                                     <Select
                                         value={difficulty}
                                         onValueChange={(value: DifficultyLevel) => setDifficulty(value)}
                                     >
-                                        <SelectTrigger className={`w-full ${difficultyColors[difficulty]}`}>
-                                            <SelectValue />
+                                        <SelectTrigger className={`w-full ${difficulty ? difficultyColors[difficulty] : 'border-destructive'}`}>
+                                            <SelectValue placeholder="Select difficulty" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="EASY" className={difficultyColors.EASY}>Easy</SelectItem>
@@ -582,76 +771,22 @@ export default function EnhancedQuestionForm({
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Marks</Label>
+                                    <Label className="flex items-center gap-1">
+                                        Marks
+                                        <span className="text-destructive">*</span>
+                                    </Label>
                                     <Input
                                         type="number"
                                         value={marks}
                                         onChange={(e) => setMarks(e.target.value)}
                                         min="1"
+                                        className={!marks ? 'border-destructive' : ''}
+                                        placeholder="Enter marks"
                                     />
                                 </div>
                             </div>
                         </div>
                     </div>
-                    {/* Only show topics section if required */}
-                    {requireTopics && (
-                        <div className="space-y-2">
-                            <Label className="text-lg font-semibold">Topics</Label>
-                            <Select
-                                onValueChange={handleAddTopic}
-                                disabled={availableTopics.length === 0}
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder={
-                                        availableTopics.length === 0
-                                            ? "All topics selected"
-                                            : "Add topic..."
-                                    } />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {availableTopics.map(topic => (
-                                        <SelectItem
-                                            key={topic.id}
-                                            value={topic.id}
-                                        >
-                                            {topic.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            {selectedTopics.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {selectedTopics.map(topicId => {
-                                        const topic = topics.find(t => t.id === topicId);
-                                        if (!topic) return null;
-
-                                        return (
-                                            <Badge
-                                                key={topicId}
-                                                variant="secondary"
-                                                className="flex items-center gap-1 py-1 px-2"
-                                            >
-                                                {topic.name}
-                                                <X
-                                                    className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                                    onClick={() => handleRemoveTopic(topicId)}
-                                                />
-                                            </Badge>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {
-                        requireTopics && selectedTopics.length === 0 && (
-                            <p className="text-sm text-destructive flex items-center gap-2">
-                                <AlertTriangle className="h-4 w-4" />
-                                At least one topic is required
-                            </p>
-                        )
-                    }
                 </div>
                 <div className="flex justify-end gap-3 pt-4 border-t">
                     <Button variant="outline" onClick={onCancel}>

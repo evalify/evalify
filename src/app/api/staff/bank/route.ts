@@ -181,8 +181,6 @@ export async function POST(req: Request) {
                 }
             }
         })
-
-        // Clear cache for the staff member
         await clearBankCache(staff.id)
 
         return NextResponse.json(bank, { status: 201 })

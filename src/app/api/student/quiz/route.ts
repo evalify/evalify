@@ -65,6 +65,8 @@ export async function GET(req: Request) {
             },
             select: {
                 quizId: true,
+                isSubmitted: true,
+                isEvaluated: true,
                 quiz: {
                     select: {
                         settings: {
@@ -86,10 +88,10 @@ export async function GET(req: Request) {
             let status;
             let showResult = false;
 
-            if (completedQuiz.some(cq => cq.quizId === q.id)) {
+            if (completedQuiz.some(cq => cq.quizId === q.id && cq.isSubmitted)) {
                 status = "completed";
-                showResult = completedQuiz.find((cq) => cq.quizId === q.id)?.quiz.settings.showResult || false;
-            } else if (now >= start && now <= end) {
+                showResult = (completedQuiz.find((cq) => cq.quizId === q.id)?.quiz.settings.showResult && completedQuiz.find((cq) => cq.quizId === q.id)?.isEvaluated === "EVALUATED") || false;
+            } else if (now >= start && now <= end && !(completedQuiz.find((cq) => cq.quizId === q.id)?.isSubmitted)) {
                 status = "live";
             } else if (now > end) {
                 status = "missed";

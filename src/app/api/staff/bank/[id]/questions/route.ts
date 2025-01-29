@@ -2,6 +2,35 @@ import { auth } from "@/lib/auth/auth";
 import clientPromise from "@/lib/db/mongo";
 import { NextResponse } from "next/server";
 
+// Add this validation function at the top
+function validateQuestionData(data: any) {
+    if (!data.type || !data.difficulty || !data.question || !data.mark) {
+        return { isValid: false, error: "Missing required fields" };
+    }
+
+    // Validate based on question type
+    switch (data.type) {
+        case 'MCQ':
+        case 'TRUE_FALSE':
+            if (!Array.isArray(data.options) || !Array.isArray(data.answer)) {
+                return { isValid: false, error: "Invalid options or answer format" };
+            }
+            break;
+        case 'DESCRIPTIVE':
+            if (!data.expectedAnswer) {
+                return { isValid: false, error: "Expected answer is required" };
+            }
+            break;
+        case 'FILL_IN_BLANK':
+            if (!data.expectedAnswer) {
+                return { isValid: false, error: "Expected answer is required" };
+            }
+            break;
+    }
+
+    return { isValid: true };
+}
+
 export async function GET(
     req: Request,
     { params }: { params: { id: string } }
@@ -51,12 +80,21 @@ export async function POST(
     try {
         const { id } = await params;
         const session = await auth();
+        
         if (!session?.user?.role || session.user.role !== "STAFF") {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
         const questionData = await req.json();
-        console.log(questionData)
+        
+        // Validate the data
+        const validation = validateQuestionData(questionData);
+        if (!validation.isValid) {
+            return NextResponse.json({ 
+                message: validation.error || "Invalid question data" 
+            }, { status: 400 });
+        }
+
         // Ensure bankId is set
         questionData.bankId = id;
         
@@ -72,13 +110,15 @@ export async function POST(
             }));
         }
 
-        const result = await (await clientPromise)
-            .db()
+        const db = (await clientPromise).db();
+        
+        const result = await db
             .collection('QUESTION_BANK')
             .insertOne(questionData);
 
-        if (!result.acknowledged) {
-            throw new Error('Failed to insert question');
+        if (!result?.insertedId) {
+            console.log('No insertedId in MongoDB response');
+            throw new Error('Failed to get confirmation of question creation');
         }
 
         return NextResponse.json({ 
@@ -87,9 +127,14 @@ export async function POST(
         }, { status: 201 });
 
     } catch (error) {
-        console.error('Error creating question:', error);
+        console.log('Error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+        });
+        
         return NextResponse.json({ 
-            message: "Failed to create question" 
+            message: "Failed to create question",
+            details: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 });
     }
 }

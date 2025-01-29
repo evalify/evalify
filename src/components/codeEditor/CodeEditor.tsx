@@ -78,6 +78,13 @@ interface CodeFile {
     content: string
 }
 
+interface CodeEditorProps {
+    files: CodeFile[];
+    activeFileId: string;
+    onFileChange: (files: CodeFile[]) => void;
+    onActiveFileChange: (fileId: string) => void;
+}
+
 class EditorErrorBoundary extends React.Component<
     { children: React.ReactNode },
     { hasError: boolean }
@@ -104,7 +111,7 @@ class EditorErrorBoundary extends React.Component<
     }
 }
 
-export function CodeEditor() {
+export function CodeEditor({ files, activeFileId, onFileChange, onActiveFileChange }: CodeEditorProps) {
     const functions = [
         'abs', 'angle', 'asin', 'acos', 'atan', 'atan2', 'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'exp',
         'log', 'log10', 'sqrt', 'sum', 'prod', 'mean', 'std', 'var', 'max', 'min', 'rand', 'randn', 'round',
@@ -124,10 +131,6 @@ export function CodeEditor() {
         'uiselect', 'uifigure', 'uisetcolor', 'uigetdir'
     ];
 
-    const [files, setFiles] = React.useState<CodeFile[]>([
-        { id: nanoid(), name: 'file', language: 'octave', content: '' }
-    ])
-    const [activeFileId, setActiveFileId] = React.useState(files[0].id)
     const [showOutput, setShowOutput] = React.useState(false)
     const [output, setOutput] = React.useState("")
     const [isVertical, setIsVertical] = React.useState(true)
@@ -240,7 +243,7 @@ export function CodeEditor() {
     }
 
     const handleClear = () => {
-        setFiles(files.map(file =>
+        onFileChange(files.map(file =>
             file.id === activeFileId ? { ...file, content: '' } : file
         ))
         setOutput("")
@@ -251,7 +254,7 @@ export function CodeEditor() {
     }
 
     const handleLanguageChange = (language: string) => {
-        setFiles(files.map(file =>
+        onFileChange(files.map(file =>
             file.id === activeFileId ? { ...file, language } : file
         ))
     }
@@ -263,20 +266,20 @@ export function CodeEditor() {
             language: 'octave',
             content: ''
         }
-        setFiles([...files, newFile])
-        setActiveFileId(newFile.id)
+        onFileChange([...files, newFile])
+        onActiveFileChange(newFile.id)
     }
 
     const handleTabChange = (tabId: string) => {
-        setActiveFileId(tabId)
+        onActiveFileChange(tabId)
     }
 
     const handleTabClose = (tabId: string) => {
         if (files.length > 1) {
             const newFiles = files.filter(file => file.id !== tabId)
-            setFiles(newFiles)
+            onFileChange(newFiles)
             if (activeFileId === tabId) {
-                setActiveFileId(newFiles[0].id)
+                onActiveFileChange(newFiles[0].id)
             }
         }
     }
@@ -326,7 +329,7 @@ export function CodeEditor() {
                                 language={activeFile.language}
                                 value={activeFile.content}
                                 onChange={(value) => {
-                                    setFiles(files.map(file =>
+                                    onFileChange(files.map(file =>
                                         file.id === activeFileId ? { ...file, content: value || '' } : file
                                     ))
                                 }}

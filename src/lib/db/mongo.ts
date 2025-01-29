@@ -14,6 +14,7 @@ const options: MongoClientOptions = {
     serverSelectionTimeoutMS: 5000,
     retryWrites: true,
     retryReads: true,
+    useNewUrlParser: true,
 };
 
 let client: MongoClient = new MongoClient(

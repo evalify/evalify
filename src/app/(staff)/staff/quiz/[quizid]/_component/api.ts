@@ -45,3 +45,19 @@ export async function deleteQuestion(quizId: string, questionId: string): Promis
     }
 }
 
+export async function fetchQuizDetails(quizId: string) {
+    const response = await fetch(`/api/staff/quiz/${quizId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch quiz details');
+    }
+    
+    return response.json();
+}
+

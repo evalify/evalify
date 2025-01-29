@@ -41,7 +41,7 @@ model Class {
 }
 
 model Student {
-    id String @id @default(cuid())
+    id         String       @id @default(cuid())
     user       User         @relation(fields: [id], references: [id])
     class      Class?       @relation(fields: [classId], references: [id])
     classId    String?
@@ -91,6 +91,17 @@ model Staff {
     Quiz       Quiz[]
 }
 
+model EvaluationSettings {
+    id     String @id @default(cuid())
+    quiz   Quiz   @relation(fields: [quizId], references: [id])
+    quizId String @unique
+
+    evaluatorModel  String?
+    negativeMark    Boolean @default(false)
+    codePartialMark Boolean @default(false)
+    mcqPartialMark  Boolean @default(false)
+}
+
 model Quiz {
     id          String   @id @default(cuid())
     title       String
@@ -101,11 +112,14 @@ model Quiz {
     createdbyId String
     createdby   Staff    @relation(fields: [createdbyId], references: [id])
 
-    settings   QuizSettings @relation(fields: [settingsId], references: [id])
-    settingsId String
-    results    QuizResult[]
-    courses    Course[]
-    QuizReport QuizReport[]
+    settings          QuizSettings        @relation(fields: [settingsId], references: [id])
+    settingsId        String
+    results           QuizResult[]
+    courses           Course[]
+    QuizReport        QuizReport[]
+    evaluationSetting EvaluationSettings?
+
+    isEvaluated EvaluationStatus @default(UNEVALUATED)
 }
 
 model QuizSettings {
@@ -114,23 +128,40 @@ model QuizSettings {
     calculator Boolean @default(false)
     shuffle    Boolean @default(false)
     showResult Boolean @default(false)
-    Quiz       Quiz[]
+    autoSubmit Boolean @default(false)
+
+    Quiz Quiz[]
+}
+
+enum EvaluationStatus {
+    PENDING
+    EVALUATED
+    UNEVALUATED
+    EVALUATING
 }
 
 model QuizResult {
-    id            String   @id @default(cuid())
-    student       Student  @relation(fields: [studentId], references: [id])
-    studentId     String
-    quiz          Quiz     @relation(fields: [quizId], references: [id])
-    quizId        String
-    score         Float
-    totalScore    Float    @default(0)
-    remarks       Json?
-    submittedAt   DateTime @default(now())
-    responses     Json
-    questionMarks Json?
-    violations    String?
-    ip            String?
+    id        String  @id @default(cuid())
+    student   Student @relation(fields: [studentId], references: [id])
+    studentId String
+    quiz      Quiz    @relation(fields: [quizId], references: [id])
+    quizId    String
+
+    isSubmitted Boolean  @default(false)
+    startTime   DateTime @default(now())
+
+    responses   Json?
+    score       Float
+    totalScore  Float     @default(0)
+    submittedAt DateTime?
+
+    isEvaluated EvaluationStatus @default(UNEVALUATED)
+
+    violations String?
+    ip         String?
+
+    @@unique([studentId, quizId], name: "studentId_quizId")
+    @@index([studentId, quizId, isSubmitted])
 }
 
 model QuizReport {
@@ -145,4 +176,6 @@ model QuizReport {
     totalStudents    Int
     questionStats    Json
     markDistribution Json
+
+    evaluatedAt DateTime
 }
