@@ -23,9 +23,9 @@ interface QuestionFormProps {
     onSave: () => void;
     editingQuestion?: Question | null;
     allTopics?: string[];
-    selectedTopicIds?: string[]; // Add this prop
+    selectedTopicIds?: string[];
     requireTopics?: boolean;
-    isQuiz?: boolean; // Add this prop
+    isQuiz?: boolean;
 }
 
 interface OptionWithImage {
@@ -36,13 +36,13 @@ interface OptionWithImage {
 
 export default function EnhancedQuestionForm({
     editingQuestion,
-    topics = [], // Add default value
-    bankId = '', // Add default value
+    topics = [], 
+    bankId = '', 
     onCancel,
     onSave,
     selectedTopicIds = [],
-    requireTopics = true, // Add default value
-    isQuiz = false // Add default value
+    requireTopics = true, 
+    isQuiz = false 
 }: QuestionFormProps) {
     const { toast } = useToast();
     const [type, setType] = useState<QuestionType>(editingQuestion?.type || "MCQ");
@@ -53,7 +53,7 @@ export default function EnhancedQuestionForm({
         if (editingQuestion?.topics) {
             return editingQuestion.topics;
         }
-        return selectedTopicIds; // Use the selected topic IDs instead of empty array
+        return selectedTopicIds; 
     });
     const [explanation, setExplanation] = useState(editingQuestion?.explanation || "");
     const [correctAnswer, setCorrectAnswer] = useState(editingQuestion?.expectedAnswer || "");
@@ -62,7 +62,7 @@ export default function EnhancedQuestionForm({
     const [guidelines, setGuidelines] = useState(editingQuestion?.guidelines || "");
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // Add helper for true/false options initialization
+
     const initializeOptions = () => {
         if (editingQuestion?.options) {
             return editingQuestion.options.map(opt => ({

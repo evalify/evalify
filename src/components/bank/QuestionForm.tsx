@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/hooks/use-toast";
-import { Code, FileText, ListChecks, ToggleLeft, Type, Edit2, Plus, X, AlertTriangle, Check, ChevronDown, Sparkles, ImageIcon, Upload } from 'lucide-react';
+import { Code, FileText, ListChecks, ToggleLeft, Type, Edit2, Plus, X, AlertTriangle, Check, ChevronDown, Sparkles, ImageIcon, Upload, RotateCcw } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Question, QuestionType, DifficultyLevel } from "@/types/questions";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,13 +21,13 @@ interface QuestionFormProps {
     topics: Array<{ id: string; name: string }>;
     bankId: string;
     onCancel: () => void;
-    onSave: (question: Question) => Promise<void>; // Update to async
+    onSave: (question: Question) => Promise<void>;
     editingQuestion?: Question | null;
     allTopics?: string[];
-    selectedTopicIds?: string[]; // Add this prop
+    selectedTopicIds?: string[];
     requireTopics?: boolean;
-    isQuiz?: boolean; // Add this prop
-    quizId?: string; // Add this prop
+    isQuiz?: boolean;
+    quizId?: string;
 }
 
 interface OptionWithImage {
@@ -49,7 +49,7 @@ export default function EnhancedQuestionForm({
 }: QuestionFormProps) {
     const { toast } = useToast();
     const [type, setType] = useState<QuestionType>(editingQuestion?.type || "MCQ");
-    const [content, setContent] = useState(editingQuestion?.content || editingQuestion?.question || "");
+    const [content, setContent] = useState(editingQuestion?.question || editingQuestion?.content || "");
     const [difficulty, setDifficulty] = useState<DifficultyLevel | ''>(
         editingQuestion?.difficulty || ''
     );
@@ -69,6 +69,11 @@ export default function EnhancedQuestionForm({
     const [guidelines, setGuidelines] = useState(editingQuestion?.guidelines || "");
     const [isGenerating, setIsGenerating] = useState(false);
     const [attachedFile, setAttachedFile] = useState<string>(editingQuestion?.attachedFile || '');
+
+    const [prevContent, setPrevContent] = useState("");
+    const [prevSampleAnswer, setPrevSampleAnswer] = useState("");
+    const [prevGuidelines, setPrevGuidelines] = useState("");
+    const [editorKey, setEditorKey] = useState(0);
 
     const initializeOptions = () => {
         if (editingQuestion?.options) {
@@ -132,17 +137,30 @@ export default function EnhancedQuestionForm({
     const generateGuidelines = async () => {
         setIsGenerating(true);
         try {
-            const response = await fetch('/api/ai/generate-guidelines', {
+            // Save current state for undo
+            setPrevGuidelines(guidelines);
+
+            const response = await fetch(`/api/eval/generate-guidelines`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: content,
-                    expectedAnswer: sampleAnswer
+                    expected_ans: sampleAnswer,
+                    total_score: parseInt(marks) || 10
                 }),
             });
 
+            if (!response.ok) {
+                throw new Error('Guidelines generation failed');
+            }
+
             const data = await response.json();
             setGuidelines(data.guidelines);
+
+            toast({
+                title: "Success",
+                description: "Guidelines generated successfully",
+            });
         } catch (error) {
             toast({
                 title: "Error",
@@ -154,21 +172,51 @@ export default function EnhancedQuestionForm({
         }
     };
 
+    const undoGuidelines = () => {
+        if (prevGuidelines) {
+            setGuidelines(prevGuidelines);
+            setPrevGuidelines("");
+            toast({
+                title: "Undo",
+                description: "Guidelines reversed",
+            });
+        }
+    };
+
     const enhanceQuestion = async () => {
         setIsGenerating(true);
         try {
-            const response = await fetch('/api/ai/enhance-question', {
+            // Save current state for undo
+            setPrevContent(content);
+            setPrevSampleAnswer(sampleAnswer);
+
+            const response = await fetch(`/api/eval/enhance-qa`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: content,
-                    expectedAnswer: sampleAnswer
+                    expected_ans: sampleAnswer
                 }),
             });
 
+            if (!response.ok) {
+                throw new Error('Enhancement failed');
+            }
+
             const data = await response.json();
-            setContent(data.enhancedQuestion);
-            setSampleAnswer(data.enhancedAnswer);
+
+            // Force a re-render of RichTextEditor by triggering state updates
+            setContent('');  // First clear the content
+            setTimeout(() => {  // Then set the new content in the next tick
+                setContent(data.enhanced_question);
+            }, 0);
+
+            setSampleAnswer(data.enhanced_expected_ans);
+
+            toast({
+                title: "Success",
+                description: "Question enhanced successfully",
+            });
         } catch (error) {
             toast({
                 title: "Error",
@@ -180,23 +228,36 @@ export default function EnhancedQuestionForm({
         }
     };
 
+    const undoEnhancement = () => {
+        if (prevContent && prevSampleAnswer) {
+            setContent(prevContent);
+            setSampleAnswer(prevSampleAnswer);
+            setPrevContent("");
+            setPrevSampleAnswer("");
+            toast({
+                title: "Undo",
+                description: "Enhancement reversed",
+            });
+        }
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-    
+
         try {
             const formData = new FormData();
             formData.append('file', file);
-    
+
             const response = await fetch('/api/upload/quiz-file', {
                 method: 'POST',
                 body: formData,
             });
-    
+
             if (!response.ok) {
                 throw new Error('Upload failed');
             }
-    
+
             const { url } = await response.json();
             setAttachedFile(url);
             toast({
@@ -477,221 +538,20 @@ export default function EnhancedQuestionForm({
                         <div className="space-y-2">
                             <Label className="text-lg font-semibold">Question Content</Label>
                             <RichTextEditor
+                                key={editorKey}
                                 content={content}
                                 onChange={setContent}
                                 placeholder="Enter your question here..."
                             />
                         </div>
-
-                        <div className="space-y-2">
-                            <Label className="text-lg font-semibold">Explanation</Label>
-                            <RichTextEditor
-                                content={explanation}
-                                onChange={setExplanation}
-                                placeholder="Enter an explanation for this question..."
-                            />
-                        </div>
-
-                        {(type === "MCQ" || type === "TRUE_FALSE") && (
-                            <div className="space-y-4">
-                                <div className="flex justify-between">
-                                    <Label className="text-lg font-semibold">
-                                        {type === "TRUE_FALSE" ? "Select the correct answer" : "Options"}
-                                    </Label>
-                                    {type === "MCQ" && (
-                                        <Button
-                                            variant="outline"
-                                            className=" border-dashed"
-                                            onClick={handleAddOption}
-                                        >
-                                            <Plus className=" w-5 mr-2" />
-                                            Add Option
-                                        </Button>
-                                    )}
-                                </div>
-
-                                <div className={`grid ${type === "TRUE_FALSE" ? "grid-cols-2" : "grid-cols-1 md:grid-cols-1"} gap-4`}>
-                                    {optionsWithIds.map((option, index) => (
-                                        <div key={option.optionId}
-                                            className={`flex flex-col gap-2 ${type === "TRUE_FALSE"
-                                                ? "justify-center p-4 hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer"
-                                                : "bg-gray-50 dark:bg-gray-900 p-3"
-                                                } rounded-md ${correctOptions.includes(index)
-                                                    ? "bg-green-100 dark:bg-green-900 border-2 border-green-500"
-                                                    : ""
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <Checkbox
-                                                    checked={correctOptions.includes(index)}
-                                                    onCheckedChange={(checked) => {
-                                                        if (type === 'TRUE_FALSE') {
-                                                            setCorrectOptions(checked ? [index] : []);
-                                                        } else {
-                                                            setCorrectOptions(prev =>
-                                                                checked
-                                                                    ? [...prev, index]
-                                                                    : prev.filter(i => i !== index)
-                                                            );
-                                                        }
-                                                    }}
-                                                />
-                                                {type === "TRUE_FALSE" ? (
-                                                    <span className="text-lg">{option.option}</span>
-                                                ) : (
-                                                    <div className="flex-1 space-y-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <Textarea
-                                                                value={option.option}
-                                                                onChange={(e) => handleOptionChange(index, e.target.value)}
-                                                                placeholder={`Option ${index + 1}`}
-                                                            />
-                                                        </div>
-                                                        <div className="text-sm text-muted-foreground p-2 bg-background rounded">
-                                                            <LatexPreview content={option.option} />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {
-                                                    type === "MCQ" && (
-                                                        <div className="flex flex-col">
-                                                            <Button variant="outline" className="relative overflow-hidden" size="icon">
-                                                                <input
-                                                                    type="file"
-                                                                    className="absolute inset-0 opacity-0 cursor-pointer"
-                                                                    accept="image/*"
-                                                                    onChange={(e) => handleOptionImageUpload(index, e)}
-                                                                />
-                                                                <ImageIcon className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="hover:bg-destructive hover:text-white"
-                                                                onClick={() => handleDeleteOption(index)}
-                                                                disabled={optionsWithIds.length <= 2}
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-                                                    )
-                                                }
-                                            </div>
-                                            {option.image && (
-                                                <CustomImage
-                                                    src={option.image}
-                                                    alt={`Option ${index + 1}`}
-                                                    className="rounded"
-                                                />
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {type === "FILL_IN_BLANK" && (
-                            <div className="space-y-2">
-                                <Label className="text-lg font-semibold">Correct Answer</Label>
-                                <Input
-                                    value={correctAnswer}
-                                    onChange={(e) => setCorrectAnswer(e.target.value)}
-                                    placeholder="Enter the correct answer"
-                                />
-                            </div>
-                        )}
-
-                        {type === "DESCRIPTIVE" && (
-                            <div className="space-y-4">
-                                <div className="flex justify-end gap-2">
-                                    <Button
-                                        variant="outline"
-                                        onClick={enhanceQuestion}
-                                        disabled={isGenerating || true}
-                                    >
-                                        <Sparkles />
-                                        {isGenerating ? "Enhancing..." : "Enhance Question & Answer"}
-                                    </Button>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label className="text-lg font-semibold">Expected Answer</Label>
-                                    <Textarea
-                                        value={sampleAnswer}
-                                        onChange={(e) => setSampleAnswer(e.target.value)}
-                                        placeholder="Enter expected answer"
-                                        className="min-h-[100px]"
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-
-                                        <Label className="text-lg font-semibold">Evaluation Guidelines</Label>
-                                        <Button
-                                            variant="outline"
-                                            onClick={generateGuidelines}
-                                            disabled={isGenerating || true}
-                                        >
-                                            {isGenerating ? "Generating..." : "Generate Guidelines"}
-                                        </Button>
-                                    </div>
-                                    <Textarea
-                                        value={guidelines}
-                                        onChange={(e) => setGuidelines(e.target.value)}
-                                        placeholder="Enter guidelines for evaluating this answer"
-                                        className="min-h-[100px]"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {type === "CODING" && (
-                            <div className="space-y-2">
-                                <Label className="text-lg font-semibold">Test Cases</Label>
-                                <Textarea
-                                    value={testCases}
-                                    onChange={(e) => setTestCases(e.target.value)}
-                                    placeholder="Enter test cases"
-                                    className="min-h-[100px] font-mono"
-                                />
-                            </div>
-                        )}
-
-                        {type === "FILE_UPLOAD" && (
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-4">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => document.getElementById('file-upload')?.click()}
-                                    >
-                                        <Upload className="h-4 w-4 mr-2" />
-                                        {attachedFile ? 'Change File' : 'Upload File'}
-                                    </Button>
-                                    {attachedFile && (
-                                        <a 
-                                            href={attachedFile} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="text-blue-500 hover:underline"
-                                        >
-                                            View Uploaded File
-                                        </a>
-                                    )}
-                                </div>
-                                <input
-                                    type="file"
-                                    id="file-upload"
-                                    className="hidden"
-                                    onChange={handleFileUpload}
-                                />
-                            </div>
-                        )}
+                        <RichTextEditor
+                            content={explanation}
+                            onChange={setExplanation}
+                            placeholder="Enter an explanation for this question..."
+                        />
                     </div>
-
                     <div className="space-y-6">
                         <div className="p-4 rounded-lg space-y-4">
-                            {/* Only show topics section if required */}
                             {requireTopics && (
                                 <div className="space-y-2">
                                     <Label className="text-lg font-semibold">Topics</Label>
@@ -788,26 +648,246 @@ export default function EnhancedQuestionForm({
                         </div>
                     </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                    <Button variant="outline" onClick={onCancel}>
-                        Cancel
-                    </Button>
-                    <Button onClick={handleSubmit} className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
-                        {editingQuestion ? (
-                            <>
-                                <Check className="h-4 w-4 mr-2" />
-                                Update Question
-                            </>
-                        ) : (
-                            <>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Save Question
-                            </>
-                        )}
-                    </Button>
+                <div className="mr-8">
+                    {(type === "MCQ" || type === "TRUE_FALSE") && (
+                        <div className="space-y-4">
+                            <div className="flex justify-between">
+                                <Label className="text-lg font-semibold">
+                                    {type === "TRUE_FALSE" ? "Select the correct answer" : "Options"}
+                                </Label>
+                                {type === "MCQ" && (
+                                    <Button
+                                        variant="outline"
+                                        className=" border-dashed"
+                                        onClick={handleAddOption}
+                                    >
+                                        <Plus className=" w-5 mr-2" />
+                                        Add Option
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className={`grid ${type === "TRUE_FALSE" ? "grid-cols-2" : "grid-cols-1 md:grid-cols-1"} gap-4`}>
+                                {optionsWithIds.map((option, index) => (
+                                    <div key={option.optionId}
+                                        className={`flex flex-col gap-2 ${type === "TRUE_FALSE"
+                                            ? "justify-center p-4 hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer"
+                                            : "bg-gray-50 dark:bg-gray-900 p-3"
+                                            } rounded-md ${correctOptions.includes(index)
+                                                ? "bg-green-100 dark:bg-green-900 border-2 border-green-500"
+                                                : ""
+                                            }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                checked={correctOptions.includes(index)}
+                                                onCheckedChange={(checked) => {
+                                                    if (type === 'TRUE_FALSE') {
+                                                        setCorrectOptions(checked ? [index] : []);
+                                                    } else {
+                                                        setCorrectOptions(prev =>
+                                                            checked
+                                                                ? [...prev, index]
+                                                                : prev.filter(i => i !== index)
+                                                        );
+                                                    }
+                                                }}
+                                            />
+                                            {type === "TRUE_FALSE" ? (
+                                                <span className="text-lg">{option.option}</span>
+                                            ) : (
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Textarea
+                                                            value={option.option}
+                                                            onChange={(e) => handleOptionChange(index, e.target.value)}
+                                                            placeholder={`Option ${index + 1}`}
+                                                        />
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground p-2 bg-background rounded">
+                                                        <LatexPreview content={option.option} />
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {
+                                                type === "MCQ" && (
+                                                    <div className="flex flex-col">
+                                                        <Button variant="outline" className="relative overflow-hidden" size="icon">
+                                                            <input
+                                                                type="file"
+                                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                                accept="image/*"
+                                                                onChange={(e) => handleOptionImageUpload(index, e)}
+                                                            />
+                                                            <ImageIcon className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="hover:bg-destructive hover:text-white"
+                                                            onClick={() => handleDeleteOption(index)}
+                                                            disabled={optionsWithIds.length <= 2}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                )
+                                            }
+                                        </div>
+                                        {option.image && (
+                                            <CustomImage
+                                                src={option.image}
+                                                alt={`Option ${index + 1}`}
+                                                className="rounded"
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                        </div>
+                    )}
+
+                    {type === "FILL_IN_BLANK" && (
+                        <div className="space-y-2">
+                            <Label className="text-lg font-semibold">Correct Answer</Label>
+                            <Input
+                                value={correctAnswer}
+                                onChange={(e) => setCorrectAnswer(e.target.value)}
+                                placeholder="Enter the correct answer"
+                            />
+                        </div>
+                    )}
+
+                    {type === "DESCRIPTIVE" && (
+                        <div className="space-y-4">
+                            <div className="flex justify-end gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={enhanceQuestion}
+                                    disabled={isGenerating}
+                                >
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    {isGenerating ? "Enhancing..." : "Enhance Question & Answer"}
+                                </Button>
+                                {prevContent && prevSampleAnswer && (
+                                    <Button
+                                        variant="ghost"
+                                        onClick={undoEnhancement}
+                                        className="text-yellow-600 hover:text-yellow-700"
+                                    >
+                                        <RotateCcw className="h-4 w-4 mr-2" />
+                                        Undo Enhancement
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-lg font-semibold">Expected Answer</Label>
+                                <Textarea
+                                    value={sampleAnswer}
+                                    onChange={(e) => setSampleAnswer(e.target.value)}
+                                    placeholder="Enter expected answer"
+                                    className="min-h-[100px]"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-lg font-semibold">Evaluation Guidelines</Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            onClick={generateGuidelines}
+                                            disabled={isGenerating}
+                                        >
+                                            {isGenerating ? "Generating..." : "Generate Guidelines"}
+                                        </Button>
+                                        {prevGuidelines && (
+                                            <Button
+                                                variant="ghost"
+                                                onClick={undoGuidelines}
+                                                className="text-yellow-600 hover:text-yellow-700"
+                                            >
+                                                <RotateCcw className="h-4 w-4 mr-2" />
+                                                Undo
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <Textarea
+                                    value={guidelines}
+                                    onChange={(e) => setGuidelines(e.target.value)}
+                                    placeholder="Enter guidelines for evaluating this answer"
+                                    className="min-h-[400px]"
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {type === "CODING" && (
+                        <div className="space-y-2">
+                            <Label className="text-lg font-semibold">Test Cases</Label>
+                            <Textarea
+                                value={testCases}
+                                onChange={(e) => setTestCases(e.target.value)}
+                                placeholder="Enter test cases"
+                                className="min-h-[100px] font-mono"
+                            />
+                        </div>
+                    )}
+
+                    {type === "FILE_UPLOAD" && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => document.getElementById('file-upload')?.click()}
+                                >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    {attachedFile ? 'Change File' : 'Upload File'}
+                                </Button>
+                                {attachedFile && (
+                                    <a
+                                        href={attachedFile}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-500 hover:underline"
+                                    >
+                                        View Uploaded File
+                                    </a>
+                                )}
+                            </div>
+                            <input
+                                type="file"
+                                id="file-upload"
+                                className="hidden"
+                                onChange={handleFileUpload}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
-        </ScrollArea>
+            <div className="flex justify-end gap-3 pt-4 border-t mr-8">
+                <Button variant="outline" onClick={onCancel}>
+                    Cancel
+                </Button>
+                <Button onClick={handleSubmit} className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+                    {editingQuestion ? (
+                        <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Update Question
+                        </>
+                    ) : (
+                        <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Save Question
+                        </>
+                    )}
+                </Button>
+            </div>
+
+        </ScrollArea >
     );
 }
 
