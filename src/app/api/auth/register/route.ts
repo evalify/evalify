@@ -15,14 +15,14 @@ export async function POST(req: NextRequest) {
         const phoneNo = formData.get('phoneNo')?.toString();
         const rollNo = formData.get('rollNo')?.toString();
         const imageFile = formData.get('image') as File | null;
-        const key = formData.get('key')?.toString();
+        // const key = formData.get('key')?.toString();
 
-        if (key !== process.env.REGISTRATION_KEY) {
-            return NextResponse.json(
-                { error: 'Invalid registration key.' },
-                { status: 401 }
-            );
-        }
+        // if (key !== process.env.REGISTRATION_KEY) {
+        //     return NextResponse.json(
+        //         { error: 'Invalid registration key.' },
+        //         { status: 401 }
+        //     );
+        // }
 
         if (!name || !email || !password) {
             return NextResponse.json(
