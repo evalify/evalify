@@ -124,7 +124,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
-        // Get the staff record
         const staff = await prisma.staff.findFirst({
             where: {
                 id: session.user.id
@@ -144,7 +143,6 @@ export async function POST(req: Request) {
                 description,
                 semester,
                 createdAt: new Date(),
-                topics: [],
                 bankOwners: {
                     connect: {
                         id: staff.id

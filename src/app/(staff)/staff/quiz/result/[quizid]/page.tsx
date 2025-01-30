@@ -244,8 +244,8 @@ export default function QuizPage() {
                 'Roll No': (result.student.user.rollNo || '').toUpperCase(),
                 'Name': result.student.user.name,
                 'Score': result.score,
-                'Total Marks': questions.reduce((sum: number, q: any) => sum + q.marks, 0),
-                'Percentage': ((result.score / questions.reduce((sum: number, q: any) => sum + q.marks, 0)) * 100).toFixed(2) + '%'
+                'Total Marks': questions.reduce((sum: number, q: any) => sum + q.mark, 0),
+                'Percentage': ((result.score / questions.reduce((sum: number, q: any) => sum + q.mark, 0)) * 100).toFixed(2) + '%'
             }))
         );
 
