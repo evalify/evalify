@@ -544,11 +544,14 @@ export default function EnhancedQuestionForm({
                                 placeholder="Enter your question here..."
                             />
                         </div>
-                        <RichTextEditor
-                            content={explanation}
-                            onChange={setExplanation}
-                            placeholder="Enter an explanation for this question..."
-                        />
+                        <div className="space-y-2">
+                            <Label className="text-lg font-semibold">Explanation (not visible to students during exams)</Label>
+                            <RichTextEditor
+                                content={explanation}
+                                onChange={setExplanation}
+                                placeholder="Enter an explanation for this question..."
+                            />
+                        </div>
                     </div>
                     <div className="space-y-6">
                         <div className="p-4 rounded-lg space-y-4">
