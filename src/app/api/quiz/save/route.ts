@@ -47,19 +47,20 @@ export async function POST(req: Request) {
                 throw new Error("Quiz already submitted");
             }
 
-            // Get IP address
-            let ip = req.ip ||
-                req.headers.get('x-forwarded-for')?.split(',')[0] ||
-                req.headers.get('x-real-ip') ||
+            // Fetch IP address
+            let ip =
+                req.headers.get("x-forwarded-for")?.split(",")[0] || // Cloudflare, Nginx, etc.
+                req.headers.get("cf-connecting-ip") || // Cloudflare
+                req.headers.get("x-real-ip") || // Nginx
+                req.headers.get("fastly-client-ip") || // Fastly CDN
+                req.headers.get("true-client-ip") || // Akamai, CDN
+                req.headers.get("x-client-ip") ||
+                req.headers.get("x-cluster-client-ip") ||
+                req.headers.get("x-forward") ||
+                req.headers.get("forwarded")?.split(";")[0].split("=")[1] || // Standard Forwarded header
                 req.socket?.remoteAddress ||
-                req.headers.get('x-real-ip') ||
-                req.headers.get('cf-connecting-ip') ||
-                req.headers.get('fastly-client-ip') ||
-                req.headers.get('true-client-ip') ||
-                req.headers.get('x-client-ip') ||
-                req.headers.get('x-cluster-client-ip') ||
-                req.headers.get('x-forward') ||
-                'Unknown IP';
+                "Unknown IP";
+
 
             ip = ip.replace(/^::ffff:/, '');
 

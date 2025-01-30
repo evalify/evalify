@@ -1,3 +1,5 @@
+const KEY = `${process.env.NEXT_PUBLIC_REGISTRATION_KEY}`
+
 export async function createUser(userData: {
     name: string;
     email: string;
@@ -7,6 +9,8 @@ export async function createUser(userData: {
     phoneNo?: string;
 }) {
     const formData = new FormData();
+    formData.append("key", KEY || "evalify")
+
     Object.entries(userData).forEach(([key, value]) => {
         if (value) formData.append(key, value.toString());
     });
@@ -41,6 +45,8 @@ export async function createUserWithRole(userData: {
     const password = generateInitialPassword(userData.role, identifier);
 
     const formData = new FormData();
+    formData.append("key", KEY || "evalify")
+
     Object.entries({ ...userData, password }).forEach(([key, value]) => {
         if (value) formData.append(key, value.toString());
     });
