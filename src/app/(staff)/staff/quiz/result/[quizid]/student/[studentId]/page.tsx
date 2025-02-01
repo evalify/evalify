@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import TiptapRenderer from '@/components/ui/tiptap-renderer'
+import { QuizResultSummary } from '@/components/quiz-result-summary'
 
 type Option = {
     option: string;
@@ -104,7 +105,45 @@ export default function StudentResultPage() {
     };
 
     const renderOptions = (question: Question, studentResponse: Response) => {
-        if (!studentResponse) return null;
+        const isNotAttempted = !studentResponse || !studentResponse.student_answer?.length || 
+            (Array.isArray(studentResponse.student_answer) && studentResponse.student_answer.every(ans => !ans));
+
+        if (isNotAttempted) {
+            return (
+                <div className="mt-4 space-y-4">
+                    <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>Student did not attempt this question</span>
+                        </div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
+                        <div className="font-medium mb-2">Correct Answer:</div>
+                        {question.type === 'MCQ' || question.type === 'TRUE_FALSE' ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {question.options
+                                    .filter(opt => question.answer.includes(opt.optionId))
+                                    .map((option, index) => (
+                                        <div key={option.optionId} className="flex items-center gap-2">
+                                            <span className="font-medium">{String.fromCharCode(65 + index)}.</span>
+                                            <LatexPreview content={option.option} />
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                        ) : question.type === 'FILL_IN_BLANK' || question.type === 'DESCRIPTIVE' ? (
+                            <div>
+                                {question.expectedAnswer ? (
+                                    <TiptapRenderer content={question.expectedAnswer} />
+                                ) : (
+                                    <span className="text-muted-foreground">No expected answer provided</span>
+                                )}
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            );
+        }
 
         switch (question.type) {
             case 'MCQ':
@@ -279,10 +318,12 @@ export default function StudentResultPage() {
     const scorePercentage = (data.result.score / totalMarks) * 100
 
     const isAnswerCorrect = (question: Question, response: Response) => {
-        if (!response) return false;
+        if (!response || !response.student_answer) return false;
 
         if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
-            const sortedStudentAnswers = [...response.student_answer].sort();
+            // Ensure student_answer is an array before spreading
+            const studentAnswerArray = Array.isArray(response.student_answer) ? response.student_answer : [];
+            const sortedStudentAnswers = [...studentAnswerArray].sort();
             const sortedCorrectAnswers = [...question.answer].sort();
             return JSON.stringify(sortedStudentAnswers) === JSON.stringify(sortedCorrectAnswers);
         }
@@ -324,6 +365,7 @@ export default function StudentResultPage() {
                 </CardContent>
             </Card>
 
+            <QuizResultSummary questions={data.questions} responses={data.result.responses} />
 
             <Tabs defaultValue="all" className="w-full">
                 <TabsList>
@@ -432,21 +474,23 @@ function QuestionList({
                                 <div className="mt-4 pt-4 border-t">
                                     <div className="flex items-center gap-2">
                                         <strong>Marks:</strong>
-                                        {
-                                            editingQuestion === question._id ? (
-                                                <Input
-                                                    type="number"
-                                                    value={data.result.responses?.[question._id].score || data.result.responses?.[question._id].negative_score || 0}
-                                                    onChange={(e) => handleMarkUpdate(question._id, parseFloat(e.target.value))}
-                                                    className="w-24"
-                                                    max={question.mark}
-                                                    onBlur={() => handleEditQuestion(null)}
-                                                />
-                                            ) : (
-                                                <span>{data.result.responses?.[question._id].score || data.result.responses?.[question._id].negative_score || 0}</span>
-                                            )
-                                        }
+                                        {editingQuestion === question._id ? (
+                                            <Input
+                                                type="number"
+                                                value={responses[question._id]?.score || responses[question._id]?.negative_score || 0}
+                                                onChange={(e) => handleMarkUpdate(question._id, parseFloat(e.target.value))}
+                                                className="w-24"
+                                                max={question.mark}
+                                                onBlur={() => handleEditQuestion(null)}
+                                                disabled={!responses[question._id] || !responses[question._id].student_answer?.length}
+                                            />
+                                        ) : (
+                                            <span>{responses[question._id]?.score || responses[question._id]?.negative_score || 0}</span>
+                                        )}
                                         <span>/ {question.mark}</span>
+                                        {(!responses[question._id] || !responses[question._id].student_answer?.length) && (
+                                            <span className="text-muted-foreground text-sm">(Not attempted)</span>
+                                        )}
                                     </div>
                                 </div>
                             </div>

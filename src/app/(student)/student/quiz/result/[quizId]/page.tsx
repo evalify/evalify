@@ -5,11 +5,12 @@ import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, CheckCircle, X, Award, FileDown } from 'lucide-react'
+import { ArrowLeft, CheckCircle, X, Award, FileDown, AlertCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import TiptapRenderer from '@/components/ui/tiptap-renderer'
+import { QuizResultSummary } from '@/components/quiz-result-summary'
 
 export default function StudentQuizResultPage() {
     const { quizId } = useParams()
@@ -49,6 +50,7 @@ export default function StudentQuizResultPage() {
                 Back to Quizzes
             </Button>
 
+
             <div className="grid gap-6">
                 <Card>
                     <CardHeader>
@@ -75,6 +77,8 @@ export default function StudentQuizResultPage() {
                             </div>
                             <Progress value={scorePercentage} className="h-2" />
                             <Separator className="my-4" />
+                            <QuizResultSummary questions={questions} responses={responses} />
+                            <Separator className="my-4" />
                             <div className="space-y-6">
                                 {questions.map((question, index) => (
                                     <QuestionResult
@@ -98,7 +102,95 @@ function QuestionResult({ question, response, index }: {
     response: any,
     index: number
 }) {
-    const renderResponse = () => {
+    const isNotAttempted = !response || !response.student_answer?.length ||
+        (Array.isArray(response.student_answer) && response.student_answer.every(ans => !ans));
+
+    if (isNotAttempted) {
+        return (
+            <div className="space-y-4 p-4 rounded-lg border">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Question {index + 1}</h3>
+                    <Badge variant="secondary">Not Attempted</Badge>
+                </div>
+
+                <div className="pl-4 border-l-2 border-muted">
+                    <TiptapRenderer content={question.question} />
+                </div>
+
+                <div className="space-y-4">
+                    <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <AlertCircle className="w-4 h-4" />
+                            <span>You did not attempt this question</span>
+                        </div>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
+                        <div className="font-medium mb-2">Correct Answer:</div>
+                        {question.type === 'MCQ' || question.type === 'TRUE_FALSE' ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {question.options
+                                    .filter(opt => question.answer.includes(opt.optionId))
+                                    .map((option, index) => (
+                                        <div key={option.optionId} className="flex items-center gap-2">
+                                            <span className="font-medium">{String.fromCharCode(65 + index)}.</span>
+                                            <TiptapRenderer content={option.option} />
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                        ) : question.type === 'FILL_IN_BLANK' || question.type === 'DESCRIPTIVE' ? (
+                            <div>
+                                {question.expectedAnswer ? (
+                                    <TiptapRenderer content={question.expectedAnswer} />
+                                ) : (
+                                    <span className="text-muted-foreground">No expected answer provided</span>
+                                )}
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4 p-4 rounded-lg border">
+            <div className="flex items-center justify-between">
+                <h3 className="font-medium">Question {index + 1}</h3>
+                {isNotAttempted ? (
+                    <Badge variant="secondary">Not Attempted</Badge>
+                ) : (
+                    <Badge variant={response?.score > 0 ? "success" : "destructive"}>
+                        {response?.score || response?.negative_score || 0} / {question.mark} marks
+                    </Badge>
+                )}
+            </div>
+
+            <div className="pl-4 border-l-2 border-muted">
+                <TiptapRenderer content={question.question} />
+            </div>
+
+            {isNotAttempted ? (
+                <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Question not attempted</span>
+                    </div>
+                </div>
+            ) : (
+                renderResponse()
+            )}
+
+            {question.explanation && (
+                <div className="mt-4 p-4 bg-muted rounded-lg">
+                    <p className="font-medium mb-2">Explanation:</p>
+                    <TiptapRenderer content={question.explanation} />
+                </div>
+            )}
+        </div>
+    );
+
+    function renderResponse() {
         if (!response) return null;
 
         switch (question.type) {
@@ -109,16 +201,15 @@ function QuestionResult({ question, response, index }: {
                         {question.options.map((option: any, optIndex: number) => {
                             const isCorrect = question.answer.includes(option.optionId);
                             const isSelected = response.student_answer.includes(option.optionId);
-                            
+
                             return (
                                 <div
                                     key={option.optionId}
-                                    className={`p-4 rounded-lg border ${
-                                        isCorrect && isSelected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
+                                    className={`p-4 rounded-lg border ${isCorrect && isSelected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
                                         isSelected && !isCorrect ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
-                                        isCorrect ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10' :
-                                        'border-gray-200 dark:border-gray-700'
-                                    }`}
+                                            isCorrect ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10' :
+                                                'border-gray-200 dark:border-gray-700'
+                                        }`}
                                 >
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium">{String.fromCharCode(65 + optIndex)}.</span>
@@ -196,29 +287,5 @@ function QuestionResult({ question, response, index }: {
             default:
                 return null;
         }
-    };
-
-    return (
-        <div className="space-y-4 p-4 rounded-lg border">
-            <div className="flex items-center justify-between">
-                <h3 className="font-medium">Question {index + 1}</h3>
-                <Badge variant={response?.score > 0 ? "success" : "destructive"}>
-                    {response?.score || response.negative_score || 0} / {question.mark} marks
-                </Badge>
-            </div>
-
-            <div className="pl-4 border-l-2 border-muted">
-                <TiptapRenderer content={question.question} />
-            </div>
-
-            {renderResponse()}
-
-            {question.explanation && (
-                <div className="mt-4 p-4 bg-muted rounded-lg">
-                    <p className="font-medium mb-2">Explanation:</p>
-                    <TiptapRenderer content={question.explanation} />
-                </div>
-            )}
-        </div>
-    );
+    }
 }
