@@ -65,11 +65,11 @@ interface Course {
     };
 }
 
-const PublishQuizDialog = ({ quizId, onPublish, questions, quizDetails }: { 
-    quizId: string, 
-    onPublish: () => void, 
+const PublishQuizDialog = ({ quizId, onPublish, questions, quizDetails }: {
+    quizId: string,
+    onPublish: () => void,
     questions: Question[],
-    quizDetails: QuizDetails | null 
+    quizDetails: QuizDetails | null
 }) => {
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
@@ -149,8 +149,8 @@ const PublishQuizDialog = ({ quizId, onPublish, questions, quizDetails }: {
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button 
-                    variant="default" 
+                <Button
+                    variant="default"
                     disabled={questions.length === 0}
                     className="bg-green-600 hover:bg-green-700"
                 >
@@ -176,8 +176,8 @@ const PublishQuizDialog = ({ quizId, onPublish, questions, quizDetails }: {
                                             id={course.id}
                                             checked={selectedCourses.includes(course.id)}
                                             onCheckedChange={(checked) => {
-                                                setSelectedCourses(prev => 
-                                                    checked 
+                                                setSelectedCourses(prev =>
+                                                    checked
                                                         ? [...prev, course.id]
                                                         : prev.filter(id => id !== course.id)
                                                 );
@@ -417,15 +417,19 @@ export default function QuizPage() {
                             </Button>
                             <BankSearchDialog
                                 onQuestionsAdd={handleQuestionsFromBank}
-                                existingQuestions={questions} 
-                                quizId={quizid as string} 
+                                existingQuestions={questions}
+                                quizId={quizid as string}
                             />
-                            <PublishQuizDialog 
-                                quizId={quizid as string} 
+                            <PublishQuizDialog
+                                quizId={quizid as string}
                                 onPublish={loadQuizDetails}
                                 questions={questions}
                                 quizDetails={quizDetails}
                             />
+                            <Button onClick={() => router.push(`/staff/quiz/result/${quizid}`)}
+                                disabled={questions.length === 0}>
+                                View Results
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -463,10 +467,10 @@ export default function QuizPage() {
                             <div>
                                 <p className="text-sm text-gray-500">Classes</p>
                                 <p className="text-lg font-semibold">
-                                    {quizDetails.courses?.length > 0 
+                                    {quizDetails.courses?.length > 0
                                         ? quizDetails.courses
                                             .map(c => c.class.name)
-                                            .join(', ') 
+                                            .join(', ')
                                         : "No Course"
                                     }
                                 </p>
@@ -484,8 +488,8 @@ export default function QuizPage() {
                         onDelete={handleDelete}
                         onQuestionUpdate={loadQuestions}
                         requireTopics={false}
-                        bankId="" 
-                        topic={[]} 
+                        bankId=""
+                        topic={[]}
                     />
 
                 </div>

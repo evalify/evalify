@@ -99,6 +99,35 @@ export default function QuizPage() {
         }
     }
 
+    const updateShowResult = async (checked: boolean) => {
+        try {
+            if (!quiz?.settingsId) return;
+
+            const response = await fetch(`/api/staff/quiz/settings/${quiz.settingsId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ showResult: checked })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update show result setting');
+            }
+
+            // Update local state
+            setQuiz(prev => ({
+                ...prev,
+                settings: {
+                    ...prev.settings,
+                    showResult: checked
+                }
+            }));
+
+            toast.success('Result visibility updated');
+        } catch (error) {
+            toast.error('Failed to update result visibility');
+        }
+    };
+
     useEffect(() => {
         if (!quizid) {
             toast('Error', {
@@ -288,7 +317,7 @@ export default function QuizPage() {
             { name: 'Good (60-79%)', value: dist.good || 0, color: '#3b82f6' },
             { name: 'Average (40-59%)', value: dist.average || 0, color: '#f59e0b' },
             { name: 'Poor (0-39%)', value: dist.poor || 0, color: '#ef4444' }
-        ].filter(item => item.value > 0); 
+        ].filter(item => item.value > 0);
     };
 
     const renderSettingsButton = () => (
@@ -310,14 +339,14 @@ export default function QuizPage() {
                             onCheckedChange={(checked) => updateSetting({ negativeMark: checked })}
                         />
                     </div>
-                    {/* <div className="flex items-center justify-between space-x-2">
+                    <div className="flex items-center justify-between space-x-2">
                         <Label htmlFor="mcq-partial">MCQ Partial Marks</Label>
                         <Switch
                             id="mcq-partial"
                             checked={settings?.mcqPartialMark || false}
                             onCheckedChange={(checked) => updateSetting({ mcqPartialMark: checked })}
                         />
-                    </div> */}
+                    </div>
                     <div className="flex items-center justify-between space-x-2">
                         <Label htmlFor="code-partial">Code Partial Marks</Label>
                         <Switch
@@ -345,6 +374,17 @@ export default function QuizPage() {
             </DropdownMenuContent>
         </DropdownMenu>
     )
+
+    const renderShowResultToggle = () => (
+        <div className="flex items-center space-x-2">
+            <Switch
+                checked={quiz?.settings?.showResult || false}
+                onCheckedChange={updateShowResult}
+                id="show-result"
+            />
+            <Label htmlFor="show-result">Show Results to Students</Label>
+        </div>
+    );
 
     return (
         <div className="p-6 space-y-6">
@@ -393,48 +433,52 @@ export default function QuizPage() {
                         </Card>
                     </div>
                 </>
-
             )}
 
-            <div className="flex justify-end gap-4">
-                <Button
-                    variant="outline"
-                    onClick={downloadExcel}
-                    className="flex items-center gap-2"
-                >
-                    <Download className="w-4 h-4" />
-                    Download Report
-                </Button>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="default" disabled={isEvaluating}>
-                            {isEvaluating ? (
-                                <>
-                                    <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-                                    Evaluating...
-                                </>
-                            ) : (
-                                'Evaluate All Responses'
-                            )}
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Evaluate All Responses?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This will recalculate scores for all submissions based on the correct answers.
-                                Existing manual evaluations will be overwritten.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={evaluateAllResponses}>
-                                Continue
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
+            <div className='flex justify-between items-center'>
+                {renderShowResultToggle()}
+                <div className="flex justify-end gap-4">
+                    <Button
+                        variant="outline"
+                        onClick={downloadExcel}
+                        className="flex items-center gap-2"
+                    >
+                        <Download className="w-4 h-4" />
+                        Download Report
+                    </Button>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="default" disabled={isEvaluating}>
+                                {isEvaluating ? (
+                                    <>
+                                        <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                                        Evaluating...
+                                    </>
+                                ) : (
+                                    'Evaluate All Responses'
+                                )}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Evaluate All Responses?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will recalculate scores for all submissions based on the correct answers.
+                                    Existing manual evaluations will be overwritten.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={evaluateAllResponses}>
+                                    Continue
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                </div>
             </div>
+
 
             <Card className="mt-6 dark:bg-gray-900">
                 <CardHeader>
@@ -475,7 +519,7 @@ export default function QuizPage() {
                                 >
                                     <CartesianGrid strokeDasharray="3 3" stroke="#444" />
                                     <XAxis dataKey="score" stroke="#ccc" label={{ value: "Score", position: "bottom", fill: "#ccc" }} />
-                                    <YAxis stroke="#ccc" label={{ value: "Frequency", angle: -90, position: "insideLeft", fill: "#ccc" }} domain={[0, ]} />
+                                    <YAxis stroke="#ccc" label={{ value: "Frequency", angle: -90, position: "insideLeft", fill: "#ccc" }} domain={[0,]} />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: "#333", borderColor: "#444" }}
                                         itemStyle={{ color: "#fff" }}

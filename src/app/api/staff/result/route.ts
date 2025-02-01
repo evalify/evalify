@@ -29,7 +29,12 @@ export async function GET(req: Request) {
                 id: quizid
             },
             include: {
-                QuizReport: true
+                QuizReport: true,
+                settings: {
+                    select: {
+                        showResult: true
+                    }
+                },
             }
         });
 
