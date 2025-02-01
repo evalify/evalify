@@ -5,11 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, AlertCircle, CheckCircle, X, Award } from 'lucide-react'
-import { LatexPreview } from '@/components/latex-preview'
+import { ArrowLeft, CheckCircle, X, Award, FileDown } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import TiptapRenderer from '@/components/ui/tiptap-renderer'
 
 export default function StudentQuizResultPage() {
     const { quizId } = useParams()
@@ -37,11 +37,9 @@ export default function StudentQuizResultPage() {
     if (!data) return <div className="flex justify-center items-center h-screen">Loading...</div>
 
     const { result, questions } = data
-    // const responses = result.responses || {}
-    const { responses, questionMarks } = result
+    const { responses } = result
 
-    // Calculate total marks from questions array
-    const totalMarks = questions.reduce((sum: number, q: any) => sum + (q.marks || 0), 0)
+    const totalMarks = questions.reduce((sum: number, q: any) => sum + (q.mark || 0), 0)
     const scorePercentage = (result.score / totalMarks) * 100
 
     return (
@@ -84,7 +82,6 @@ export default function StudentQuizResultPage() {
                                         question={question}
                                         response={responses[question._id]}
                                         index={index}
-                                        mark={questionMarks[question._id]}
                                     />
                                 ))}
                             </div>
@@ -96,77 +93,130 @@ export default function StudentQuizResultPage() {
     )
 }
 
-function QuestionResult({ question, response, index,mark }: {
+function QuestionResult({ question, response, index }: {
     question: any,
-    response: { answer: string[], marks: number },
+    response: any,
     index: number
-    mark: number
 }) {
-    const studentAnswers = response || [];
-    const correctAnswers = question.answer || [];
-    const maxMarks = question.marks || 0;
-    const obtainedMarks = mark || 0;
+    const renderResponse = () => {
+        if (!response) return null;
+
+        switch (question.type) {
+            case 'MCQ':
+            case 'TRUE_FALSE':
+                return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {question.options.map((option: any, optIndex: number) => {
+                            const isCorrect = question.answer.includes(option.optionId);
+                            const isSelected = response.student_answer.includes(option.optionId);
+                            
+                            return (
+                                <div
+                                    key={option.optionId}
+                                    className={`p-4 rounded-lg border ${
+                                        isCorrect && isSelected ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
+                                        isSelected && !isCorrect ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                                        isCorrect ? 'border-green-500 bg-green-50/50 dark:bg-green-900/10' :
+                                        'border-gray-200 dark:border-gray-700'
+                                    }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-medium">{String.fromCharCode(65 + optIndex)}.</span>
+                                        <TiptapRenderer content={option.option} />
+                                        {isCorrect && isSelected && <CheckCircle className="w-4 h-4 text-green-500" />}
+                                        {!isCorrect && isSelected && <X className="w-4 h-4 text-red-500" />}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+
+            case 'FILL_IN_BLANK':
+            case 'DESCRIPTIVE':
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                            <div className="font-medium mb-2">Your Answer:</div>
+                            <TiptapRenderer content={response.student_answer[0] || "No response"} />
+                        </div>
+                        {response.remarks && (
+                            <div className="bg-blue-50 rounded-lg p-4 dark:bg-blue-900/20">
+                                <div className="font-medium mb-2">Feedback:</div>
+                                <div>{response.remarks}</div>
+                            </div>
+                        )}
+                        {question.expectedAnswer && (
+                            <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
+                                <div className="font-medium mb-2">Expected Answer:</div>
+                                <TiptapRenderer content={question.expectedAnswer} />
+                            </div>
+                        )}
+                    </div>
+                );
+
+            case 'CODING':
+                return (
+                    <div className="space-y-4">
+                        <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                            <div className="font-medium mb-2">Your Code:</div>
+                            <pre className="overflow-x-auto">
+                                {response.student_answer[0] || "No code submitted"}
+                            </pre>
+                        </div>
+                        {response.remarks && (
+                            <div className="bg-blue-50 rounded-lg p-4 dark:bg-blue-900/20">
+                                <div className="font-medium mb-2">Feedback:</div>
+                                <div>{response.remarks}</div>
+                            </div>
+                        )}
+                    </div>
+                );
+
+            case 'FILE_UPLOAD':
+                return (
+                    <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
+                        <div className="font-medium mb-2">Your Submission:</div>
+                        {response.student_answer[0] ? (
+                            <a
+                                href={response.student_answer[0]}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:underline inline-flex items-center"
+                            >
+                                <FileDown className="h-4 w-4 mr-2" />
+                                Download Submitted File
+                            </a>
+                        ) : (
+                            "No file submitted"
+                        )}
+                    </div>
+                );
+
+            default:
+                return null;
+        }
+    };
 
     return (
         <div className="space-y-4 p-4 rounded-lg border">
             <div className="flex items-center justify-between">
                 <h3 className="font-medium">Question {index + 1}</h3>
-                <div className="flex items-center gap-2">
-                    <Badge variant={obtainedMarks > 0 ? "success" : "destructive"}>
-                        {obtainedMarks} / {maxMarks} marks
-                    </Badge>
-                </div>
+                <Badge variant={response?.score > 0 ? "success" : "destructive"}>
+                    {response?.score || response.negative_score || 0} / {question.mark} marks
+                </Badge>
             </div>
 
             <div className="pl-4 border-l-2 border-muted">
-                <LatexPreview content={question.question} />
+                <TiptapRenderer content={question.question} />
             </div>
 
-            <div className="grid gap-2">
-                {question.options.map((option: any, optIndex: number) => {
-                    const isCorrectOption = correctAnswers.includes(option.optionId);
-                    const isSelected = studentAnswers.includes(option.optionId) || false;
-                    return (
-                        <div
-                            key={option.optionId}
-                            className={`p-3 rounded-md flex items-center gap-3 ${isSelected && isCorrectOption ? 'bg-green-50 border border-green-500 dark:bg-green-900' :
-                                isSelected ? 'bg-red-50 border border-red-500 dark:bg-red-900' :
-                                    isCorrectOption ? 'bg-green-50 border border-green-200 dark:bg-green-900' :
-                                        'bg-muted/50 border border-muted'
-                                }`}
-                        >
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm border
-                                ${isSelected ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}>
-                                {String.fromCharCode(65 + optIndex)}
-                            </div>
-                            <LatexPreview content={option.option} />
-                            <div className="ml-auto flex items-center gap-2">
-                                {isSelected && (
-                                    <span className="text-sm">
-                                        {isCorrectOption ? "Your correct answer" : "Your incorrect answer"}
-                                    </span>
-                                )}
-                                {!isSelected && isCorrectOption && (
-                                    <span className="text-sm text-green-600">
-                                        Correct answer
-                                    </span>
-                                )}
-                                {isSelected && isCorrectOption && (
-                                    <CheckCircle className="w-4 h-4 text-green-500" />
-                                )}
-                                {isSelected && !isCorrectOption && (
-                                    <X className="w-4 h-4 text-red-500" />
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+            {renderResponse()}
 
             {question.explanation && (
                 <div className="mt-4 p-4 bg-muted rounded-lg">
                     <p className="font-medium mb-2">Explanation:</p>
-                    <LatexPreview content={question.explanation} />
+                    <TiptapRenderer content={question.explanation} />
                 </div>
             )}
         </div>

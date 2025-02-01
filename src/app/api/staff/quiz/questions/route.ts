@@ -76,7 +76,7 @@ export async function PUT(request: NextRequest) {
         // Clean up the question data
         const updatedQuestion = {
             ...questionData,
-            question: questionData.content || questionData.question,
+            question: l.content || questionData.question,
             mark: parseInt(questionData.mark?.toString() || '1'),
             updatedAt: new Date().toISOString(),
         };

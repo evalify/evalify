@@ -20,7 +20,7 @@ export async function POST(req: Request) {
         const db = client.db();
 
         // Prepare questions for insertion
-        const questionsToInsert = questions.map(q => ({
+        const questionsToInsert = questions.map((_id, ...q) => ({
             ...q,
             quizId,
             questionHash: generateQuestionHash(q.question || q.content, q.type),

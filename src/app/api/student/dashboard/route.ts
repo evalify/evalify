@@ -178,7 +178,7 @@ export async function GET() {
             performanceData
         };
 
-        await redis.setex(cacheKey, 300, JSON.stringify(dashboardData)); 
+        await redis.setex(cacheKey, 300, JSON.stringify(dashboardData));
 
         return NextResponse.json(dashboardData);
     } catch (error) {

@@ -281,14 +281,12 @@ export default function StudentResultPage() {
     const isAnswerCorrect = (question: Question, response: Response) => {
         if (!response) return false;
 
-        // For MCQ and TRUE_FALSE, compare arrays
         if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
             const sortedStudentAnswers = [...response.student_answer].sort();
             const sortedCorrectAnswers = [...question.answer].sort();
             return JSON.stringify(sortedStudentAnswers) === JSON.stringify(sortedCorrectAnswers);
         }
 
-        // For other types, check if score is full marks
         return response.score === question.marks;
     };
 
@@ -304,9 +302,6 @@ export default function StudentResultPage() {
                 <ArrowLeft className="w-4 h-4" />
                 Back
             </Button>
-            {/* <pre>
-                {JSON.stringify(data, null, 2)}
-            </pre> */}
             <Card>
                 <CardHeader>
                     <CardTitle>Student Result</CardTitle>
