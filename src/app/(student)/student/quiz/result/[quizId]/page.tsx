@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import TiptapRenderer from '@/components/ui/tiptap-renderer'
 import { QuizResultSummary } from '@/components/quiz-result-summary'
+import ReactMarkdown from 'react-markdown'
 
 export default function StudentQuizResultPage() {
     const { quizId } = useParams()
@@ -241,6 +242,14 @@ function QuestionResult({ question, response, index }: {
                             <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
                                 <div className="font-medium mb-2">Expected Answer:</div>
                                 <TiptapRenderer content={question.expectedAnswer} />
+                            </div>
+                        )}
+                        {response.breakdown && (
+                            <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
+                                <div className="font-medium mb-2">Mark Breakdown:</div>
+                                <div className="prose dark:prose-invert prose-sm max-w-none">
+                                    <ReactMarkdown>{response.breakdown}</ReactMarkdown>
+                                </div>
                             </div>
                         )}
                     </div>
