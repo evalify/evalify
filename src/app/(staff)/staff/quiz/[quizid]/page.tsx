@@ -254,7 +254,7 @@ export default function QuizPage() {
                     ...questionData,
                     quizId: quizid,
                     _id: questionData._id || questionData.id,
-                    question: questionData.content || questionData.question,
+                    question: questionData.question,
                     mark: parseInt(questionData.mark?.toString() || '1')
                 })
             });
@@ -265,7 +265,6 @@ export default function QuizPage() {
                 toast.error(data.message || 'Failed to update question');
                 return;
             }
-
             toast.success('Question updated successfully');
             await loadQuestions();
             setIsAddingQuestion(false);

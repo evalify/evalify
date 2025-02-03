@@ -27,7 +27,7 @@ export type Question = {
     _id?: string;
     type: 'MCQ' | 'DESCRIPTIVE' | 'CODING' | 'TRUE_FALSE' | 'FILL_BLANKS';
     difficulty: 'easy' | 'medium' | 'hard';
-    marks: number;
+    mark: number;
     question: string;
     explanation: string;
     // MCQ specific
