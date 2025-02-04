@@ -19,13 +19,14 @@ export async function POST(req: Request) {
         const client = await clientPromise;
         const db = client.db();
 
+
         // Prepare questions for insertion
-        const questionsToInsert = questions.map((_id, ...q) => ({
+        const questionsToInsert = questions.map((q) => ({
             ...q,
             quizId,
-            questionHash: generateQuestionHash(q.question || q.content, q.type),
+            questionHash: generateQuestionHash(q.question, q.type),
         }));
-
+        delete questionsToInsert._id;
         // Check for duplicates using questionHash
         const existingHashes = await db.collection('NEW_QUESTIONS')
             .find({

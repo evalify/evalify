@@ -22,6 +22,12 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 type Course = {
     id: string;
@@ -52,7 +58,7 @@ type Quiz = {
         autoSubmit: boolean; // Add this line
     };
     courses: Course[];
-    courseIds:string[]
+    courseIds: string[]
 };
 
 const getQuizStatus = (startTime: Date, endTime: Date): { icon: React.ReactNode; color: string; text: string } => {
@@ -96,10 +102,10 @@ const createSafeDate = (date: any): Date => {
     return new Date();
 };
 
-const SafeDateTimeInput = ({ value, onChange, label }: { 
-    value: Date, 
+const SafeDateTimeInput = ({ value, onChange, label }: {
+    value: Date,
     onChange: (date: Date) => void,
-    label: string 
+    label: string
 }) => {
     const date = value.toISOString().split('T')[0];
     const time = value.toTimeString().slice(0, 5);
@@ -302,7 +308,7 @@ export default function QuizPage() {
             fullscreen: true,
             calculator: false,
             shuffle: true,
-            autoSubmit: false, 
+            autoSubmit: false,
         },
         courseIds: [],
     });
@@ -386,7 +392,7 @@ export default function QuizPage() {
         now.setSeconds(0, 0);
         now.setMinutes(now.getMinutes() + 1);
 
-        const endTime = new Date(now.getTime() + 45 * 60000); 
+        const endTime = new Date(now.getTime() + 45 * 60000);
 
         setFormData({
             title: '',
@@ -398,7 +404,7 @@ export default function QuizPage() {
                 fullscreen: true,
                 calculator: false,
                 shuffle: true,
-                autoSubmit: false,  
+                autoSubmit: false,
             },
             courseIds: [],
         });
@@ -408,7 +414,7 @@ export default function QuizPage() {
     const handleEdit = (quiz: Quiz) => {
         setEditMode(true);
         setFormData({
-            id: quiz.id, 
+            id: quiz.id,
             title: quiz.title,
             description: quiz.description,
             startTime: createSafeDate(quiz.startTime),
@@ -416,7 +422,7 @@ export default function QuizPage() {
             duration: quiz.duration,
             settings: {
                 ...quiz.settings,
-                id: quiz.settingsId 
+                id: quiz.settingsId
             },
             courseIds: quiz.courses.map(course => course.id),
         });
@@ -662,24 +668,6 @@ export default function QuizPage() {
                                                 </div>
                                             </div>
                                         </div>
-                                        {/* <div>
-                                            <Label className="text-indigo-900 dark:text-indigo-100 mb-2 block">Classes</Label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {courses.map(course => (
-                                                    <div key={course.id} className="flex items-center space-x-2 bg-white dark:bg-gray-900 p-2 rounded-lg shadow-sm">
-                                                        <Checkbox
-                                                            id={course.id}
-                                                            checked={formData.courseIds?.includes(course.id) || false}
-                                                            onCheckedChange={() => handleCourseChange(course.id)}
-                                                            className="dark:border-gray-500"
-                                                        />
-                                                        <Label htmlFor={course.id} className="text-sm dark:text-gray-200">
-                                                            {course.class.name} ({course.code})
-                                                        </Label>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div> */}
                                         <div className="space-y-2">
                                             <Label className="text-indigo-900 dark:text-indigo-100">Settings</Label>
                                             <div className="grid grid-cols-2 gap-4">
@@ -700,7 +688,28 @@ export default function QuizPage() {
                                                             className="dark:border-slate-600"
                                                         />
                                                         <Label htmlFor={key} className="text-sm dark:text-slate-200">
-                                                            {key.charAt(0).toUpperCase() + key.slice(1)}
+                                                            {
+                                                                (key === "calculator") ? (
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger>IDE</TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>Student's Will Get a CodeEditor with Octave/Python</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                ) : (key === "fullscreen") ? (
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger>Fullscreen</TooltipTrigger>
+                                                                            <TooltipContent className="">
+                                                                                Quiz will be in Fullscreen Mode, Students cannot exit FullScreen.
+                                                                                Violations Will be Recorded.
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                ) : key.charAt(0).toUpperCase() + key.slice(1)
+                                                            }
                                                         </Label>
                                                     </div>
                                                 ))}

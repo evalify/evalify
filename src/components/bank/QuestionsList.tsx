@@ -51,7 +51,7 @@ export default function QuestionsList({
     topic,
     onQuestionUpdate,
     editingQuestion,
-    requireTopics = true, // Add default value
+    requireTopics = true,
     showActions = true,
     onDelete,
 }: QuestionsListProps) {
@@ -360,6 +360,7 @@ export default function QuestionsList({
                                 ))}
                             </div>
                         )}
+                        
                         {question.type === 'FILE_UPLOAD' && question.attachedFile && (
                             <div className="mt-2">
                                 <a
