@@ -251,7 +251,7 @@ export default function QuizPage() {
 
             const data = await response.json()
             if (response.ok) {
-                toast.success('All responses evaluated successfully')
+                toast.success('Quiz Evaluation added to the queue, will be evaluated soon')
                 getQuizData(quizid)
             } else {
                 toast.error(data.error || 'Failed to evaluate responses')

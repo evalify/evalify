@@ -436,10 +436,14 @@ export default function QuizPage() {
                 {quizDetails && (
                     <div className=" rounded-lg p-6 shadow-sm border">
                         <h1 className="text-2xl font-bold mb-4">{quizDetails.title}</h1>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                             <div>
                                 <p className="text-sm text-gray-500">Questions</p>
                                 <p className="text-lg font-semibold">{questions.length}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-gray-500">Total Marks</p>
+                                <p className="text-lg font-semibold">{(questions.reduce((sum, question) => { return sum + question.mark }, 0))}</p>
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500">Start Time</p>

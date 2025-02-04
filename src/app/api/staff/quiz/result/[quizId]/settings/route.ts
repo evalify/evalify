@@ -25,13 +25,14 @@ export async function GET(
                 data: {
                     quiz: { connect: { id: quizId } },
                     negativeMark: false,
-                    mcqPartialMark: false,
+                    mcqPartialMark: true,
                     codePartialMark: false
                 }
             })
         }
 
         return NextResponse.json(settings)
+
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
     }
@@ -55,7 +56,7 @@ export async function PUT(
             create: {
                 quiz: { connect: { id: quizId } },
                 negativeMark: body.negativeMark ?? false,
-                mcqPartialMark: body.mcqPartialMark ?? false,
+                mcqPartialMark: body.mcqPartialMark ?? true,
                 codePartialMark: body.codePartialMark ?? false,
                 evaluatorModel: body.evaluatorModel
             },

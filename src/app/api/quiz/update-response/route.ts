@@ -17,7 +17,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        // Store in Redis with 10 minute expiration
         await redis.set(
             `response:${quizId}:${id}`,
             JSON.stringify(responses),
