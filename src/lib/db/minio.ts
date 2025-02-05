@@ -101,9 +101,15 @@ export async function uploadQuizFile(file: Buffer, fileName: string, fileType: s
     }
 }
 
-export async function uploadQuizSubmission(file: Buffer, quizId: string, questionId: string, rollNo: string, fileType: string): Promise<{url: string, fileInfo: any}> {
+export async function uploadQuizSubmission(
+    file: Buffer, 
+    quizId: string, 
+    questionId: string, 
+    rollNo: string, 
+    fileType: string,
+    originalFilename: string
+): Promise<{url: string, fileInfo: any}> {
     try {
-        // Check file size (10MB)
         if (file.length > 10 * 1024 * 1024) {
             throw new Error('File size must be less than 10MB');
         }
@@ -114,19 +120,23 @@ export async function uploadQuizSubmission(file: Buffer, quizId: string, questio
             await minioClient.makeBucket(bucketName, 'us-east-1');
         }
 
-        // Create folder structure: quiz-submissions/quizId/questionId/rollNo_questionId.ext
-        const fileExtension = fileType.split('/').pop() || 'file';
+        // Preserve original file extension
+        const fileExtension = originalFilename.split('.').pop() || 'file';
         const fileName = `${quizId}/${questionId}/${rollNo}_${questionId}.${fileExtension}`;
 
-        await minioClient.putObject(bucketName, fileName, file, undefined, {
+        // Set appropriate Content-Type and Content-Disposition
+        const metadata = {
             'Content-Type': fileType,
-            'X-Original-Filename': fileName,
-        });
+            'Content-Disposition': `attachment; filename="${originalFilename}"`,
+            'X-Original-Filename': originalFilename,
+        };
+
+        await minioClient.putObject(bucketName, fileName, file, undefined, metadata);
 
         const url = `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}/${bucketName}/${fileName}`;
         
         const fileInfo = {
-            name: fileName,
+            name: originalFilename,
             size: file.length,
             type: fileType,
             url: url

@@ -83,14 +83,17 @@ export async function GET(req: Request) {
             if (existing.isSubmitted) {
                 throw new Error("Quiz already submitted");
             }
-
             return existing;
         });
 
-        // Return user-specific shuffled questions if they exist
+        const restoredResponses = await redis.get(
+            `response:${quizId}:${id}`,
+        );
+
         if (userShuffledQuestions) {
             return NextResponse.json({
                 quiz,
+                responses: restoredResponses,
                 questions: JSON.parse(userShuffledQuestions),
                 quizAttempt: {
                     startTime: quizAttempt.startTime
@@ -143,6 +146,7 @@ export async function GET(req: Request) {
         return NextResponse.json({
             quiz,
             questions,
+            responses: restoredResponses,
             quizAttempt: {
                 startTime: quizAttempt.startTime
             }

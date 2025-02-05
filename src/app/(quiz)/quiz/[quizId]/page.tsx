@@ -22,7 +22,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LatexPreview } from '@/components/latex-preview'
 import CodeEditor from '@/components/codeEditor/CodeEditor'
 import { nanoid } from 'nanoid'
-import { UploadDropzone } from "@/components/UploadDropzone";
 
 interface CodeFile {
     id: string
@@ -84,7 +83,6 @@ function useQuizTimer(
         const endTime = startTimeMs + (quiz.duration * 60 * 1000);
         const now = Date.now();
 
-        // If quiz has expired
         if (now >= endTime) {
             setTimeLeft(0);
             if (autoSubmit) {
@@ -103,7 +101,7 @@ function useQuizTimer(
 
             setTimeLeft(remaining);
 
-            if (remaining <= 300) { // 5 minutes = 300 seconds
+            if (remaining <= 300) {
                 setIsTimeWarning(true);
             }
 
@@ -202,7 +200,6 @@ const QuizPage = () => {
         }
     }, [quizId]);
 
-    // Save editor state to localStorage when it changes
     useEffect(() => {
         if (typeof window !== 'undefined') {
             localStorage.setItem(`calculator_files_${quizId}`, JSON.stringify(editorFiles));
@@ -215,7 +212,6 @@ const QuizPage = () => {
         }
     }, [activeEditorFile, quizId]);
 
-    // Define handlers first using useCallback
     const handleSubmitQuiz = useCallback(async () => {
         setIsSubmitting(true);
         try {
@@ -288,6 +284,9 @@ const QuizPage = () => {
 
                 setQuiz(data.quiz);
                 setQuestions(data.questions);
+                // if (data.responses){
+                //     setUserAnswers(data.responses);
+                // }
                 if (data.quizAttempt?.startTime) {
                     setQuizStartTime(new Date(data.quizAttempt.startTime));
                 }
@@ -515,152 +514,185 @@ const QuizPage = () => {
         )
     }
 
+    // Add this component after the FileUpload component and before QuizPage component
+    const AttachedFile = ({ fileUrl }: { fileUrl: string }) => {
+        const fileName = fileUrl.split('/').pop() || 'Attached File';
 
+        return (
+            <div className="flex items-center gap-2 p-3 bg-muted/10 border rounded-lg w-fit">
+                <FileIcon className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                    {fileName}
+                </span>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => window.open(fileUrl, '_blank')}
+                >
+                    <Download className="h-4 w-4" />
+                </Button>
+            </div>
+        );
+    };
+
+    // In the renderQuestion function, modify the beginning of each case to include the attached file
     const renderQuestion = (question: Question) => {
-        switch (question.type) {
-            case 'MCQ':
-            case 'TRUE_FALSE':
-                return (
-                    <div className="space-y-4">
-                        <TiptapRenderer content={question.question} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <RadioGroup
-                                value={userAnswers[question.id]?.[0] || ''}
-                                onValueChange={(value) => handleRadioChange(question.id, value)}
-                            >
-                                {question.options?.map((option) => (
-                                    <div
-                                        key={option.optionId}
-                                        className={cn(
-                                            "flex items-start space-x-3 p-4 rounded-lg transition-colors",
-                                            "hover:bg-muted/50 cursor-pointer",
-                                            userAnswers[question.id]?.includes(option.optionId) &&
-                                            "bg-primary/10 hover:bg-primary/20"
-                                        )}
+        return (
+            <div className="space-y-4">
+                <TiptapRenderer content={question.question} />
+
+                {/* Add this block right after TiptapRenderer */}
+                {question.attachedFile && (
+                    <div className="my-4">
+                        <Label className="text-sm text-muted-foreground mb-2">Attached File:</Label>
+                        <AttachedFile fileUrl={question.attachedFile} />
+                    </div>
+                )}
+
+                {/* Rest of your switch statement */}
+                {(() => {
+                    switch (question.type) {
+                        case 'MCQ':
+                        case 'TRUE_FALSE':
+                            return (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* ...existing MCQ/TRUE_FALSE rendering... */}
+                                    <RadioGroup
+                                        value={userAnswers[question.id]?.[0] || ''}
+                                        onValueChange={(value) => handleRadioChange(question.id, value)}
                                     >
-                                        <RadioGroupItem value={option.optionId} id={option.optionId} />
-                                        <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
-                                            <LatexPreview content={option.option} />
-                                        </Label>
-                                        {option.image && option.image.length > 0 && (
+                                        {question.options?.map((option) => (
                                             <div
-                                                className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02] ml-16"
-                                                onClick={() => setSelectedImage(option.image || "")}
+                                                key={option.optionId}
+                                                className={cn(
+                                                    "flex items-start space-x-3 p-4 rounded-lg transition-colors",
+                                                    "hover:bg-muted/50 cursor-pointer",
+                                                    userAnswers[question.id]?.includes(option.optionId) &&
+                                                    "bg-primary/10 hover:bg-primary/20"
+                                                )}
                                             >
-                                                <ImageWithFallback
-                                                    src={option.image}
-                                                    alt={`Image for option: ${option.option}`}
-                                                    width={200}
-                                                    height={150}
-                                                    className="rounded-md object-cover"
-                                                />
+                                                <RadioGroupItem value={option.optionId} id={option.optionId} />
+                                                <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
+                                                    <LatexPreview content={option.option} />
+                                                </Label>
+                                                {option.image && option.image.length > 0 && (
+                                                    <div
+                                                        className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02] ml-16"
+                                                        onClick={() => setSelectedImage(option.image || "")}
+                                                    >
+                                                        <ImageWithFallback
+                                                            src={option.image}
+                                                            alt={`Image for option: ${option.option}`}
+                                                            width={200}
+                                                            height={150}
+                                                            className="rounded-md object-cover"
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </RadioGroup>
-                        </div>
-                    </div>
-                );
-
-            case 'MMCQ':
-                return (
-                    <div className="space-y-4">
-                        <TiptapRenderer content={question.question} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {question.options?.map((option) => (
-                                <div
-                                    key={option.optionId}
-                                    className={cn(
-                                        "flex items-start space-x-3 p-4 rounded-lg transition-colors",
-                                        "hover:bg-muted/50 cursor-pointer",
-                                        userAnswers[question.id]?.includes(option.optionId) &&
-                                        "bg-primary/10 hover:bg-primary/20"
-                                    )}
-                                >
-                                    <Checkbox
-                                        id={option.optionId}
-                                        checked={userAnswers[question.id]?.includes(option.optionId)}
-                                        onCheckedChange={(checked) =>
-                                            handleAnswerChange(question.id, option.optionId, checked as boolean)
-                                        }
-                                    />
-                                    <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
-                                        {option.image && option.image.length > 0 && (
-                                            <div
-                                                className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02]"
-                                                onClick={() => setSelectedImage(option.image || "")}
-                                            >
-                                                <ImageWithFallback
-                                                    src={option.image}
-                                                    alt={`Image for option: ${option.option}`}
-                                                    width={200}
-                                                    height={150}
-                                                    className="rounded-md object-cover"
-                                                />
-                                            </div>
-                                        )}
-                                        <TiptapRenderer content={option.option} />
-                                    </Label>
+                                        ))}
+                                    </RadioGroup>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-
-            case 'FILL_IN_BLANK':
-                return (
-                    <div className="space-y-4">
-                        <TiptapRenderer content={question.question} />
-                        <div>
-                            <Label htmlFor="answer">Your Answer</Label>
-                            <input
-                                type="text"
-                                id="answer"
-                                className="w-full p-2 mt-2 rounded-md border"
-                                value={userAnswers[question.id]?.[0] || ''}
-                                onChange={(e) => handleDescriptiveAnswer(question.id, e.target.value)}
-                                placeholder="Type your answer here..."
-                            />
-                        </div>
-                    </div>
-                )
-
-            case 'DESCRIPTIVE':
-                return (
-                    <div className="space-y-4">
-                        <TiptapRenderer content={question.question} />
-                        <div>
-                            <Label htmlFor="answer">Your Answer</Label>
-                            <Textarea
-                                id="answer"
-                                className="min-h-[200px] mt-2"
-                                value={userAnswers[question.id]?.[0] || ''}
-                                onChange={(e) => handleDescriptiveAnswer(question.id, e.target.value)}
-                                placeholder="Type your answer here..."
-                            />
-                        </div>
-                    </div>
-                )
-
-            case 'FILE_UPLOAD':
-                return (
-                    <div className="space-y-4" >
-                        <TiptapRenderer content={question.question} />
-                        <div className="mt-4" >
-                            <FileUpload 
-                                quizId={quizId}
-                                questionId={question.id}
-                                onUpload={(url) => handleDescriptiveAnswer(question.id, [url])}
-                                currentFile={userAnswers[question.id]?.[0]}
-                            />
-                        </div>
-                    </div>
-                );
-
-            default:
-                return <div>Unsupported question type</div>
-        }
+                            );
+                        case 'MMCQ':
+                            return (
+                                <div className="space-y-4">
+                                    <TiptapRenderer content={question.question} />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {question.options?.map((option) => (
+                                            <div
+                                                key={option.optionId}
+                                                className={cn(
+                                                    "flex items-start space-x-3 p-4 rounded-lg transition-colors",
+                                                    "hover:bg-muted/50 cursor-pointer",
+                                                    userAnswers[question.id]?.includes(option.optionId) &&
+                                                    "bg-primary/10 hover:bg-primary/20"
+                                                )}
+                                            >
+                                                <Checkbox
+                                                    id={option.optionId}
+                                                    checked={userAnswers[question.id]?.includes(option.optionId)}
+                                                    onCheckedChange={(checked) =>
+                                                        handleAnswerChange(question.id, option.optionId, checked as boolean)
+                                                    }
+                                                />
+                                                <Label htmlFor={option.optionId} className="flex-1 cursor-pointer">
+                                                    {option.image && option.image.length > 0 && (
+                                                        <div
+                                                            className="relative mb-2 cursor-zoom-in transition-transform hover:scale-[1.02]"
+                                                            onClick={() => setSelectedImage(option.image || "")}
+                                                        >
+                                                            <ImageWithFallback
+                                                                src={option.image}
+                                                                alt={`Image for option: ${option.option}`}
+                                                                width={200}
+                                                                height={150}
+                                                                className="rounded-md object-cover"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    <TiptapRenderer content={option.option} />
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        case 'FILL_IN_BLANK':
+                            return (
+                                <div className="space-y-4">
+                                    <TiptapRenderer content={question.question} />
+                                    <div>
+                                        <Label htmlFor="answer">Your Answer</Label>
+                                        <input
+                                            type="text"
+                                            id="answer"
+                                            className="w-full p-2 mt-2 rounded-md border"
+                                            value={userAnswers[question.id]?.[0] || ''}
+                                            onChange={(e) => handleDescriptiveAnswer(question.id, e.target.value)}
+                                            placeholder="Type your answer here..."
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        case 'DESCRIPTIVE':
+                            return (
+                                <div className="space-y-4">
+                                    <TiptapRenderer content={question.question} />
+                                    <div>
+                                        <Label htmlFor="answer">Your Answer</Label>
+                                        <Textarea
+                                            id="answer"
+                                            className="min-h-[200px] mt-2"
+                                            value={userAnswers[question.id]?.[0] || ''}
+                                            onChange={(e) => handleDescriptiveAnswer(question.id, e.target.value)}
+                                            placeholder="Type your answer here..."
+                                        />
+                                    </div>
+                                </div>
+                            )
+                        case 'FILE_UPLOAD':
+                            return (
+                                <div className="space-y-4" >
+                                    <TiptapRenderer content={question.question} />
+                                    <div className="mt-4" >
+                                        <FileUpload
+                                            quizId={quizId}
+                                            questionId={question.id}
+                                            onUpload={(url) => handleDescriptiveAnswer(question.id, [url])}
+                                            currentFile={userAnswers[question.id]?.[0]}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        default:
+                            return <div>Unsupported question type</div>
+                    }
+                })()}
+            </div>
+        );
     }
 
     interface FileUploadProps {
@@ -669,7 +701,7 @@ const QuizPage = () => {
         onUpload: (url: string) => void;
         currentFile?: string;
     }
-    
+
     const FileUpload = ({ quizId, questionId, onUpload, currentFile }: FileUploadProps) => {
         const [isUploading, setIsUploading] = useState(false);
         const [dragActive, setDragActive] = useState(false);
@@ -679,13 +711,14 @@ const QuizPage = () => {
         const inputRef = useRef<HTMLInputElement>(null);
         const [fileInputKey, setFileInputKey] = useState(Date.now());
         const operationProgressRef = useRef<NodeJS.Timeout | null>(null);
-    
+        const [uploadedFileName, setUploadedFileName] = useState<string>("");
+
         const handleDownload = () => {
             if (currentFile) {
                 window.open(currentFile, '_blank');
             }
         };
-    
+
         const handleDrag = (e: React.DragEvent) => {
             e.preventDefault();
             e.stopPropagation();
@@ -695,7 +728,7 @@ const QuizPage = () => {
                 setDragActive(false);
             }
         };
-    
+
         const simulateProgress = () => {
             setUploadProgress(0);
             const interval = setInterval(() => {
@@ -719,50 +752,60 @@ const QuizPage = () => {
                 });
             }, 50);
         };
-    
+
         const handleUpload = async (file: File) => {
             if (file.size > 10 * 1024 * 1024) {
                 toast.error('File size must be less than 10MB');
                 return;
             }
-        
-            // If there's an existing file, delete it first
+
             if (currentFile) {
                 await handleRemove();
             }
-        
+
             setLoadingState('uploading');
+            setUploadedFileName(file.name);
             const progressInterval = simulateProgress();
             operationProgressRef.current = startOperationProgress();
-        
+
             try {
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('quizId', quizId);
                 formData.append('questionId', questionId);
-        
-                const response = await fetch('/api/quiz/upload-response', {
-                    method: 'POST',
-                    body: formData,
+
+                const xhr = new XMLHttpRequest();
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const progress = Math.round((event.loaded / event.total) * 100);
+                        setUploadProgress(progress);
+                    }
                 });
-        
-                if (!response.ok) {
-                    throw new Error('Upload failed');
-                }
-        
-                setLoadingState('processing');
-                setUploadProgress(100);
-        
-                const data = await response.json();
-                
+
+                const uploadPromise = new Promise((resolve, reject) => {
+                    xhr.onload = () => {
+                        if (xhr.status === 200) {
+                            resolve(JSON.parse(xhr.responseText));
+                        } else {
+                            reject(new Error('Upload failed'));
+                        }
+                    };
+                    xhr.onerror = () => reject(new Error('Upload failed'));
+                });
+
+                xhr.open('POST', '/api/quiz/upload-response');
+                xhr.send(formData);
+
+                const data = await uploadPromise;
                 setLoadingState('completing');
-                await new Promise(resolve => 
+
+                await new Promise(resolve =>
                     toast.success('File uploaded successfully', {
                         onAutoClose: resolve,
                         onDismiss: resolve
                     })
                 );
-                
+
                 onUpload(data.url);
             } catch (error) {
                 console.error('Upload error:', error);
@@ -779,11 +822,11 @@ const QuizPage = () => {
                 setDragActive(false);
             }
         };
-    
+
         const handleRemove = async () => {
             setLoadingState('removing');
             operationProgressRef.current = startOperationProgress();
-    
+
             try {
                 // Delete from MinIO first
                 await fetch('/api/quiz/delete-response', {
@@ -796,15 +839,15 @@ const QuizPage = () => {
                         questionId,
                     }),
                 });
-    
+
                 setLoadingState('completing');
-                await new Promise(resolve => 
+                await new Promise(resolve =>
                     toast.success('File removed successfully', {
                         onAutoClose: resolve,
                         onDismiss: resolve
                     })
                 );
-    
+
                 onUpload("");
             } catch (error) {
                 console.error('Remove error:', error);
@@ -818,7 +861,7 @@ const QuizPage = () => {
                 setOperationProgress(0);
             }
         };
-    
+
         const handleDrop = async (e: React.DragEvent) => {
             e.preventDefault();
             e.stopPropagation();
@@ -827,26 +870,26 @@ const QuizPage = () => {
                 await handleUpload(file);
             }
         };
-    
+
         const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
             console.log('Change event triggered', e);
             console.log('Files:', e.target.files);
-            
+
             const files = e.target.files;
             if (!files || files.length === 0) {
                 console.log('No files selected');
                 return;
             }
-    
+
             const file = files[0];
             console.log('Selected file:', file.name, file.type, file.size);
             handleUpload(file);
-            
+
             if (inputRef.current) {
                 inputRef.current.value = '';
             }
         };
-    
+
         const handleClick = useCallback(() => {
             console.log('Click handler triggered');
             if (inputRef.current) {
@@ -856,7 +899,22 @@ const QuizPage = () => {
                 }, 0);
             }
         }, []);
-    
+
+        const getFileIcon = (fileName: string) => {
+            const ext = fileName.split('.').pop()?.toLowerCase();
+            switch (ext) {
+                case 'pdf': return '📄';
+                case 'doc':
+                case 'docx': return '📝';
+                case 'xls':
+                case 'xlsx': return '📊';
+                case 'zip':
+                case 'rar': return '📦';
+                case 'ipynb': return '📓';
+                default: return '📄';
+            }
+        };
+
         return (
             <div className="space-y-4 relative">
                 {loadingState !== 'idle' && (
@@ -872,115 +930,107 @@ const QuizPage = () => {
                                 </p>
                             </div>
                             <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                                <div 
+                                <div
                                     className="h-full bg-primary transition-all duration-300"
-                                    style={{ 
-                                        width: `${loadingState === 'uploading' ? uploadProgress : operationProgress}%` 
+                                    style={{
+                                        width: `${loadingState === 'uploading' ? uploadProgress : operationProgress}%`
                                     }}
                                 />
                             </div>
                         </div>
                     </div>
                 )}
-                
-                {/* Rest of your component JSX */}
-                <div className="flex items-center gap-4">
-                    {!currentFile && (
-                        <>
-                            <input
-                                key={fileInputKey}
-                                ref={inputRef}
-                                type="file"
-                                className="hidden"
-                                onChange={handleChange}
-                                disabled={loadingState !== 'idle'}
-                            />
-                            <div 
-                                className={cn(
-                                    "relative w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors",
-                                    dragActive 
-                                        ? "border-primary/50 bg-primary/5" 
-                                        : "border-muted-foreground/20 hover:border-muted-foreground/40",
-                                    loadingState !== 'idle' && "pointer-events-none opacity-80"
-                                )}
-                                onDragEnter={handleDrag}
-                                onDragLeave={handleDrag}
-                                onDragOver={handleDrag}
-                                onDrop={handleDrop}
-                                onClick={handleClick}
-                            >
-                                {loadingState !== 'idle' ? (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                        {loadingState === 'uploading' ? (
-                                            <>
-                                                <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
-                                                    <div 
-                                                        className="h-full bg-primary transition-all duration-300"
-                                                        style={{ width: `${uploadProgress}%` }}
-                                                    />
-                                                </div>
-                                                <span className="text-sm text-muted-foreground">
-                                                    Uploading... {uploadProgress}%
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <span className="text-sm text-muted-foreground animate-pulse">
-                                                Processing file...
+
+                {!currentFile ? (
+                    <>
+                        <input
+                            key={fileInputKey}
+                            ref={inputRef}
+                            type="file"
+                            className="hidden"
+                            onChange={handleChange}
+                            disabled={loadingState !== 'idle'}
+                        />
+                        <div
+                            className={cn(
+                                "relative w-full h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors",
+                                dragActive
+                                    ? "border-primary/50 bg-primary/5"
+                                    : "border-muted-foreground/20 hover:border-muted-foreground/40",
+                                loadingState !== 'idle' && "pointer-events-none opacity-80"
+                            )}
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                            onClick={handleClick}
+                        >
+                            {loadingState !== 'idle' ? (
+                                <div className="flex flex-col items-center gap-2">
+                                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                    {loadingState === 'uploading' && (
+                                        <>
+                                            <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-primary transition-all duration-300"
+                                                    style={{ width: `${uploadProgress}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-sm text-muted-foreground">
+                                                {uploadedFileName && `Uploading ${uploadedFileName}...`} {uploadProgress}%
                                             </span>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <>
-                                        <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
-                                        <p className="text-sm text-muted-foreground">
-                                            Drag and drop or click to upload
-                                        </p>
-                                        <p className="text-xs text-muted-foreground/60 mt-1">
-                                            Any file up to 10MB
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                        </>
-                    )}
-                    {currentFile && (
-                        <div className="flex items-center gap-4 w-full">
-                            <div className="flex-1 p-3 border rounded-lg bg-muted/10">
-                                <div className="flex items-center gap-2">
-                                    <FileIcon className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm text-muted-foreground truncate">
-                                        {currentFile.split('/').pop()}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={handleRemove}
-                                    disabled={loadingState !== 'idle'}
-                                >
-                                    {loadingState === 'removing' ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <X className="h-4 w-4" />
+                                        </>
                                     )}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={handleDownload}
-                                    disabled={loadingState !== 'idle'}
-                                >
-                                    <Download className="h-4 w-4" />
-                                </Button>
+                                </div>
+                            ) : (
+                                <>
+                                    <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
+                                    <p className="text-sm text-muted-foreground">
+                                        Drag and drop or click to upload
+                                    </p>
+                                    <p className="text-xs text-muted-foreground/60 mt-1">
+                                        Any file up to 10MB
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                    </>
+                ) : (
+                    <div className="flex items-center gap-4 w-full">
+                        <div className="flex-1 p-3 border rounded-lg bg-muted/10">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">{getFileIcon(currentFile)}</span>
+                                <span className="text-sm text-muted-foreground truncate">
+                                    {currentFile.split('/').pop()}
+                                </span>
                             </div>
                         </div>
-                    )}
-                </div>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={handleRemove}
+                                disabled={loadingState !== 'idle'}
+                            >
+                                {loadingState === 'removing' ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <X className="h-4 w-4" />
+                                )}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={handleDownload}
+                                disabled={loadingState !== 'idle'}
+                            >
+                                <Download className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };
@@ -1155,7 +1205,9 @@ const QuizPage = () => {
                                                 onClick={() => setCurrentQuestionIndex(index)}
                                             >
                                                 {index + 1}
-                                            </Button>                                        ))}                                    </div>
+                                            </Button>
+                                        ))}
+                                    </div>
                                 </ScrollArea>
                             </CardContent>
                         </Card>

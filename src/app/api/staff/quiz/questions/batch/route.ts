@@ -26,7 +26,10 @@ export async function POST(req: Request) {
             quizId,
             questionHash: generateQuestionHash(q.question, q.type),
         }));
-        delete questionsToInsert._id;
+        
+        if (questionsToInsert._id) {
+            delete questionsToInsert._id;
+        }
         // Check for duplicates using questionHash
         const existingHashes = await db.collection('NEW_QUESTIONS')
             .find({
