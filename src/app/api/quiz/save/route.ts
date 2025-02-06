@@ -25,11 +25,15 @@ export async function POST(req: Request) {
             }
 
             const currTime = new Date();
-            if (!(currTime >= quiz.startTime && currTime <= quiz.endTime)) {
+            if (
+                !(
+                    currTime >= quiz.startTime
+                    // && currTime <= quiz.endTime
+                )
+            ) {
                 throw new Error("Quiz submission window closed");
             }
 
-            // Check for existing submission
             const existing = await tx.quizResult.findUnique({
                 where: {
                     studentId_quizId: {

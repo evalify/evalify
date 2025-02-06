@@ -36,6 +36,8 @@ type QuizInfo = {
     settings?: {
         showResult: boolean
     }
+    showResult: boolean
+    isLiveQuiz: boolean
 }
 
 function QuizManagement() {
@@ -115,10 +117,13 @@ function QuizList({ quizzes, status }: { quizzes: QuizInfo[] | undefined, status
     if (!quizzes || quizzes.length === 0) {
         return <div className="text-gray-500 text-center py-4">No {status} quizzes available</div>
     }
+    
+    // If there is any Live quiz, student will not be able to view the results of other quizzes
+    const isLiveQuiz = quizzes.filter(q => q.status === 'live').length > 0;
     return (
         <div className="space-y-4 mt-4">
             {quizzes.map((quiz) => (
-                <QuizCard key={quiz.id} {...quiz} />
+                <QuizCard key={quiz.id} {...quiz} isLiveQuiz={isLiveQuiz} />
             ))}
         </div>
     )
@@ -126,7 +131,7 @@ function QuizList({ quizzes, status }: { quizzes: QuizInfo[] | undefined, status
 
 
 
-function QuizCard({ id, title, description, startTime, endTime, duration, staff, status, showResult }: QuizInfo) {
+function QuizCard({ id, title, description, startTime, endTime, duration, staff, status, showResult, isLiveQuiz }: QuizInfo) {
     const router = useRouter()
 
     function getScore(quizId: string) {
@@ -230,6 +235,7 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff,
                     <Button
                         className="w-full"
                         onClick={() => router.push(`/student/quiz/result/${id}`)}
+                        disabled={isLiveQuiz}
                     >
                         <CheckCircle className="mr-2 h-4 w-4" />
                         View Results

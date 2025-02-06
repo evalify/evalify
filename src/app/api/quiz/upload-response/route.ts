@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
             questionId,
             rollNo,
             fileType,
-            file.name // Pass original filename
+            file.name 
         );
 
         return NextResponse.json({ 

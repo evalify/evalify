@@ -537,7 +537,6 @@ const QuizPage = () => {
         );
     };
 
-    // In the renderQuestion function, modify the beginning of each case to include the attached file
     const renderQuestion = (question: Question) => {
         return (
             <div className="space-y-4">
@@ -558,7 +557,6 @@ const QuizPage = () => {
                         case 'TRUE_FALSE':
                             return (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* ...existing MCQ/TRUE_FALSE rendering... */}
                                     <RadioGroup
                                         value={userAnswers[question.id]?.[0] || ''}
                                         onValueChange={(value) => handleRadioChange(question.id, value)}
@@ -599,7 +597,6 @@ const QuizPage = () => {
                         case 'MMCQ':
                             return (
                                 <div className="space-y-4">
-                                    <TiptapRenderer content={question.question} />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {question.options?.map((option) => (
                                             <div
@@ -643,7 +640,6 @@ const QuizPage = () => {
                         case 'FILL_IN_BLANK':
                             return (
                                 <div className="space-y-4">
-                                    <TiptapRenderer content={question.question} />
                                     <div>
                                         <Label htmlFor="answer">Your Answer</Label>
                                         <input
@@ -660,7 +656,6 @@ const QuizPage = () => {
                         case 'DESCRIPTIVE':
                             return (
                                 <div className="space-y-4">
-                                    <TiptapRenderer content={question.question} />
                                     <div>
                                         <Label htmlFor="answer">Your Answer</Label>
                                         <Textarea
@@ -676,7 +671,6 @@ const QuizPage = () => {
                         case 'FILE_UPLOAD':
                             return (
                                 <div className="space-y-4" >
-                                    <TiptapRenderer content={question.question} />
                                     <div className="mt-4" >
                                         <FileUpload
                                             quizId={quizId}

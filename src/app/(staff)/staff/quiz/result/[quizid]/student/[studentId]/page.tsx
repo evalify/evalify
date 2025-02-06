@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Pencil, Check, X, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react'
+import { Pencil, Check, X, AlertCircle, CheckCircle, ArrowLeft, FileDown } from 'lucide-react'
 import { LatexPreview } from '@/components/latex-preview'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -29,6 +29,7 @@ type Question = {
     mark: number;
     type: string;
     explanation?: string;
+    expectedAnswer?: string;
 }
 
 type Response = {
@@ -153,7 +154,7 @@ export default function StudentResultPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                         {question.options.map((option, index) => {
                             const isCorrect = question.answer.includes(option.optionId);
-                            const isSelected = studentResponse.student_answer.includes(option.optionId);
+                            const isSelected = studentResponse?.student_answer?.includes(option?.optionId) || false;
 
                             return (
                                 <div
@@ -240,14 +241,14 @@ export default function StudentResultPage() {
                                 {studentResponse.remarks && (
                                     <div className="bg-blue-50 rounded-lg p-4 dark:bg-blue-900/20">
                                         <div className="font-medium mb-2">Remarks:</div>
-                                        <div>{studentResponse.remarks}</div>
+                                        <div>{studentResponse.remarks || "No Remarks / Not evaluated"}</div>
                                     </div>
                                 )}
                                 {studentResponse.breakdown && (
                                     <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
                                         <div className="font-medium mb-2">Mark Breakdown:</div>
                                         <div className="prose dark:prose-invert prose-sm max-w-none">
-                                            <ReactMarkdown>{studentResponse.breakdown}</ReactMarkdown>
+                                            <ReactMarkdown>{studentResponse.breakdown || "No Breakdown / Not Evaluated"}</ReactMarkdown>
                                         </div>
                                     </div>
                                 )}
@@ -320,18 +321,17 @@ export default function StudentResultPage() {
     const totalMarks = data.questions.reduce((sum, question) => sum + question.mark, 0)
     const scorePercentage = (data.result.score / totalMarks) * 100
 
-    const isAnswerCorrect = (question: Question, response: Response) => {
+    const isAnswerCorrect = (question: Question, response: Response | undefined) => {
         if (!response || !response.student_answer) return false;
 
         if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
-            // Ensure student_answer is an array before spreading
             const studentAnswerArray = Array.isArray(response.student_answer) ? response.student_answer : [];
             const sortedStudentAnswers = [...studentAnswerArray].sort();
             const sortedCorrectAnswers = [...question.answer].sort();
             return JSON.stringify(sortedStudentAnswers) === JSON.stringify(sortedCorrectAnswers);
         }
 
-        return response.score === question.marks;
+        return response.score === question.mark;
     };
 
     const filterQuestions = (questions: Question[]) => {
@@ -397,7 +397,10 @@ export default function StudentResultPage() {
                 </TabsContent>
                 <TabsContent value="incorrect">
                     <QuestionList
-                        questions={filterQuestions(data.questions.filter(q => !isAnswerCorrect(q, responses[q._id])))}
+                        questions={filterQuestions(data?.questions.filter(q => {
+                            const response = responses[q._id];
+                            return !isAnswerCorrect(q, response);
+                        }))}
                         questionMap={data.questions.reduce((acc, q, i) => ({ ...acc, [q._id]: i + 1 }), {})}
                         responses={responses}
                         editingQuestion={editingQuestion}
@@ -406,7 +409,7 @@ export default function StudentResultPage() {
                         renderOptions={renderOptions}
                         data={data}
                     />
-                </TabsContent>
+                </TabsContent>s
             </Tabs>
         </div>
     )
