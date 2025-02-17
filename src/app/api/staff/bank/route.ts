@@ -7,7 +7,7 @@ import clientPromise from "@/lib/db/mongo";
 export async function GET(req: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
@@ -49,8 +49,20 @@ export async function GET(req: Request) {
                 orderBy = { name: 'asc' };
         }
 
-        const banks = await prisma.bank.findMany({
-            where: {
+        // Modify query based on role
+        const whereClause = session.user.role === "MANAGER"
+            ? {
+                AND: [
+                    {
+                        OR: [
+                            { name: { contains: query, mode: 'insensitive' } },
+                            { description: { contains: query, mode: 'insensitive' } }
+                        ]
+                    },
+                    semester ? { semester: { equals: semester } } : {}
+                ]
+            }
+            : {
                 OR: [
                     { staffs: { some: { id: staff.id } } },
                     { bankOwners: { some: { id: staff.id } } }
@@ -64,7 +76,10 @@ export async function GET(req: Request) {
                     },
                     semester ? { semester: { equals: semester } } : {}
                 ]
-            },
+            };
+
+        const banks = await prisma.bank.findMany({
+            where: whereClause,
             orderBy,
             include: {
                 bankOwners: {
@@ -95,7 +110,7 @@ export async function GET(req: Request) {
 
         const banksWithOwnership = banks.map(bank => ({
             ...bank,
-            isOwner: bank.bankOwners.some(owner => owner.id === staff.id)
+            isOwner: session.user.role === "MANAGER" ? true : bank.bankOwners.some(owner => owner.id === staff.id)
         }))
 
         // Get number of questions in each bank from mongoDB and include topic count
@@ -120,7 +135,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 

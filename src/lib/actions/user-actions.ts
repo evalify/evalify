@@ -4,7 +4,7 @@ export async function createUser(userData: {
     name: string;
     email: string;
     password: string;
-    role: 'STUDENT' | 'STAFF';
+    role: 'STUDENT' | 'STAFF' | 'MANAGER'; 
     rollNo?: string;
     phoneNo?: string;
 }) {
@@ -38,7 +38,7 @@ export function generateInitialPassword(type: 'STAFF' | 'STUDENT', identifier: s
 export async function createUserWithRole(userData: {
     name: string;
     email: string;
-    role: 'STUDENT' | 'STAFF';
+    role: 'STUDENT' | 'STAFF' | 'MANAGER';
     rollNo: string; // Make rollNo required
 }) {
     const identifier = userData.role === 'STUDENT' ? userData.rollNo! : userData.email.split('@')[0];

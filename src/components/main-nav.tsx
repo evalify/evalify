@@ -9,13 +9,11 @@ import {
   BookOpen,
   FileText,
   Terminal,
-  MessageSquare,
   Users,
   GraduationCap,
   School,
   UserCog,
   LucideIcon,
-  Cloudy,
   LibraryBig,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -26,7 +24,7 @@ type NavItem = {
   icon: LucideIcon;
 };
 
-type UserRole = "STUDENT" | "STAFF" | "ADMIN";
+type UserRole = "STUDENT" | "STAFF" | "ADMIN" | "MANAGER";
 
 const navItemsByRole: Record<UserRole, NavItem[]> = {
   STUDENT: [
@@ -52,6 +50,13 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { name: "Course", href: "/admin/course", icon: School },
     { name: "Staffs", href: "/admin/staffs", icon: UserCog },
     { name: "Students", href: "/admin/students", icon: Users },
+    { name: "Manager", href: "/admin/manager", icon: Users },
+  ],
+  MANAGER: [
+    { name: "Home", href: "/manager", icon: Home },
+    { name: "Quiz", href: "/manager/quiz", icon: BookOpen },
+    { name: "Bank", href: "/manager/bank", icon: LibraryBig },
+    { name: "Class", href: "/manager/class", icon: GraduationCap },
   ],
 };
 

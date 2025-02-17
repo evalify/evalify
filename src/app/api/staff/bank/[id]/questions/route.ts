@@ -41,7 +41,7 @@ export async function GET(
         const topicsParam = searchParams.get('topic');
 
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
@@ -53,7 +53,7 @@ export async function GET(
                 query = {
                     ...query,
                     topics: {
-                        $in: topicIds 
+                        $in: topicIds
                     }
                 };
             }
@@ -80,24 +80,24 @@ export async function POST(
     try {
         const { id } = await params;
         const session = await auth();
-        
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
         const questionData = await req.json();
-        
+
         // Validate the data
         const validation = validateQuestionData(questionData);
         if (!validation.isValid) {
-            return NextResponse.json({ 
-                message: validation.error || "Invalid question data" 
+            return NextResponse.json({
+                message: validation.error || "Invalid question data"
             }, { status: 400 });
         }
 
         // Ensure bankId is set
         questionData.bankId = id;
-        
+
         // Add creation metadata
         questionData.createdBy = session.user.id;
         questionData.createdAt = new Date().toISOString();
@@ -111,7 +111,7 @@ export async function POST(
         }
 
         const db = (await clientPromise).db();
-        
+
         const result = await db
             .collection('QUESTION_BANK')
             .insertOne(questionData);
@@ -121,9 +121,9 @@ export async function POST(
             throw new Error('Failed to get confirmation of question creation');
         }
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             message: "Question created successfully",
-            questionId: result.insertedId 
+            questionId: result.insertedId
         }, { status: 201 });
 
     } catch (error) {
@@ -131,8 +131,8 @@ export async function POST(
             message: error instanceof Error ? error.message : 'Unknown error',
             stack: error instanceof Error ? error.stack : undefined,
         });
-        
-        return NextResponse.json({ 
+
+        return NextResponse.json({
             message: "Failed to create question",
             details: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 });

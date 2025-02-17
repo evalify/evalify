@@ -6,7 +6,7 @@ import { uploadFile } from '@/lib/db/minio';
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
-        type Role = 'STUDENT' | 'ADMIN' | 'STAFF';
+        type Role = 'STUDENT' | 'ADMIN' | 'STAFF' | 'MANAGER';
 
         const name = formData.get('name')?.toString();
         const email = formData.get('email')?.toString();
@@ -72,6 +72,12 @@ export async function POST(req: NextRequest) {
                         id: user.id
                     }
                 });
+            } else if (user.role === 'MANAGER') {
+                await tx.manager.create({
+                    data: {
+                        id: user.id
+                    }
+                })
             }
 
             return user;
