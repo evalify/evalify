@@ -6,7 +6,7 @@ import { generateQuestionHash } from '@/utils/questionHash';
 export async function POST(req: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
             quizId,
             questionHash: generateQuestionHash(q.question, q.type),
         }));
-        
+
         if (questionsToInsert._id) {
             delete questionsToInsert._id;
         }

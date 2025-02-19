@@ -31,6 +31,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton" // Add this import
 
 type BankWithOwnership = Bank & {
     isOwner: boolean;
@@ -41,6 +42,58 @@ type BankWithOwnership = Bank & {
             email: string;
         }
     }>;
+}
+
+// Add these skeleton components at the top of the file, before the BankPage component
+function BankCardSkeleton() {
+    return (
+        <div className="border rounded-lg p-4 space-y-4">
+            <div className="flex justify-between items-start">
+                <div className="space-y-2">
+                    <Skeleton className="h-5 w-[200px]" />
+                    <Skeleton className="h-4 w-[150px]" />
+                </div>
+                <Skeleton className="h-8 w-8 rounded-md" />
+            </div>
+            <Skeleton className="h-16 w-full" />
+            <div className="flex items-center justify-between pt-2">
+                <Skeleton className="h-4 w-[100px]" />
+                <div className="space-x-2">
+                    <Skeleton className="h-8 w-[60px] inline-block" />
+                    <Skeleton className="h-8 w-[60px] inline-block" />
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function BankTableSkeleton() {
+    return (
+        <div className="border rounded-md">
+            <div className="border-b h-12 px-4 flex items-center bg-muted/50">
+                <div className="flex gap-4 w-full">
+                    <Skeleton className="h-4 w-8" />
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-4 w-[300px]" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-20" />
+                </div>
+            </div>
+            {[...Array(5)].map((_, i) => (
+                <div key={i} className="border-b h-16 px-4 flex items-center">
+                    <div className="flex gap-4 w-full">
+                        <Skeleton className="h-4 w-8" />
+                        <Skeleton className="h-4 w-[200px]" />
+                        <Skeleton className="h-4 w-[300px]" />
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-4 w-20" />
+                        <Skeleton className="h-4 w-20" />
+                    </div>
+                </div>
+            ))}
+        </div>
+    )
 }
 
 function BankPage() {
@@ -135,7 +188,7 @@ function BankPage() {
                 description: "Bank created successfully"
             })
             setOpen(false)
-            fetchBanks()
+            fetchBanks() // Direct fetch after creation
         } catch (error) {
             console.log('Create bank error:', error)
             toast({
@@ -162,7 +215,7 @@ function BankPage() {
 
             toast({ title: "Success", description: "Bank updated successfully" })
             setEditingBank(null)
-            fetchBanks()
+            fetchBanks() // Direct fetch after update
         } catch (error) {
             toast({
                 title: "Error",
@@ -173,26 +226,31 @@ function BankPage() {
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this bank?')) return
+        setConfirmDialog({
+            isOpen: true,
+            title: "Delete Bank",
+            description: "Are you sure you want to delete this bank? This action cannot be undone.",
+            action: async () => {
+                try {
+                    const res = await fetch(`/api/staff/bank/${id}`, {
+                        method: 'DELETE'
+                    })
+                    if (!res.ok) throw new Error('Failed to delete bank')
 
-        try {
-            const res = await fetch(`/api/staff/bank/${id}`, {
-                method: 'DELETE'
-            })
-            if (!res.ok) throw new Error('Failed to delete bank')
-
-            toast({
-                title: "Success",
-                description: "Bank deleted successfully"
-            })
-            fetchBanks()
-        } catch (error) {
-            toast({
-                title: "Error",
-                description: "Failed to delete bank",
-                variant: "destructive"
-            })
-        }
+                    toast({
+                        title: "Success",
+                        description: "Bank deleted successfully"
+                    })
+                    fetchBanks() // Direct fetch after deletion
+                } catch (error) {
+                    toast({
+                        title: "Error",
+                        description: "Failed to delete bank",
+                        variant: "destructive"
+                    })
+                }
+            }
+        });
     }
 
     const searchStaff = async (term: string) => {
@@ -499,7 +557,12 @@ function BankPage() {
 
             {viewMode === 'grid' ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {Array.isArray(banks) && banks.length > 0 ? (
+                    {loading ? (
+                        // Show 6 skeleton cards while loading
+                        [...Array(6)].map((_, i) => (
+                            <BankCardSkeleton key={i} />
+                        ))
+                    ) : Array.isArray(banks) && banks.length > 0 ? (
                         banks.map((bank) => (
                             <Card key={bank.id}>
                                 <CardHeader>
@@ -550,7 +613,7 @@ function BankPage() {
                                         </div>
                                         <div className="space-x-2">
                                             <Button variant="outline" size="sm"
-                                                onClick={() => router.push(`/staff/bank/${bank.id}`)}>
+                                                onClick={() => router.push(`/manager/bank/${bank.id}`)}>
                                                 View
                                             </Button>
                                             {bank.isOwner && (
@@ -584,89 +647,93 @@ function BankPage() {
                 </div>
             ) : (
                 <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className='text-center'>No</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Semester</TableHead>
-                                <TableHead>Topic(s)</TableHead>
-                                <TableHead>Question(s)</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {Array.isArray(banks) && banks.length > 0 ? (
-                                banks.map((bank, index) => (
-                                    <TableRow key={bank.id}>
-                                        <TableCell className='text-center'>{index + 1}</TableCell>
-                                        <TableCell className="font-medium">{bank.name}</TableCell>
-                                        <TableCell className="max-w-[200px] truncate">
-                                            {bank.description || 'No Description'}
-                                        </TableCell>
-                                        <TableCell className='text-center'>S{bank.semester}</TableCell>
-                                        <TableCell className='text-center'>
-                                            {bank.topicsCount || 0}
-                                        </TableCell>
-                                        <TableCell className='text-center'>
-                                            {bank.questions || "-"}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => router.push(`/staff/bank/${bank.id}`)}
-                                                >
-                                                    View
-                                                </Button>
-                                                {bank.isOwner && (
-                                                    <>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                setSelectedBank(bank)
-                                                                setShareOpen(true)
-                                                                fetchSharedStaff(bank.id)
-                                                            }}
-                                                        >
-                                                            Share
-                                                        </Button>
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="sm">
-                                                                    <ChevronDown className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => setEditingBank(bank)}>
-                                                                    Edit
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    onClick={() => handleDelete(bank.id)}
-                                                                    className="text-destructive"
-                                                                >
-                                                                    Delete
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </>
-                                                )}
-                                            </div>
+                    {loading ? (
+                        <BankTableSkeleton />
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className='text-center'>No</TableHead>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead>Semester</TableHead>
+                                    <TableHead>Topic(s)</TableHead>
+                                    <TableHead>Question(s)</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {Array.isArray(banks) && banks.length > 0 ? (
+                                    banks.map((bank, index) => (
+                                        <TableRow key={bank.id}>
+                                            <TableCell className='text-center'>{index + 1}</TableCell>
+                                            <TableCell className="font-medium">{bank.name}</TableCell>
+                                            <TableCell className="max-w-[200px] truncate">
+                                                {bank.description || 'No Description'}
+                                            </TableCell>
+                                            <TableCell className='text-center'>S{bank.semester}</TableCell>
+                                            <TableCell className='text-center'>
+                                                {bank.topicsCount || 0}
+                                            </TableCell>
+                                            <TableCell className='text-center'>
+                                                {bank.questions || "-"}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => router.push(`/manager/bank/${bank.id}`)}
+                                                    >
+                                                        View
+                                                    </Button>
+                                                    {bank.isOwner && (
+                                                        <>
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    setSelectedBank(bank)
+                                                                    setShareOpen(true)
+                                                                    fetchSharedStaff(bank.id)
+                                                                }}
+                                                            >
+                                                                Share
+                                                            </Button>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="sm">
+                                                                        <ChevronDown className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem onClick={() => setEditingBank(bank)}>
+                                                                        Edit
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem
+                                                                        onClick={() => handleDelete(bank.id)}
+                                                                        className="text-destructive"
+                                                                    >
+                                                                        Delete
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                            No question banks found. Create one to get started.
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                                        No question banks found. Create one to get started.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                                )}
+                            </TableBody>
+                        </Table>
+                    )}
                 </div>
             )}
 
@@ -885,13 +952,13 @@ function BankPage() {
 
 // Add loading and auth protection
 function BankPageWrapper() {
-    const { status } = useSession()
+    const { status, data: session } = useSession()
 
     if (status === "loading") {
         return <div>Loading...</div>
     }
 
-    if (status === "unauthenticated") {
+    if (status === "unauthenticated" || session?.user?.role !== "MANAGER") {
         return <div>Access Denied</div>
     }
 

@@ -1,34 +1,91 @@
 import { auth } from "@/lib/auth/auth";
 import clientPromise from "@/lib/db/mongo";
 import { prisma } from "@/lib/db/prismadb";
+import { access } from "fs";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
         const { bankIds, topics, difficulty, types, count, random, quizId } = await req.json();
         const requestedCount = parseInt(count) || 50;
 
+        let authorizedBankIds: string[] = [];
+
         // Validate staff has access to these banks
-        const staff = await prisma.staff.findFirst({
-            where: { id: session.user.id }
-        });
+        if (session.user.role === "MANAGER") {
+            const manager = await prisma.manager.findFirst({
+                where: { id: session.user.id },
+                include: {
+                    class: true
+                }
+            });
 
-        const accessibleBanks = await prisma.bank.findMany({
-            where: {
-                id: { in: bankIds },
-                OR: [
-                    { staffs: { some: { id: staff.id } } },
-                    { bankOwners: { some: { id: staff.id } } }
-                ]
+            // Get all banks that belong to staff members who teach in manager's classes
+            const staffsInClasses = await prisma.staff.findMany({
+                where: {
+                    courses: {
+                        some: {
+                            classId: {
+                                in: manager?.class.map(c => c.id) || []
+                            }
+                        }
+                    }
+                },
+                include: {
+                    bank: true,
+                    bankStaffs: true
+                }
+            });
+
+            authorizedBankIds = [...new Set([
+                ...staffsInClasses.flatMap(staff => staff.bank.map(b => b.id)),
+                ...staffsInClasses.flatMap(staff => staff.bankStaffs.map(b => b.id))
+            ])];
+
+            const hasUnauthorizedBank = bankIds?.some(
+                (bankId: string) => !authorizedBankIds.includes(bankId)
+            );
+
+            if (hasUnauthorizedBank) {
+                return NextResponse.json(
+                    { message: "Unauthorized: Can only search questions from managed banks" },
+                    { status: 403 }
+                );
             }
-        });
+        }
+        else if (session.user.role === "STAFF") {
+            const staff = await prisma.staff.findFirst({
+                where: { id: session.user.id },
+                include: {
+                    bank: true,
+                    bankStaffs: true
+                }
+            });
 
-        const authorizedBankIds = accessibleBanks.map(bank => bank.id);
+            authorizedBankIds = [...new Set([
+                ...(staff?.bank || []).map(b => b.id),
+                ...(staff?.bankStaffs || []).map(b => b.id)
+            ])];
+
+            if (!bankIds.every(id => authorizedBankIds.includes(id))) {
+                return NextResponse.json(
+                    { message: "Unauthorized: Can only search questions from assigned banks" },
+                    { status: 403 }
+                );
+            }
+        }
+
+        if (!authorizedBankIds.length) {
+            return NextResponse.json(
+                { message: "No accessible question banks found" },
+                { status: 404 }
+            );
+        }
 
         // Get existing quiz questions
         const existingQuizQuestions = await (await clientPromise)

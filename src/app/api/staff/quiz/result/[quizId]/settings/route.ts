@@ -11,8 +11,8 @@ export async function GET(
 ) {
     try {
         const session = await auth();
-        const { quizId } = await params;
-        if (!session || session.user.role !== 'STAFF') {
+        const { quizId } = params;
+        if (!session || (session.user.role !== 'STAFF' && session.user.role !== 'MANAGER')) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 

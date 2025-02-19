@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/hooks/use-toast";
-import { Loader2, Search, RefreshCw, LayoutGrid, List } from "lucide-react";
+import { Loader2, Search, RefreshCw, LayoutGrid, List, Check, ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,21 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { createUserWithRole } from "@/lib/actions/user-actions";
+import { cn } from "@/lib/utils";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+} from "@/components/ui/command";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Manager {
 	id: string;
@@ -42,8 +57,14 @@ interface Manager {
 		phoneNo: string | null;
 	};
 	class: {
+		id: string;  // Add id to class interface
 		name: string;
 	}[];
+}
+
+interface Class {
+	id: string;
+	name: string;
 }
 
 export default function ManagerPage() {
@@ -59,6 +80,13 @@ export default function ManagerPage() {
 		email: "",
 		rollNo: "",
 	});
+	const [assignClassDialogOpen, setAssignClassDialogOpen] = useState(false);
+	const [selectedManager, setSelectedManager] = useState<Manager | null>(null);
+	const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
+	const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+	const [classSearch, setClassSearch] = useState("");
+	const [filteredClasses, setFilteredClasses] = useState<Class[]>([]);
+	const [openClassSelect, setOpenClassSelect] = useState(false);
 
 	const fetchManagers = async (searchQuery: string = "") => {
 		try {
@@ -136,6 +164,65 @@ export default function ManagerPage() {
 		}
 	};
 
+	const fetchAvailableClasses = async () => {
+		try {
+			const response = await fetch('/api/admin/classes');
+			const data = await response.json();
+			if (response.ok) {
+				setAvailableClasses(data.classes || []);
+			}
+		} catch (error) {
+			toast({
+				variant: "destructive",
+				title: "Error",
+				description: "Failed to fetch available classes",
+			});
+		}
+	};
+
+	const handleAssignClasses = async () => {
+		try {
+			const response = await fetch('/api/admin/managers/assign-classes', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					managerId: selectedManager?.id,
+					classIds: selectedClasses,
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to assign classes');
+			}
+
+			toast({
+				title: "Success",
+				description: "Classes assigned successfully",
+			});
+			fetchManagers(search);
+			setAssignClassDialogOpen(false);
+			setSelectedManager(null);
+			setSelectedClasses([]);
+		} catch (error) {
+			toast({
+				variant: "destructive",
+				title: "Error",
+				description: "Failed to assign classes",
+			});
+		}
+	};
+
+	const handleClassAssignmentClick = (manager: Manager) => {
+		setSelectedManager(manager);
+		// Ensure we have valid class IDs before setting them
+		const validClassIds = manager.class
+			.filter(cls => cls.id)
+			.map(cls => cls.id);
+		setSelectedClasses(validClassIds);
+		fetchAvailableClasses();
+		setAssignClassDialogOpen(true);
+	};
+
 	useEffect(() => {
 		const debounce = setTimeout(() => {
 			fetchManagers(search);
@@ -143,6 +230,30 @@ export default function ManagerPage() {
 
 		return () => clearTimeout(debounce);
 	}, [search]);
+
+	useEffect(() => {
+		if (availableClasses && availableClasses.length > 0) {
+			setFilteredClasses(
+				availableClasses.filter(cls =>
+					cls.name.toLowerCase().includes(classSearch.toLowerCase())
+				)
+			);
+		} else {
+			setFilteredClasses([]);
+		}
+	}, [classSearch, availableClasses]);
+
+	const handleClassSelect = (classId: string) => {
+		setSelectedClasses(current => {
+			const isSelected = current.includes(classId);
+			if (isSelected) {
+				return current.filter(id => id !== classId);
+			} else {
+				return [...current, classId];
+			}
+		});
+		setOpenClassSelect(false); // Close the popover after selection
+	};
 
 	if (loading) {
 		return (
@@ -170,8 +281,8 @@ export default function ManagerPage() {
 							<h3 className="text-sm font-semibold mb-1">Classes Managing:</h3>
 							{manager.class && manager.class.length > 0 ? (
 								<ul className="text-sm text-gray-600">
-									{manager.class.map((cls, index) => (
-										<li key={index} className="mb-1">
+									{manager.class.map((cls) => (
+										<li key={`${manager.id}-${cls.id}`} className="mb-1">
 											{cls.name}
 										</li>
 									))}
@@ -182,15 +293,23 @@ export default function ManagerPage() {
 								</p>
 							)}
 						</div>
-						<div className="border-t pt-2 mt-2">
+						<div className="border-t pt-2 mt-2 flex gap-2">
 							<Button
 								variant="destructive"
 								size="sm"
-								className="w-full"
+								className="flex-1"
 								onClick={() => setResetPasswordFor(manager.user.email)}
 							>
 								<RefreshCw className="h-4 w-4 mr-2" />
 								Reset Password
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								className="flex-1"
+								onClick={() => handleClassAssignmentClick(manager)}
+							>
+								Assign Classes
 							</Button>
 						</div>
 					</CardContent>
@@ -223,8 +342,9 @@ export default function ManagerPage() {
 							</TableCell>
 							<TableCell>{manager.user.email}</TableCell>
 							<TableCell>
-								{manager.class.map((cls) => cls.name).join(", ") ||
-									"No classes"}
+								{manager.class.length > 0
+									? manager.class.map((cls) => cls.name).join(", ")
+									: "No classes"}
 							</TableCell>
 							<TableCell>
 								<Button
@@ -235,12 +355,101 @@ export default function ManagerPage() {
 									<RefreshCw className="h-4 w-4 mr-2" />
 									Reset Password
 								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => handleClassAssignmentClick(manager)}
+								>
+									Assign Classes
+								</Button>
 							</TableCell>
 						</TableRow>
 					))}
 				</TableBody>
 			</Table>
 		</div>
+	);
+
+	const renderClassSelectionDialog = () => (
+		<Dialog open={assignClassDialogOpen} onOpenChange={setAssignClassDialogOpen}>
+			<DialogContent className="sm:max-w-[525px]">
+				<DialogHeader>
+					<DialogTitle>Assign Classes to Manager</DialogTitle>
+				</DialogHeader>
+				<div className="flex flex-col gap-4">
+					<div className="text-sm text-gray-500">
+						Assigning classes for: {selectedManager?.user.name}
+					</div>
+
+					<div className="flex flex-col gap-2">
+						<Input
+							placeholder="Search classes..."
+							value={classSearch}
+							onChange={(e) => setClassSearch(e.target.value)}
+						/>
+
+						<ScrollArea className="h-[200px] w-full border rounded-md p-2">
+							{filteredClasses.length > 0 ? (
+								<div className="space-y-2">
+									{filteredClasses.map((cls) => (
+										<div
+											key={`available-${cls.id}`}
+											className="flex items-center space-x-2 p-2 hover:bg-accent rounded-sm cursor-pointer"
+											onClick={() => handleClassSelect(cls.id)}
+										>
+											<input
+												type="checkbox"
+												checked={selectedClasses.includes(cls.id)}
+												onChange={() => { }}
+												className="h-4 w-4"
+											/>
+											<span>{cls.name}</span>
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="p-2 text-center text-muted-foreground">
+									No classes found
+								</div>
+							)}
+						</ScrollArea>
+					</div>
+
+					<div className="flex flex-wrap gap-2">
+						{selectedClasses.map((classId) => {
+							const cls = availableClasses.find((c) => c.id === classId);
+							if (!cls) return null;
+							return (
+								<Badge
+									key={`selected-${classId}`}
+									variant="secondary"
+									className="px-2 py-1"
+								>
+									{cls.name}
+									<button
+										type="button"
+										className="ml-2 hover:text-destructive"
+										onClick={(e) => {
+											e.stopPropagation();
+											handleClassSelect(cls.id);
+										}}
+									>
+										×
+									</button>
+								</Badge>
+							);
+						})}
+					</div>
+
+					<Button
+						onClick={handleAssignClasses}
+						disabled={selectedClasses.length === 0}
+					>
+						Save Changes
+					</Button>
+				</div>
+			</DialogContent>
+		</Dialog>
 	);
 
 	return (
@@ -343,6 +552,8 @@ export default function ManagerPage() {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			{renderClassSelectionDialog()}
 
 			{managers.length === 0 && !loading && (
 				<div className="text-center text-gray-500 mt-8">No managers found</div>

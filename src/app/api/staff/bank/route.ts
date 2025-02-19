@@ -16,12 +16,16 @@ export async function GET(req: Request) {
         const semester = searchParams.get('semester') || ''
         const sort = searchParams.get('sort') || 'name'
 
-        const staff = await prisma.staff.findFirst({
+        // For managers, we don't need staff id
+        const staff = session.user.role === "MANAGER" ? null : await prisma.staff.findFirst({
             where: { id: session.user.id }
         });
 
-        // Try to get from cache first
-        const cacheKey = CACHE_KEYS.bankSearch(query + semester + sort, staff.id)
+        // Try to get from cache for both managers and staff
+        const cacheKey = session.user.role === "MANAGER"
+            ? CACHE_KEYS.bankSearch(query + semester + sort, 'manager')
+            : CACHE_KEYS.bankSearch(query + semester + sort, staff?.id)
+
         const cached = await redis.get(cacheKey)
         if (cached) {
             return NextResponse.json(JSON.parse(cached))
@@ -49,7 +53,7 @@ export async function GET(req: Request) {
                 orderBy = { name: 'asc' };
         }
 
-        // Modify query based on role
+        // Modify where clause based on role
         const whereClause = session.user.role === "MANAGER"
             ? {
                 AND: [
@@ -64,8 +68,8 @@ export async function GET(req: Request) {
             }
             : {
                 OR: [
-                    { staffs: { some: { id: staff.id } } },
-                    { bankOwners: { some: { id: staff.id } } }
+                    { staffs: { some: { id: staff?.id } } },
+                    { bankOwners: { some: { id: staff?.id } } }
                 ],
                 AND: [
                     {
@@ -110,7 +114,7 @@ export async function GET(req: Request) {
 
         const banksWithOwnership = banks.map(bank => ({
             ...bank,
-            isOwner: session.user.role === "MANAGER" ? true : bank.bankOwners.some(owner => owner.id === staff.id)
+            isOwner: session.user.role === "MANAGER" || bank.bankOwners.some(owner => owner.id === staff?.id)
         }))
 
         // Get number of questions in each bank from mongoDB and include topic count
@@ -123,6 +127,7 @@ export async function GET(req: Request) {
             }
         }))
 
+        // Cache for both managers and staff
         await redis.setex(cacheKey, 300, JSON.stringify(banksWithQuestions))
 
         return NextResponse.json(banksWithQuestions)
@@ -139,6 +144,51 @@ export async function POST(req: Request) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
+        const body = await req.json()
+        const { name, description, semester } = body
+
+        // For managers, we'll create the bank without requiring a staff record
+        if (session.user.role === "MANAGER") {
+            const bank = await prisma.bank.create({
+                data: {
+                    name,
+                    description,
+                    semester,
+                    createdAt: new Date(),
+                },
+                include: {
+                    bankOwners: {
+                        select: {
+                            id: true,
+                            user: {
+                                select: {
+                                    name: true,
+                                    email: true
+                                }
+                            }
+                        }
+                    },
+                    staffs: {
+                        select: {
+                            id: true,
+                            user: {
+                                select: {
+                                    name: true,
+                                    email: true
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+
+            // Just clear manager's cache
+            await clearBankCache('manager')
+
+            return NextResponse.json(bank, { status: 201 })
+        }
+
+        // For staff members, continue with existing logic
         const staff = await prisma.staff.findFirst({
             where: {
                 id: session.user.id
@@ -148,9 +198,6 @@ export async function POST(req: Request) {
         if (!staff) {
             return NextResponse.json({ message: "Staff record not found" }, { status: 404 })
         }
-
-        const body = await req.json()
-        const { name, description, semester } = body
 
         const bank = await prisma.bank.create({
             data: {
@@ -194,7 +241,12 @@ export async function POST(req: Request) {
                 }
             }
         })
-        await clearBankCache(staff.id)
+
+        // Clear cache for both staff and manager
+        await Promise.all([
+            clearBankCache(staff.id),
+            clearBankCache('manager')
+        ])
 
         return NextResponse.json(bank, { status: 201 })
     } catch (error) {

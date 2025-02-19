@@ -7,15 +7,22 @@ import { NextResponse } from "next/server";
 export async function GET() {
     try {
         const classes = await prisma.class.findMany({
-            include: {
-                _count: {
-                    select: { students: true }
-                }
+            select: {
+                id: true,
+                name: true,
+                department: true,
+                semester: true,
+                batch: true,
             }
         });
-        return NextResponse.json(classes);
+
+        return NextResponse.json(classes);  // Return array directly instead of {classes}
     } catch (error) {
-        return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
+        console.error("Error fetching classes:", error);
+        return NextResponse.json(
+            { error: "Failed to fetch classes" },
+            { status: 500 }
+        );
     }
 }
 

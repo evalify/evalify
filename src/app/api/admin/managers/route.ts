@@ -6,7 +6,7 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const search = searchParams.get('search') || '';
 
-        console.log({search})
+        console.log({ search })
         const managers = await prisma.manager.findMany({
             where: {
                 user: {
@@ -25,6 +25,7 @@ export async function GET(request: Request) {
                 },
                 class: {
                     select: {
+                        id: true,  // Include id in the selection
                         name: true,
                     }
                 }

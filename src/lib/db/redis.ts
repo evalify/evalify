@@ -74,7 +74,7 @@ export const CACHE_KEYS = {
     studentResult: (studentId: string) => `student:${studentId}:result`,
     quizReport: (quizId: string) => `quiz:${quizId}:report`,
     banks: (staffId: string) => `staff:${staffId}:banks`,
-    bankSearch: (query: string, staffId: string) => `bank:search:${staffId}:${query}`,
+    bankSearch: (query: string, userId: string) => `bank:search:${query}:${userId}`,
     bankList: (staffId: string) => `bank:list:${staffId}`,
     studentDashboard: (studentId: string) => `student:${studentId}:dashboard`,
     studentPerformance: (studentId: string) => `student:${studentId}:performance`,
@@ -97,11 +97,11 @@ export const clearStudentResultCache = async (studentId: string, quizId: string)
     ]);
 };
 
-export const clearBankCache = async (staffId: string) => {
+export const clearBankCache = async (userId: string) => {
     const redis = RedisClient.getInstance();
-    const keys = await redis.keys(`bank:*:${staffId}:*`);
-    if (keys.length) {
-        await redis.del(...keys);
+    const keys = await redis.keys(`bank:search:*:${userId}`);
+    if (keys.length > 0) {
+        await redis.del(keys);
     }
 };
 
