@@ -168,15 +168,30 @@ export default function ManagerPage() {
 		try {
 			const response = await fetch('/api/admin/classes');
 			const data = await response.json();
-			if (response.ok) {
-				setAvailableClasses(data.classes || []);
+
+			console.log('Classes API Response:', data); // Debug log
+
+			if (!response.ok) {
+				throw new Error(data.error || 'Failed to fetch classes');
 			}
+
+			if (!Array.isArray(data.classes)) {
+				throw new Error('Invalid classes data received');
+			}
+
+			setAvailableClasses(data.classes);
+			setFilteredClasses(data.classes);
+
+			console.log('Available Classes:', data.classes); // Debug log
 		} catch (error) {
+			console.error('Error fetching classes:', error); // Debug log
 			toast({
 				variant: "destructive",
 				title: "Error",
 				description: "Failed to fetch available classes",
 			});
+			setAvailableClasses([]);
+			setFilteredClasses([]);
 		}
 	};
 
@@ -212,15 +227,19 @@ export default function ManagerPage() {
 		}
 	};
 
-	const handleClassAssignmentClick = (manager: Manager) => {
+	const handleClassAssignmentClick = async (manager: Manager) => {
 		setSelectedManager(manager);
-		// Ensure we have valid class IDs before setting them
+		setClassSearch(''); // Reset search
 		const validClassIds = manager.class
 			.filter(cls => cls.id)
 			.map(cls => cls.id);
 		setSelectedClasses(validClassIds);
-		fetchAvailableClasses();
+
+		console.log('Opening dialog for manager:', manager.user.name); // Debug log
 		setAssignClassDialogOpen(true);
+
+		// Fetch classes after dialog is opened
+		await fetchAvailableClasses();
 	};
 
 	useEffect(() => {
@@ -232,14 +251,13 @@ export default function ManagerPage() {
 	}, [search]);
 
 	useEffect(() => {
-		if (availableClasses && availableClasses.length > 0) {
-			setFilteredClasses(
-				availableClasses.filter(cls =>
-					cls.name.toLowerCase().includes(classSearch.toLowerCase())
-				)
-			);
+		if (classSearch.trim() === '') {
+			setFilteredClasses(availableClasses);
 		} else {
-			setFilteredClasses([]);
+			const filtered = availableClasses.filter(cls =>
+				cls.name.toLowerCase().includes(classSearch.toLowerCase().trim())
+			);
+			setFilteredClasses(filtered);
 		}
 	}, [classSearch, availableClasses]);
 
@@ -382,6 +400,20 @@ export default function ManagerPage() {
 					</div>
 
 					<div className="flex flex-col gap-2">
+						<div className="mb-2">
+							<h3 className="text-sm font-medium mb-2">Currently Assigned Classes:</h3>
+							<div className="flex flex-wrap gap-2 mb-4">
+								{selectedManager?.class.map((cls) => (
+									<Badge key={cls.id} variant="secondary">
+										{cls.name}
+									</Badge>
+								))}
+								{selectedManager?.class.length === 0 && (
+									<span className="text-sm text-muted-foreground">No classes currently assigned</span>
+								)}
+							</div>
+						</div>
+
 						<Input
 							placeholder="Search classes..."
 							value={classSearch}
@@ -409,7 +441,7 @@ export default function ManagerPage() {
 								</div>
 							) : (
 								<div className="p-2 text-center text-muted-foreground">
-									No classes found
+									{classSearch.trim() ? "No matching classes found" : "Loading classes..."}
 								</div>
 							)}
 						</ScrollArea>

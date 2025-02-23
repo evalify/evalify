@@ -18,7 +18,12 @@ export async function GET(req: Request) {
                         include: {
                             courses: {
                                 include: {
-                                    class: true
+                                    class: true,
+                                    _count: {
+                                        select: {
+                                            quizzes: true
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -27,16 +32,26 @@ export async function GET(req: Request) {
             });
 
             // Flatten courses from all assigned classes
-            const courses = manager?.class.flatMap(cls => cls.courses) || [];
+            const courses = manager?.class.flatMap(cls =>
+                cls.courses.map(course => ({
+                    ...course,
+                    _count: course._count
+                }))
+            ) || [];
             return NextResponse.json(courses);
         } else {
-            // Existing staff logic
+            // For staff members
             const courses = await prisma.course.findMany({
                 where: {
                     staffId: session.user.id,
                 },
                 include: {
                     class: true,
+                    _count: {
+                        select: {
+                            quizzes: true
+                        }
+                    }
                 }
             });
             return NextResponse.json(courses);

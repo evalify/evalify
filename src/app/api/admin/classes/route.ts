@@ -10,13 +10,13 @@ export async function GET() {
             select: {
                 id: true,
                 name: true,
-                department: true,
-                semester: true,
-                batch: true,
+            },
+            orderBy: {
+                name: 'asc'
             }
         });
 
-        return NextResponse.json(classes);  // Return array directly instead of {classes}
+        return NextResponse.json({ classes });
     } catch (error) {
         console.error("Error fetching classes:", error);
         return NextResponse.json(

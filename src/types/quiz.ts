@@ -1,3 +1,16 @@
+export interface Course {
+    id: string;
+    name: string;
+    code: string;
+    class: {
+        name: string;
+        department: string;
+    };
+    _count?: {
+        quizzes: number;
+    };
+}
+
 export interface Quiz {
     _id: string;
     title: string;

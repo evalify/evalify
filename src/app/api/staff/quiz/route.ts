@@ -129,12 +129,38 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
     try {
         const session = await auth();
+        const courseId = new URL(req.url).searchParams.get('courseId');
+        if (session?.user.role =="MANAGER" && courseId) {
+            const quiz = await prisma.quiz.findMany({
+                where: {
+                    courses: {
+                        some: {
+                            id: courseId
+                        }
+                    }
+                },
+                include: {
+                    settings: true,
+                    courses: {
+                        include: {
+                            class: true
+                        }
+                    }
+                },
+                distinct: ['id'],
+                orderBy: {
+                    startTime: 'desc'
+                }
+            });
+
+            return NextResponse.json(quiz);
+        }
+
         if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
         if (session.user.role === "MANAGER") {
-            // Get unique quizzes for classes managed by this manager
             const quizzes = await prisma.quiz.findMany({
                 where: {
                     courses: {
