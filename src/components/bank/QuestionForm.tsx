@@ -4,7 +4,6 @@ import { useToast } from "@/components/hooks/use-toast";
 import { Code, FileText, ListChecks, ToggleLeft, Type, Plus, X, AlertTriangle, Check, Sparkles, ImageIcon, Upload, RotateCcw, Loader2, Trash2, Download } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
 import { Question, QuestionType, DifficultyLevel, MCQQuestion, CodingQuestion } from "@/types/questions";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,15 +14,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { CustomImage } from '@/components/ui/custom-image';
 import { v4 as uuidv4 } from 'uuid';
 import { LatexPreview } from '@/components/latex-preview';
-import EnhancedEditor from '../codeEditor/enhanced-editor';
 import { Language, LANGUAGE_CONFIGS } from '@/lib/programming-languages';
 import { generateTestCode } from '@/lib/test-templates';
 import CodeEditor from '../codeEditor/CodeEditor';
 import { CodingQuestionForm } from './CodingQuestionForm';
 import { generateDriverCode } from '@/lib/test-templates';
 import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TestCaseGenerator } from '../codeEditor/test-case-generator';
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -147,7 +143,7 @@ export default function EnhancedQuestionForm(props: QuestionFormProps) {
     const { toast } = useToast();
     const [type, setType] = useState<QuestionType>(editingQuestion?.type || "MCQ");
     const [content, setContent] = useState(editingQuestion?.question || "");
-    co    s    nst [difficulty, setDifficulty] = useState<DifficultyLevel>(
+    const [difficulty, setDifficulty] = useState<DifficultyLevel>(
         editingQuestion?.difficulty || "EASY"
     );
     const [marks, setMarks] = useState(

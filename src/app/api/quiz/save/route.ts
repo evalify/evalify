@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
         // Use transaction with timeout to ensure atomicity
         const result = await Promise.race([
-            prisma.$transactionasync (tx) => 
+            prisma.$transaction(async (tx) => {
                 // Fetch quiz details first
                 const quiz = await tx.quiz.findUnique({
                     where: { id: response.quizId },
@@ -81,9 +81,9 @@ export async function POST(req: Request) {
                 });
 
                 return updated;
-            , {
+            }, {
                 timeout: 50000 
-            },
+            }),
             new Promise((_, reject) => 
                 setTimeout(() => reject(new Error("Request timeout")), 55000)
             )
