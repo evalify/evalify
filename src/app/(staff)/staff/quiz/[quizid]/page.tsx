@@ -448,23 +448,23 @@ export default function QuizPage() {
                             <div>
                                 <p className="text-sm text-gray-500">Start Time</p>
                                 <p className="text-lg font-semibold">
-                                    {new Date(quizDetails.startTime).toLocaleDateString('en-US', {
+                                    {quizDetails.startTime ? new Date(quizDetails.startTime).toLocaleDateString('en-US', {
                                         day: 'numeric',
                                         month: 'short',
                                         hour: '2-digit',
                                         minute: '2-digit'
-                                    })}
+                                    }) : '-'}
                                 </p>
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500">End Time</p>
                                 <p className="text-lg font-semibold">
-                                    {new Date(quizDetails.endTime).toLocaleDateString('en-US', {
+                                    {quizDetails.endTime ? new Date(quizDetails.endTime).toLocaleDateString('en-US', {
                                         day: 'numeric',
                                         month: 'short',
                                         hour: '2-digit',
                                         minute: '2-digit'
-                                    })}
+                                    }) : '-'}
                                 </p>
                             </div>
                             <div>

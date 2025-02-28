@@ -78,11 +78,24 @@ interface CodeFile {
     content: string
 }
 
+interface FunctionDetails {
+    functionName: string;
+}
+
+interface TestCase {
+    id: string;
+    inputs: any[];
+    output: any;
+}
+
 interface CodeEditorProps {
     files: CodeFile[];
     activeFileId: string;
     onFileChange: (files: CodeFile[]) => void;
     onActiveFileChange: (fileId: string) => void;
+    functionDetails?: FunctionDetails;
+    testCases?: TestCase[];
+    showConsole?: boolean;
 }
 
 class EditorErrorBoundary extends React.Component<
@@ -104,14 +117,22 @@ class EditorErrorBoundary extends React.Component<
 
     render() {
         if (this.state.hasError) {
-            return null // Silently recover
+            return null 
         }
 
         return this.props.children
     }
 }
 
-export function CodeEditor({ files, activeFileId, onFileChange, onActiveFileChange }: CodeEditorProps) {
+export default function CodeEditor({
+    files,
+    activeFileId,
+    onFileChange,
+    onActiveFileChange,
+    functionDetails,
+    testCases,
+    showConsole = false
+}: CodeEditorProps) {
     const functions = [
         'abs', 'angle', 'asin', 'acos', 'atan', 'atan2', 'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'exp',
         'log', 'log10', 'sqrt', 'sum', 'prod', 'mean', 'std', 'var', 'max', 'min', 'rand', 'randn', 'round',
@@ -133,7 +154,7 @@ export function CodeEditor({ files, activeFileId, onFileChange, onActiveFileChan
 
     const [showOutput, setShowOutput] = React.useState(false)
     const [output, setOutput] = React.useState("")
-    const [isVertical, setIsVertical] = React.useState(true)
+    const [isVertical, setIsVertical] = React.useState(false)
     const { theme, systemTheme } = useTheme()
     const [mounted, setMounted] = React.useState(false)
     const editorRef = React.useRef(null)
@@ -309,7 +330,7 @@ export function CodeEditor({ files, activeFileId, onFileChange, onActiveFileChan
                     onToggleOrientation={toggleOrientation}
                     language={activeFile.language}
                     onLanguageChange={handleLanguageChange}
-                />
+                                    />
                 <EditorTabs
                     tabs={files}
                     activeTab={activeFileId}
@@ -369,6 +390,4 @@ export function CodeEditor({ files, activeFileId, onFileChange, onActiveFileChan
         </div>
     )
 }
-
-export default CodeEditor
 

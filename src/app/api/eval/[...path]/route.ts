@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Define the target API to which requests will be redirected
 const TARGET_API = `${process.env.EVALUATION_API}`;
 
 

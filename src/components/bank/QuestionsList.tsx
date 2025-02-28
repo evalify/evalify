@@ -1,18 +1,31 @@
+import type { Question, CodingQuestion, DifficultyLevel } from "@/types/questions";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Question } from "@/types/questions";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { MoreVertical, Edit2, Trash2, Code, FileText, ListChecks, Type, Plus, X, Upload, FileDown } from "lucide-react";
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/hooks/use-toast";
+import { Card } from "../ui/card";
+import { AlertDialog } from "../ui/alert-dialog";
+import { Dialog } from "../ui/dialog";
+import { Language } from "@/lib/programming-languages";
+
+interface CodeFile {
+    id: string;
+    name: string;
+    language: string;
+    content: string;
+}
+
+interface FunctionDetails {
+    functionName: string;
+    params: Array<{ name: string; type: string }>;
+    returnType: string;
+    language: Language;
+}
+
+import { CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Code, FileText, ListChecks, Type, X, Upload, Check } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import {
-    AlertDialog,
     AlertDialogAction,
     AlertDialogCancel,
     AlertDialogContent,
@@ -25,6 +38,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import TiptapRenderer from '@/components/ui/tiptap-renderer';
 import { LatexPreview } from '@/components/latex-preview';
 import { CustomImage } from '@/components/ui/custom-image';
+import { Label } from "@/components/ui/label";
+import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import CodeEditor from '../codeEditor/CodeEditor';
 
 interface Topic {
     id: string;
@@ -37,18 +53,25 @@ interface QuestionsListProps {
     bankId: string;
     topic: string[];
     onEdit: (question: Question) => void;
-    allTopics: string[];
+    topics: Topic[];
     editingQuestion: Question | null;
     requireTopics?: boolean;
     showActions?: boolean;
-    onDelete?: (questionId: string) => void; // Make onDelete optional
+    onDelete?: (questionId: string) => void;
 }
+
+const difficultyColors: Record<DifficultyLevel, string> = {
+    EASY: "bg-green-100 text-green-800",
+    MEDIUM: "bg-yellow-100 text-yellow-800",
+    HARD: "bg-red-100 text-red-800"
+};
 
 export default function QuestionsList({
     questions,
     onEdit,
     bankId,
     topic,
+    topics = [], // Add default empty array
     onQuestionUpdate,
     editingQuestion,
     requireTopics = true,
@@ -61,13 +84,19 @@ export default function QuestionsList({
         questionId: null
     });
 
-    const [availableTopics, setAvailableTopics] = useState<string[]>([]);
-    const [inputValue, setInputValue] = useState('');
+    const [practiceDialog, setPracticeDialog] = useState<{ isOpen: boolean, questionId: string | null }>({
+        isOpen: false,
+        questionId: null
+    });
+
+    const [userCode, setUserCode] = useState<string>("");
+
+    const [availableTopicsList, setAvailableTopicsList] = useState<string[]>([]);
+    const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
 
     const handleCreateTopic = (newTopic: string) => {
-        setAvailableTopics(prev => [...prev, newTopic]);
+        setAvailableTopicsList(prev => [...prev, newTopic]);
     };
-
 
     useEffect(() => {
         const fetchBankTopics = async () => {
@@ -76,25 +105,33 @@ export default function QuestionsList({
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.message || 'Failed to fetch topics');
+                    // Instead of throwing, we'll just set empty topics
+                    console.warn('Failed to fetch topics:', data.message);
+                    setAvailableTopicsList([]);
+                    return;
                 }
 
-                setAvailableTopics(data.topics || []);
+                setAvailableTopicsList(data.topics || []);
             } catch (error) {
-                console.log('Error fetching topics:', error);
-                setAvailableTopics([]);
+                console.error('Error fetching topics:', error);
+                setAvailableTopicsList([]);
             }
         };
 
         fetchBankTopics();
     }, [bankId]);
 
-
     const validQuestions = useMemo(() => {
-        return Array.isArray(questions) ? questions : [];
+        return questions ?? [];
     }, [questions]);
 
+    const availableTopics = useMemo(() => {
+        if (!topics || !Array.isArray(topics)) return [];
+        return topics.filter(topic => !selectedTopics.includes(topic.id));
+    }, [topics, selectedTopics]);
+
     const handleDelete = async (questionId: string) => {
+        if (!questionId) return;
         try {
             if (onDelete) {
                 await onDelete(questionId);
@@ -124,7 +161,7 @@ export default function QuestionsList({
     };
 
     const handleTopicSelect = async (questionId: string, topicId: string, existingTopics: string[]) => {
-        const updatedTopics = [...existingTopics, topicId];
+        const updatedTopics = [...(existingTopics || []), topicId];
         try {
             const response = await fetch(`/api/staff/bank/${bankId}/questions/${questionId}/topics`, {
                 method: 'PATCH',
@@ -198,8 +235,27 @@ export default function QuestionsList({
         onEdit(question);
     };
 
+    const topicMap = useMemo(() => {
+        const map = new Map<string, string>();
+        if (topics && Array.isArray(topics)) {
+            topics.forEach((t: Topic) => map.set(t.id, t.name));
+        }
+        return map;
+    }, [topics]);
+
+    interface TestCase {
+        inputs: any[];
+        output: any;
+    }
+
+    const handlePracticeCode = (files: CodeFile[]) => {
+        if (files[0]) {
+            setUserCode(files[0].content);
+        }
+    };
+
     const renderQuestionCard = useCallback((question: Question, index: number) => {
-        const questionId = question._id || question.id;
+        const questionId = question._id || question.id || '';
         const generateKey = (prefix: string) => `${questionId}-${prefix}`;
 
         return (
@@ -209,98 +265,71 @@ export default function QuestionsList({
                         <div className="space-y-2 flex-1">
                             <span className="font-medium">Question {index + 1}</span>
                             <div className="flex items-center gap-2 text-muted-foreground">
-                                {getQuestionIcon(question.type)}
-                                <span className="text-sm">{question.type}</span>
+                                <div className="flex items-center gap-1.5">
+                                    {getQuestionIcon(question.type)}
+                                    <span className="text-sm">{question.type}</span>
+                                </div>
+                                <span className="text-sm px-2 py-0.5 rounded-full bg-muted">
+                                    {question.mark} marks
+                                </span>
+                                <span className={`text-sm px-2 py-0.5 rounded-full ${difficultyColors[question.difficulty]}`}>
+                                    {question.difficulty}
+                                </span>
+                                <span className="text-sm px-2 py-0.5 rounded-full bg-muted">
+                                    {question.bloomsLevel}
+                                </span>
+                                {question.courseOutcome && (
+                                    <span className="text-sm px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                                        {question.courseOutcome}
+                                    </span>
+                                )}
                             </div>
                             <div className="prose dark:prose-invert max-w-none">
                                 <TiptapRenderer content={question.question} />
                             </div>
                         </div>
                         <div className="flex items-start gap-2">
-                            <div className="flex flex-col items-end gap-2">
-                                <Badge variant={
-                                    question.difficulty === 'EASY' ? 'secondary' :
-                                        question.difficulty === 'MEDIUM' ? 'default' : 'destructive'
-                                }>
-                                    {question.difficulty}
-                                </Badge>
-                                <Badge variant="outline">{`${question.mark || question.marks} marks`}</Badge>
-                            </div>
                             {showActions && (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-40 z-50">
-                                        <DropdownMenuItem onClick={() => handleEdit({
-                                            ...question,
-                                            id: questionId,
-                                            topics: question.topics || [],
-                                            options: question.options || [],
-                                            answer: question.answer || [],
-                                            expectedAnswer: question.expectedAnswer || '',
-                                            mark: question.mark || 1
-                                        })}>
-                                            <Edit2 className="h-4 w-4 mr-2" />
-                                            Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            className="text-destructive"
-                                            onClick={() => setDeleteDialog({
-                                                isOpen: true,
-                                                questionId: questionId
-                                            })}
-                                        >
-                                            <Trash2 className="h-4 w-4 mr-2" />
-                                            Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleEdit(question)}
+                                        disabled={editingQuestion?._id === question._id}
+                                    >
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setDeleteDialog({ isOpen: true, questionId: questionId })}
+                                    >
+                                        Delete
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     </div>
-                    {/* Only show topics section if required */}
                     {requireTopics && (
                         <div className="flex flex-row justify-between">
                             <div className="flex flex-wrap gap-2">
                                 {question.topics?.map((topicId) => (
-                                    <Badge key={topicId} variant="outline" className="flex items-center gap-1">
-                                        {(availableTopics.find(t => t.id === topicId))?.name || topicId}
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                handleRemoveTopic(questionId, topicId, question.topics || []);
-                                            }}
-                                            className="ml-1 hover:text-destructive"
-                                        >
-                                            <X className="h-3 w-3" />
-                                        </button>
+                                    <Badge key={topicId} variant="secondary">
+                                        {topicMap.get(topicId) || 'Unknown Topic'}
                                     </Badge>
                                 ))}
                             </div>
                             <div className="flex items-center gap-2">
-                                <span className="text-sm text-muted-foreground">Add Topic:</span>
-                                <Select
-                                    onValueChange={(value) => handleTopicSelect(questionId, value, question.topics || [])}
-                                >
-                                    <SelectTrigger className="w-64">
-                                        <SelectValue>
-                                            <span>Add Topic</span>
-                                        </SelectValue>
+                                <Select onValueChange={(value) => handleTopicSelect(questionId, value, question.topics || [])}>
+                                    <SelectTrigger className="w-[180px]">
+                                        <SelectValue placeholder={availableTopics.length === 0 ? "All topics selected" : "Add topic..."} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {availableTopics
-                                            .filter(topic => !(question.topics || []).includes(topic.id))
-                                            .map((topic) => (
-                                                <SelectItem key={topic.id} value={topic.id}>
-                                                    <div className="flex items-center gap-2">
-                                                        <Plus className="h-4 w-4" />
-                                                        <span>{topic.name}</span>
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
+                                        {availableTopics.map((topic: Topic) => (
+                                            <SelectItem key={topic.id} value={topic.id}>
+                                                {topic.name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -308,29 +337,29 @@ export default function QuestionsList({
                     )}
                 </CardHeader>
                 <CardContent>
-                    {/* Question type specific content */}
                     <div className="pl-6 border-l-2 border-muted">
                         {(question.type === 'MCQ' || question.type === 'TRUE_FALSE') && (
                             <div className="space-y-2">
                                 {question.options?.map((option) => (
                                     <div
                                         key={option.optionId}
-                                        className={`p-2 rounded ${question.answer.includes(option.optionId)
-                                            ? 'bg-green-100 dark:bg-green-900'
-                                            : 'bg-gray-50 dark:bg-gray-800'
+                                        className={`flex items-start gap-2 p-2 rounded-lg ${question.answer?.includes(option.optionId)
+                                                ? 'bg-green-500/10 dark:bg-green-500/20'
+                                                : 'bg-muted/50'
                                             }`}
                                     >
-                                        <div className="flex items-center gap-4">
-                                            {/* Option text with LaTeX support */}
-                                            <div className="flex-1">
-                                                <LatexPreview content={option.option} />
-                                            </div>
-                                            {/* Option image if exists */}
+                                        {question.answer?.includes(option.optionId) ? (
+                                            <Check className="h-5 w-5 text-green-500 mt-0.5" />
+                                        ) : (
+                                            <X className="h-5 w-5 text-muted-foreground mt-0.5" />
+                                        )}
+                                        <div className="space-y-1">
+                                            <LatexPreview content={option.option} />
                                             {option.image && (
                                                 <CustomImage
                                                     src={option.image}
-                                                    alt={`Option ${option.option}`}
-                                                    className="rounded"
+                                                    alt={`Option ${option.optionId}`}
+                                                    className="mt-2 rounded-lg border"
                                                 />
                                             )}
                                         </div>
@@ -344,49 +373,100 @@ export default function QuestionsList({
                             </div>
                         )}
                         {question.type === 'DESCRIPTIVE' && question.expectedAnswer && (
-                            <div key={generateKey('desc')}>
-                                <h4 className="font-medium mb-2">Sample Answer:</h4>
-                                <TiptapRenderer content={question.expectedAnswer} />
-                            </div>
-                        )}
-                        {question.type === 'CODING' && question.testCases && (
-                            <div className="space-y-2" key={generateKey('coding')}>
-                                <h4 className="font-medium">Test Cases:</h4>
-                                {question.testCases.map((testCase, idx) => (
-                                    <div key={`${questionId}-testcase-${idx}`} className="text-sm">
-                                        <div>Input: {testCase.input}</div>
-                                        <div>Expected Output: {testCase.output}</div>
+                            <div key={generateKey('descriptive')} className="space-y-4">
+                                <div>
+                                    <Label className="text-muted-foreground mb-2">Expected Answer:</Label>
+                                    <TiptapRenderer content={question.expectedAnswer} />
+                                </div>
+                                {question.guidelines && (
+                                    <div>
+                                        <Label className="text-muted-foreground mb-2">Marking Guidelines:</Label>
+                                        <TiptapRenderer content={question.guidelines} />
                                     </div>
-                                ))}
+                                )}
                             </div>
                         )}
-                        
+                        {question.type === 'CODING' && (
+                            <div key={generateKey('coding')} className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <Label className="text-muted-foreground mb-2">Sample Solution:</Label>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setUserCode((question as CodingQuestion).boilerplateCode);
+                                            setPracticeDialog({ isOpen: true, questionId: question._id || question.id || '' });
+                                        }}
+                                    >
+                                        Try it yourself
+                                    </Button>
+                                </div>
+                                <Card>
+                                    <CardContent className="p-0">
+                                        <CodeEditor
+                                            files={[
+                                                {
+                                                    id: "solution",
+                                                    name: "Solution",
+                                                    language: (question as CodingQuestion).functionDetails.language,
+                                                    content: `${(question as CodingQuestion).boilerplateCode}\n\n${(question as CodingQuestion).driverCode}`
+                                                }
+                                            ]}
+                                            activeFileId="solution"
+                                            onFileChange={() => { }}
+                                            onActiveFileChange={() => { }}
+                                        />
+                                    </CardContent>
+                                </Card>
+                                <div className="space-y-2">
+                                    <Label className="text-muted-foreground">Test Cases:</Label>
+                                    <div className="space-y-2">
+                                        {(question as CodingQuestion).testCases.map((testCase, idx) => (
+                                            <div key={idx} className="p-2 bg-muted rounded-lg">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <span className="text-sm text-muted-foreground">Input:</span>
+                                                        <pre className="mt-1 text-sm">
+                                                            {JSON.stringify(testCase.inputs, null, 2)}
+                                                        </pre>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm text-muted-foreground">Expected Output:</span>
+                                                        <pre className="mt-1 text-sm">
+                                                            {JSON.stringify(testCase.output, null, 2)}
+                                                        </pre>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         {question.type === 'FILE_UPLOAD' && question.attachedFile && (
-                            <div className="mt-2">
+                            <div key={generateKey('file')} className="flex items-center gap-4">
+                                <FileText className="h-5 w-5 text-muted-foreground" />
                                 <a
                                     href={question.attachedFile}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-500 hover:underline inline-flex items-center"
+                                    className="text-primary hover:underline"
                                 >
-                                    <FileDown className="h-4 w-4 mr-2" />
-                                    Download Attached File
+                                    View Attached File
                                 </a>
                             </div>
                         )}
                     </div>
-                    {
-                        question.explanation && (
-                            <div key={generateKey('explanation')} className="m-2 flex gap-2 flex-col">
-                                <h4 className="font-medium">Explanation:</h4>
-                                <TiptapRenderer content={question.explanation} />
-                            </div>
-                        )
-                    }
+                    {question.explanation && (
+                        <div key={generateKey('explanation')} className="mt-4">
+                            <Label className="text-muted-foreground mb-2">Explanation:</Label>
+                            <TiptapRenderer content={question.explanation} />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         );
-    }, [onEdit, availableTopics, handleTopicSelect, handleRemoveTopic]);
+    }, [onEdit, availableTopics, handleTopicSelect, handleRemoveTopic, topics]);
 
     if (validQuestions.length === 0) {
         return <div className="text-muted-foreground">No questions available</div>;
@@ -396,7 +476,7 @@ export default function QuestionsList({
         <>
             <div className="space-y-4">
                 {validQuestions.map((question, index) => (
-                    <div key={`question-${question._id || question.id}`}>
+                    <div key={`question-${question._id || question.id || index}`}>
                         {renderQuestionCard(question, index)}
                     </div>
                 ))}
@@ -426,6 +506,40 @@ export default function QuestionsList({
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            <Dialog
+                open={practiceDialog.isOpen}
+                onOpenChange={(isOpen) => !isOpen && setPracticeDialog({ isOpen: false, questionId: null })}
+            >
+                <DialogContent className="max-w-4xl h-[80vh]">
+                    <DialogHeader>
+                        <DialogTitle>Practice Question</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 mt-4">
+                        {practiceDialog.questionId && (
+                            <CodeEditor
+                                files={[
+                                    {
+                                        id: "practice",
+                                        name: "Your Solution",
+                                        language: (questions.find(q =>
+                                            (q._id || q.id) === practiceDialog.questionId
+                                        ) as CodingQuestion)?.functionDetails.language || 'python',
+                                        content: userCode
+                                    }
+                                ]}
+                                activeFileId="practice"
+                                onFileChange={(files) => {
+                                    if (files[0]) {
+                                        setUserCode(files[0].content);
+                                    }
+                                }}
+                                onActiveFileChange={() => { }}
+                            />
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

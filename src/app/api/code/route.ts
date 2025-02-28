@@ -9,7 +9,7 @@ export async function POST(request: Request) {
     const { source_code, language } = await request.json();
 
     const message = {
-        source_code: source_code,
+        source_code: (language !== "octave") ? source_code : `__temp = 1;\n\n ${source_code}`,
         language_id: languages.find((lang) => lang.id == language)?.language_id,
     }
 

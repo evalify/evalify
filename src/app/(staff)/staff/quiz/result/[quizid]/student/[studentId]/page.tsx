@@ -409,7 +409,7 @@ export default function StudentResultPage() {
                         renderOptions={renderOptions}
                         data={data}
                     />
-                </TabsContent>s
+                </TabsContent>
             </Tabs>
         </div>
     )

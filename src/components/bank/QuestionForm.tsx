@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo, useEffect } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/hooks/use-toast";
-import { Code, FileText, ListChecks, ToggleLeft, Type, Edit2, Plus, X, AlertTriangle, Check, ChevronDown, Sparkles, ImageIcon, Upload, RotateCcw } from 'lucide-react';
+import { Code, FileText, ListChecks, ToggleLeft, Type, Plus, X, AlertTriangle, Check, Sparkles, ImageIcon, Upload, RotateCcw, Loader2, Trash2, Download } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
-import { Question, QuestionType, DifficultyLevel } from "@/types/questions";
+import { Question, QuestionType, DifficultyLevel, MCQQuestion, CodingQuestion } from "@/types/questions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,35 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { CustomImage } from '@/components/ui/custom-image';
 import { v4 as uuidv4 } from 'uuid';
 import { LatexPreview } from '@/components/latex-preview';
+import EnhancedEditor from '../codeEditor/enhanced-editor';
+import { Language, LANGUAGE_CONFIGS } from '@/lib/programming-languages';
+import { generateTestCode } from '@/lib/test-templates';
+import CodeEditor from '../codeEditor/CodeEditor';
+import { CodingQuestionForm } from './CodingQuestionForm';
+import { generateDriverCode } from '@/lib/test-templates';
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TestCaseGenerator } from '../codeEditor/test-case-generator';
+import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+export type BloomsTaxonomyLevel = "REMEMBERING" | "UNDERSTANDING" | "APPLYING" | "ANALYZING" | "EVALUATING" | "CREATING";
+
+const bloomsLevels = [
+    { value: "REMEMBERING", label: "Remembering" },
+    { value: "UNDERSTANDING", label: "Understanding" },
+    { value: "APPLYING", label: "Applying" },
+    { value: "ANALYZING", label: "Analyzing" },
+    { value: "EVALUATING", label: "Evaluating" },
+    { value: "CREATING", label: "Creating" }
+] as const;
+
+interface FunctionDetails {
+    functionName: string;
+    params: Array<{ name: string; type: string }>;
+    returnType: string;
+    language: Language;
+}
 
 interface QuestionFormProps {
     topics: Array<{ id: string; name: string }>;
@@ -27,7 +55,6 @@ interface QuestionFormProps {
     selectedTopicIds?: string[];
     requireTopics?: boolean;
     isQuiz?: boolean;
-    quizId?: string;
 }
 
 interface OptionWithImage {
@@ -36,26 +63,97 @@ interface OptionWithImage {
     image?: string;
 }
 
-export default function EnhancedQuestionForm({
-    editingQuestion,
-    topics = [],
-    bankId = '',
-    onCancel,
-    onSave,
-    selectedTopicIds = [],
-    requireTopics = true,
-    isQuiz = false,
-    quizId
-}: QuestionFormProps) {
+interface TestCase {
+    id: string;
+    inputs: string[];
+    output: string;
+    testCode?: string;
+}
+
+interface QuestionDataType {
+    type: QuestionType;
+    difficulty: DifficultyLevel;
+    mark: number;
+    question: string;
+    explanation: string;
+    topics: string[];
+    bankId: string;
+    _id?: string;
+    id?: string;
+    options?: OptionWithImage[];
+    answer?: string[];
+    expectedAnswer?: string;
+    guidelines?: string;
+    attachedFile?: string;
+    functionDetails?: FunctionDetails;
+    testCases?: TestCase[];
+    language?: Language;
+    boilerplateCode?: string;
+    driverCode?: string;
+    courseOutcome?: string;  // Add this field
+}
+
+const questionTypes = [
+    { 
+        value: 'MCQ', 
+        label: 'Multiple Choice', 
+        icon: ListChecks,
+        description: 'Create multiple choice questions with images and LaTeX support'
+    },
+    { 
+        value: 'TRUE_FALSE', 
+        label: 'True/False', 
+        icon: ToggleLeft,
+        description: 'Simple true or false questions'
+    },
+    { 
+        value: 'FILL_IN_BLANK', 
+        label: 'Fill in Blank', 
+        icon: Type,
+        description: 'Questions where students fill in missing words or values'
+    },
+    { 
+        value: 'DESCRIPTIVE', 
+        label: 'Descriptive', 
+        icon: FileText,
+        description: 'Long form answers with automatic marking guidelines'
+    },
+    { 
+        value: 'CODING', 
+        label: 'Coding', 
+        icon: Code,
+        description: 'Programming questions with test cases and automatic evaluation'
+    },
+    { 
+        value: 'FILE_UPLOAD', 
+        label: 'File Upload', 
+        icon: Upload,
+        description: 'Allow students to upload files as answers'
+    }
+];
+
+export default function EnhancedQuestionForm(props: QuestionFormProps) {
+    const {
+        editingQuestion,
+        topics = [],
+        bankId = '',
+        onCancel,
+        onSave,
+        selectedTopicIds = [],
+        requireTopics = true,
+        isQuiz = false,
+    } = props;
+
     const { toast } = useToast();
     const [type, setType] = useState<QuestionType>(editingQuestion?.type || "MCQ");
-    const [content, setContent] = useState(editingQuestion?.question || editingQuestion?.content || "");
-    const [difficulty, setDifficulty] = useState<DifficultyLevel | ''>(
-        editingQuestion?.difficulty || ''
+    const [content, setContent] = useState(editingQuestion?.question || "");
+    co    s    nst [difficulty, setDifficulty] = useState<DifficultyLevel>(
+        editingQuestion?.difficulty || "EASY"
     );
     const [marks, setMarks] = useState(
         editingQuestion?.mark ? editingQuestion.mark.toString() : ''
     );
+    const [courseOutcome, setCourseOutcome] = useState(editingQuestion?.courseOutcome || '');
     const [selectedTopics, setSelectedTopics] = useState<string[]>(() => {
         if (editingQuestion?.topics) {
             return editingQuestion.topics;
@@ -63,21 +161,23 @@ export default function EnhancedQuestionForm({
         return selectedTopicIds;
     });
     const [explanation, setExplanation] = useState(editingQuestion?.explanation || "");
-    const [correctAnswer, setCorrectAnswer] = useState(editingQuestion?.expectedAnswer || "");
-    const [sampleAnswer, setSampleAnswer] = useState(editingQuestion?.expectedAnswer || "");
-    const [testCases, setTestCases] = useState(editingQuestion?.testCases || "");
-    const [guidelines, setGuidelines] = useState(editingQuestion?.guidelines || "");
+    const [correctAnswer, setCorrectAnswer] = useState((editingQuestion as any)?.expectedAnswer || "");
+    const [sampleAnswer, setSampleAnswer] = useState((editingQuestion as any)?.expectedAnswer || "");
+    const [testCases, setTestCases] = useState<TestCase[]>((editingQuestion as CodingQuestion)?.testCases || []);
+    const [guidelines, setGuidelines] = useState((editingQuestion as any)?.guidelines || "");
     const [isGenerating, setIsGenerating] = useState(false);
-    const [attachedFile, setAttachedFile] = useState<string>(editingQuestion?.attachedFile || '');
+    const [attachedFile, setAttachedFile] = useState<string>((editingQuestion as any)?.attachedFile || '');
 
     const [prevContent, setPrevContent] = useState("");
     const [prevSampleAnswer, setPrevSampleAnswer] = useState("");
     const [prevGuidelines, setPrevGuidelines] = useState("");
     const [editorKey, setEditorKey] = useState(0);
 
+    const [bloomsLevel, setBloomsLevel] = useState<BloomsTaxonomyLevel>("REMEMBERING");
+
     const initializeOptions = () => {
-        if (editingQuestion?.options) {
-            return editingQuestion.options.map(opt => ({
+        if (editingQuestion && (editingQuestion as MCQQuestion).options) {
+            return (editingQuestion as MCQQuestion).options.map((opt: any) => ({
                 ...opt,
                 optionId: opt.optionId || uuidv4().replace(/-/g, ''),
             }));
@@ -97,11 +197,12 @@ export default function EnhancedQuestionForm({
     };
 
     const initializeCorrectOptions = () => {
-        if (editingQuestion?.answer) {
-            const optionIds = editingQuestion.options?.map(opt => opt.optionId) || [];
-            return editingQuestion.answer.map(answerId =>
-                optionIds.findIndex(id => id === answerId)
-            ).filter(index => index !== -1);
+        if (editingQuestion && (editingQuestion as MCQQuestion).answer) {
+            const mcqQuestion = editingQuestion as MCQQuestion;
+            const optionIds = mcqQuestion.options?.map(opt => opt.optionId) || [];
+            return mcqQuestion.answer.map(answerId =>
+                optionIds.findIndex((id: string) => id === answerId)
+            ).filter((index: number) => index !== -1);
         }
         return [];
     };
@@ -146,7 +247,7 @@ export default function EnhancedQuestionForm({
                 body: JSON.stringify({
                     question: content,
                     expected_ans: sampleAnswer,
-                    total_score: parseInt(marks) || 10
+                    total_score: parseInt(marks) || 5
                 }),
             });
 
@@ -170,6 +271,67 @@ export default function EnhancedQuestionForm({
         } finally {
             setIsGenerating(false);
         }
+    };
+
+    // Coding-specific state
+    const [functionDetails, setFunctionDetails] = useState<FunctionDetails>({
+        functionName: "",
+        params: [],
+        returnType: "",
+        language: "octave", 
+    });
+    const [paramName, setParamName] = useState("");
+    const [paramType, setParamType] = useState("");
+    const [testCaseInputs, setTestCaseInputs] = useState<string[]>([]);
+    const [testCaseOutput, setTestCaseOutput] = useState("");
+
+    const handleAddParameter = () => {
+        if (paramName && paramType) {
+            setFunctionDetails((prev) => ({
+                ...prev,
+                params: [...prev.params, { name: paramName, type: paramType }],
+            }));
+            setParamName("");
+            setParamType("");
+        }
+    };
+
+    const handleRemoveParameter = (index: number) => {
+        setFunctionDetails((prev) => ({
+            ...prev,
+            params: prev.params.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleAddTestCase = () => {
+        if (testCaseInputs.length === functionDetails.params.length && testCaseOutput) {
+            const newTestCase: TestCase = {
+                id: testCases.length ? (parseInt(testCases[testCases.length - 1].id) + 1).toString() : "1",
+                inputs: testCaseInputs,
+                output: testCaseOutput
+            };
+
+            // Generate the test code for this case
+            const testCode = generateTestCode(
+                functionDetails.language,
+                functionDetails.functionName,
+                [newTestCase]
+            );
+
+            setTestCases(prev => [...prev, { ...newTestCase, testCode }]);
+            setTestCaseInputs([]);
+            setTestCaseOutput("");
+        } else {
+            toast({
+                title: "Error",
+                description: "Please provide inputs for all parameters and an output.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleRemoveTestCase = (id: string) => {
+        setTestCases((prev) => prev.filter((testCase) => testCase.id !== id));
     };
 
     const undoGuidelines = () => {
@@ -205,9 +367,8 @@ export default function EnhancedQuestionForm({
 
             const data = await response.json();
 
-            // Force a re-render of RichTextEditor by triggering state updates
-            setContent('');  // First clear the content
-            setTimeout(() => {  // Then set the new content in the next tick
+            setContent('');
+            setTimeout(() => {
                 setContent(data.enhanced_question);
             }, 0);
 
@@ -272,15 +433,6 @@ export default function EnhancedQuestionForm({
             });
         }
     };
-
-    const questionTypes = [
-        { value: 'MCQ', label: 'Multiple Choice', icon: ListChecks },
-        { value: 'TRUE_FALSE', label: 'True/False', icon: ToggleLeft },
-        { value: 'FILL_IN_BLANK', label: 'Fill in Blank', icon: Type },
-        { value: 'DESCRIPTIVE', label: 'Descriptive', icon: FileText },
-        { value: 'FILE_UPLOAD', label: 'File Upload', icon: Upload },
-        // { value: 'CODING', label: 'Coding', icon: Code }
-    ];
 
     const difficultyColors = {
         EASY: "bg-green-100 text-green-800",
@@ -388,6 +540,9 @@ export default function EnhancedQuestionForm({
         if (!validateForm()) return;
 
         try {
+            // For coding questions, ensure we save the latest state of sample solution
+            const sampleSolution = type === 'CODING' ? studentAnswer : '';
+            
             const questionData = {
                 type,
                 difficulty,
@@ -396,6 +551,8 @@ export default function EnhancedQuestionForm({
                 explanation: explanation.trim(),
                 topics: selectedTopics,
                 bankId,
+                bloomsLevel,
+                courseOutcome,  // Add course outcome to the submission
                 ...(type === 'MCQ' || type === 'TRUE_FALSE' ? {
                     options: optionsWithIds,
                     answer: correctOptions.map(index => optionsWithIds[index].optionId)
@@ -410,11 +567,18 @@ export default function EnhancedQuestionForm({
                 ...(type === 'FILE_UPLOAD' ? {
                     attachedFile: attachedFile
                 } : {}),
-                ...(editingQuestion?._id ? { _id: editingQuestion._id } : {}),
-                ...(editingQuestion?.id ? { id: editingQuestion.id } : {})
+                ...(type === 'CODING' ? {
+                    boilerplateCode,
+                    driverCode,
+                    functionDetails,
+                    testCases,
+                    expectedAnswer: sampleSolution // Use the tracked sample solution
+                } : {}),
+                ...(editingQuestion?._id && { _id: editingQuestion._id }),
+                ...(editingQuestion?.id && { id: editingQuestion.id })
             };
 
-            await onSave(questionData);
+            await onSave(questionData as Question);
             toast({
                 title: "Success",
                 description: editingQuestion ? "Question updated successfully" : "Question added successfully",
@@ -507,390 +671,707 @@ export default function EnhancedQuestionForm({
         setCorrectOptions(prev => prev.filter(i => i !== index).map(i => i > index ? i - 1 : i));
     };
 
-    return (
-        <ScrollArea className="h-full">
-            <div className="space-y-8 px-2 pb-8">
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                    {questionTypes.map(qType => (
-                        <TooltipProvider key={qType.value}>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant={type === qType.value ? "default" : "outline"}
-                                        className={`flex-shrink-0 ${type === qType.value ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white' : ''}`}
-                                        onClick={() => handleTypeChange(qType.value as QuestionType)}
-                                        disabled={!!editingQuestion}
-                                    >
-                                        {qType.label}
-                                        <qType.icon className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{qType.label}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    ))}
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="lg:col-span-2 space-y-6">
-                        <div className="space-y-2">
-                            <Label className="text-lg font-semibold">Question Content</Label>
-                            <RichTextEditor
-                                key={editorKey}
-                                content={content}
-                                onChange={setContent}
-                                placeholder="Enter your question here..."
-                            />
+    // Add these new states after other state declarations
+    const [studentAnswer, setStudentAnswer] = useState("");
+    const [boilerplateCode, setBoilerplateCode] = useState<string>((editingQuestion as CodingQuestion)?.boilerplateCode || "");
+    const [driverCode, setDriverCode] = useState<string>((editingQuestion as CodingQuestion)?.driverCode || "");
+
+    // Update the useEffect to handle edit mode properly
+    useEffect(() => {
+        if (editingQuestion && editingQuestion.type === 'CODING') {
+            const codingQuestion = editingQuestion as CodingQuestion;
+            if (codingQuestion.boilerplateCode && codingQuestion.driverCode) {
+                setBoilerplateCode(codingQuestion.boilerplateCode);
+                setDriverCode(codingQuestion.driverCode);
+                setStudentAnswer(codingQuestion.expectedAnswer || '');
+            }
+        }
+    }, [editingQuestion]);
+
+    useEffect(() => {
+        if (editingQuestion && editingQuestion.type === 'CODING') {
+            const codingQuestion = editingQuestion as CodingQuestion;
+            if (codingQuestion.functionDetails) {
+                setFunctionDetails(codingQuestion.functionDetails);
+            }
+            if (codingQuestion.boilerplateCode) {
+                setBoilerplateCode(codingQuestion.boilerplateCode);
+            }
+            if (codingQuestion.driverCode) {
+                setDriverCode(codingQuestion.driverCode);
+            }
+            if (codingQuestion.expectedAnswer) {
+                setStudentAnswer(codingQuestion.expectedAnswer);
+            }
+        }
+    }, [editingQuestion]);
+
+    // Add useEffect to update driver code when test cases change
+    useEffect(() => {
+        if (functionDetails.functionName && testCases.length > 0) {
+            const newDriverCode = generateDriverCode(
+                functionDetails.language,
+                functionDetails.functionName,
+                testCases
+            );
+            setDriverCode(newDriverCode);
+        }
+    }, [testCases, functionDetails.language, functionDetails.functionName]);
+
+    const renderCodingQuestion = () => {
+        if (type !== "CODING") return null;
+
+        return (
+            <CodingQuestionForm 
+                functionDetails={functionDetails}
+                onFunctionDetailsChange={setFunctionDetails}
+                testCases={testCases}
+                onTestCasesChange={setTestCases}
+                boilerplateCode={boilerplateCode}
+                onBoilerplateCodeChange={setBoilerplateCode}
+                driverCode={driverCode}
+                onDriverCodeChange={setDriverCode}
+                studentAnswer={studentAnswer}
+                onStudentAnswerChange={setStudentAnswer}
+            />
+        );
+    };
+
+    const renderMCQQuestion = () => (
+        <div className="space-y-6">
+            <Separator className="my-6" />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {optionsWithIds.map((option, index) => (
+                    <Card 
+                        key={option.optionId} 
+                        className={`relative transition-all duration-200 transform hover:scale-[1.02] ${
+                            correctOptions.includes(index) 
+                                ? 'ring-2 ring-green-500/50 dark:ring-green-500/30' 
+                                : 'hover:border-muted-foreground'
+                        }`}
+                    >
+                        <div 
+                            className="absolute -right-2 -top-2 z-10 cursor-pointer transform hover:scale-110 transition-transform"
+                            onClick={() => {
+                                if (correctOptions.includes(index)) {
+                                    setCorrectOptions(correctOptions.filter(i => i !== index));
+                                } else {
+                                    setCorrectOptions([...correctOptions, index]);
+                                }
+                            }}
+                        >
+                            <div className={`
+                                w-6 h-6 rounded-full flex items-center justify-center shadow-sm
+                                ${correctOptions.includes(index) 
+                                    ? 'bg-green-500 dark:bg-green-600' 
+                                    : 'bg-muted-foreground hover:bg-muted-foreground/80'}
+                            `}>
+                                <Check className="h-3.5 w-3.5 text-white" />
+                            </div>
                         </div>
+
+                        <CardContent className="p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Badge variant="outline" className="bg-background">Option {index + 1}</Badge>
+                                {optionsWithIds.length > 2 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleDeleteOption(index)}
+                                        className="h-8 w-8 text-muted-foreground hover:text-destructive transition-colors"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Textarea
+                                    value={option.option}
+                                    onChange={(e) => handleOptionChange(index, e.target.value)}
+                                    placeholder={`Enter option ${index + 1}...`}
+                                    rows={2}
+                                    className="resize-none"
+                                />
+                                {option.option && (
+                                    <div className="p-2 bg-muted rounded-md">
+                                        <LatexPreview content={option.option} />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="file"
+                                    id={`option-image-${index}`}
+                                    className="hidden"
+                                    accept="image/*"
+                                    onChange={(e) => handleOptionImageUpload(index, e)}
+                                />
+                                <label
+                                    htmlFor={`option-image-${index}`}
+                                    className="cursor-pointer inline-flex items-center gap-1.5 px-2 py-1 rounded-md
+                                        text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                >
+                                    <ImageIcon className="h-4 w-4" />
+                                    {option.image ? 'Change Image' : 'Add Image'}
+                                </label>
+                            </div>
+
+                            {option.image && (
+                                <div className="mt-2 relative group">
+                                    <CustomImage src={option.image} alt={`Option ${index + 1}`} />
+                                    <Button
+                                        variant="destructive"
+                                        size="icon"
+                                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                                        onClick={() => {
+                                            const newOptions = [...optionsWithIds];
+                                            newOptions[index] = {
+                                                ...newOptions[index],
+                                                image: undefined
+                                            };
+                                            setOptionsWithIds(newOptions);
+                                        }}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+            
+            <Button 
+                variant="outline" 
+                onClick={handleAddOption} 
+                className="w-full h-12 text-muted-foreground hover:text-foreground
+                    border-dashed hover:border-solid transition-colors"
+            >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Option
+            </Button>
+        </div>
+    );
+
+    const renderTrueFalseQuestion = () => (
+        <div className="space-y-6">
+            <Separator className="my-6" />
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {optionsWithIds.map((option, index) => (
+                    <Card 
+                        key={option.optionId}
+                        className={`relative transition-all duration-200 transform hover:scale-[1.02] cursor-pointer
+                            ${correctOptions.includes(index) 
+                                ? 'ring-2 ring-green-500/50 dark:ring-green-500/30' 
+                                : 'hover:border-muted-foreground'
+                            }`}
+                        onClick={() => {
+                            if (correctOptions.includes(index)) {
+                                setCorrectOptions([]);
+                            } else {
+                                setCorrectOptions([index]);
+                            }
+                        }}
+                    >
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-3">
+                                <div className={`
+                                    w-5 h-5 rounded flex items-center justify-center transition-colors
+                                    ${correctOptions.includes(index) 
+                                        ? 'bg-green-500 dark:bg-green-600' 
+                                        : 'border-2 border-muted-foreground/30'}
+                                `}>
+                                    {correctOptions.includes(index) && (
+                                        <Check className="h-3.5 w-3.5 text-white" />
+                                    )}
+                                </div>
+                                <span className="text-lg">{option.option}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderFillInBlankQuestion = () => (
+        <div className="space-y-6">
+            <Separator className="my-6" />
+            
+            <Card>
+                <CardContent className="p-4 space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-lg">Correct Answer</Label>
                         <div className="space-y-2">
-                            <Label className="text-lg font-semibold">Explanation (not visible to students during exams)</Label>
+                            <Input
+                                value={correctAnswer}
+                                onChange={(e) => setCorrectAnswer(e.target.value)}
+                                placeholder="Enter the correct answer"
+                                className="text-lg p-6"
+                            />
+                            {correctAnswer && (
+                                <div className="p-2 bg-muted rounded-md">
+                                    <Label className="text-sm text-muted-foreground mb-1">Preview:</Label>
+                                    <LatexPreview content={correctAnswer} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="pt-2 text-sm text-muted-foreground">
+                        <p>Tips:</p>
+                        <ul className="list-disc list-inside space-y-1 mt-1">
+                            <li>Use $ signs to wrap LaTeX expressions</li>
+                            <li>For exact matches, enter all accepted variations separated by OR (e.g. "4|four")</li>
+                            <li>Use * for wildcard matching (e.g. "inte*")</li>
+                        </ul>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+
+    const renderDescriptiveQuestion = () => (
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <Label className="text-lg font-semibold">Expected Answer</Label>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={enhanceQuestion}
+                            disabled={isGenerating || !content || !sampleAnswer}
+                        >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Enhance Question
+                        </Button>
+                        {prevContent && prevSampleAnswer && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={undoEnhancement}
+                            >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Undo Enhancement
+                            </Button>
+                        )}
+                    </div>
+                </div>
+                <RichTextEditor
+                    content={sampleAnswer}
+                    onChange={setSampleAnswer}
+                    placeholder="Enter the expected answer..."
+                />
+            </div>
+
+            <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                    <Label className="text-lg font-semibold">Marking Guidelines</Label>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={generateGuidelines}
+                            disabled={isGenerating || !content || !sampleAnswer}
+                        >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Generate Guidelines
+                        </Button>
+                        {prevGuidelines && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={undoGuidelines}
+                            >
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Undo Generation
+                            </Button>
+                        )}
+                    </div>
+                </div>
+                <RichTextEditor
+                    content={guidelines}
+                    onChange={setGuidelines}
+                    placeholder="Enter marking guidelines..."
+                />
+            </div>
+        </div>
+    );
+
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [fileSize, setFileSize] = useState<number>(0);
+
+    const renderFileUploadQuestion = () => {
+        const getFileName = (url: string) => {
+            try {
+                return decodeURIComponent(url.split('/').pop() || '');
+            } catch {
+                return url.split('/').pop() || '';
+            }
+        };
+
+        const validateFile = (file: File) => {
+            const maxSize = 10 * 1024 * 1024; // 10MB
+            if (file.size > maxSize) {
+                toast({
+                    title: "Error",
+                    description: "File size must be less than 10MB",
+                    variant: "destructive"
+                });
+                return false;
+            }
+            return true;
+        };
+
+        const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (!file || !validateFile(file)) return;
+
+            setIsUploading(true);
+            setUploadProgress(0);
+            setUploadError(null);
+            setFileSize(file.size);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/upload/quiz-file', true);
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const progress = (event.loaded / event.total) * 100;
+                        setUploadProgress(progress);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status === 200) {
+                        const response = JSON.parse(xhr.response);
+                        setAttachedFile(response.url);
+                        toast({
+                            title: "Success",
+                            description: "File uploaded successfully"
+                        });
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                };
+
+                xhr.onerror = () => {
+                    throw new Error('Upload failed');
+                };
+
+                xhr.send(formData);
+            } catch (error) {
+                setUploadError("Failed to upload file");
+                toast({
+                    title: "Error",
+                    description: "Failed to upload file",
+                    variant: "destructive"
+                });
+            } finally {
+                setIsUploading(false);
+            }
+        };
+
+        return (
+            <div className="space-y-6">
+                <Separator className="my-6" />
+                
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="space-y-2">
+                            <Label className="text-lg font-medium">File Requirements</Label>
+                            <div className="space-y-4">
+                                {!attachedFile ? (
+                                    <>
+                                        <input
+                                            type="file"
+                                            onChange={handleFileUpload}
+                                            className="hidden"
+                                            id="file-upload"
+                                            disabled={isUploading}
+                                        />
+                                        <label htmlFor="file-upload">
+                                            <div className={`
+                                                border-2 border-dashed rounded-lg p-8 cursor-pointer 
+                                                hover:bg-secondary/50 transition-colors text-center
+                                                ${uploadError ? 'border-destructive' : ''}
+                                                ${isUploading ? 'cursor-not-allowed opacity-50' : ''}
+                                            `}>
+                                                <div className="flex flex-col items-center gap-3">
+                                                    {isUploading ? (
+                                                        <>
+                                                            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                                                            <div className="space-y-2 w-full max-w-xs">
+                                                                <Progress value={uploadProgress} className="w-full" />
+                                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                                    <span>Uploading... {Math.round(uploadProgress)}%</span>
+                                                                    <span>{(fileSize / (1024 * 1024)).toFixed(2)} MB</span>
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Upload className="h-10 w-10 text-muted-foreground" />
+                                                            <div>
+                                                                <p className="text-base font-medium">
+                                                                    Click to upload or drag and drop
+                                                                </p>
+                                                                <p className="text-sm text-muted-foreground mt-1">
+                                                                    Maximum file size: 10MB
+                                                                </p>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    {uploadError && (
+                                                        <p className="text-sm text-destructive mt-2">{uploadError}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </>
+                                ) : (
+                                    <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+                                        <div className="flex-1 flex items-center gap-3">
+                                            <div className="p-2 bg-background rounded-md">
+                                                <FileText className="h-6 w-6 text-primary" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium">{getFileName(attachedFile)}</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Uploaded successfully
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => window.open(attachedFile, '_blank')}
+                                                className="gap-2"
+                                            >
+                                                <Download className="h-4 w-4" />
+                                                Download
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={() => setAttachedFile('')}
+                                                className="gap-2"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                                Remove
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    };
+
+    const renderQuestionDetails = () => (
+        <div className="space-y-4">
+            <div className="space-y-2">
+                <Label>Question</Label>
+                <Card>
+                    <CardContent className="p-4">
+                        <RichTextEditor
+                            key={editorKey}
+                            content={content}
+                            onChange={setContent}
+                            placeholder="Enter your question here..."
+                        />
+                    </CardContent>
+                </Card>
+            </div>
+
+            {(type === "MCQ" || type === "TRUE_FALSE" || type === "FILL_IN_BLANK") && (
+                <div className="space-y-2">
+                    <Label>Explanation <span className="text-xs text-muted-foreground">(not visible to students during exams)</span></Label>
+                    <Card>
+                        <CardContent className="p-4">
                             <RichTextEditor
                                 content={explanation}
                                 onChange={setExplanation}
                                 placeholder="Enter an explanation for this question..."
                             />
-                        </div>
-                    </div>
-                    <div className="space-y-6">
-                        <div className="p-4 rounded-lg space-y-4">
-                            {requireTopics && (
-                                <div className="space-y-2">
-                                    <Label className="text-lg font-semibold">Topics</Label>
-                                    <Select
-                                        onValueChange={handleAddTopic}
-                                        disabled={availableTopics.length === 0}
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder={
-                                                availableTopics.length === 0
-                                                    ? "All topics selected"
-                                                    : "Add topic..."
-                                            } />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {availableTopics.map(topic => (
-                                                <SelectItem
-                                                    key={topic.id}
-                                                    value={topic.id}
-                                                >
-                                                    {topic.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-
-                                    {selectedTopics.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {selectedTopics.map(topicId => {
-                                                const topic = topics.find(t => t.id === topicId);
-                                                if (!topic) return null;
-
-                                                return (
-                                                    <Badge
-                                                        key={topicId}
-                                                        variant="secondary"
-                                                        className="flex items-center gap-1 py-1 px-2"
-                                                    >
-                                                        {topic.name}
-                                                        <X
-                                                            className="h-3 w-3 cursor-pointer hover:text-destructive"
-                                                            onClick={() => handleRemoveTopic(topicId)}
-                                                        />
-                                                    </Badge>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            {
-                                requireTopics && selectedTopics.length === 0 && (
-                                    <p className="text-sm text-destructive flex items-center gap-2">
-                                        <AlertTriangle className="h-4 w-4" />
-                                        At least one topic is required
-                                    </p>
-                                )
-                            }
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label className="flex items-center gap-1">
-                                        Difficulty
-                                        <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Select
-                                        value={difficulty}
-                                        onValueChange={(value: DifficultyLevel) => setDifficulty(value)}
-                                    >
-                                        <SelectTrigger className={`w-full ${difficulty ? difficultyColors[difficulty] : 'border-destructive'}`}>
-                                            <SelectValue placeholder="Select difficulty" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="EASY" className={difficultyColors.EASY}>Easy</SelectItem>
-                                            <SelectItem value="MEDIUM" className={difficultyColors.MEDIUM}>Medium</SelectItem>
-                                            <SelectItem value="HARD" className={difficultyColors.HARD}>Hard</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="flex items-center gap-1">
-                                        Marks
-                                        <span className="text-destructive">*</span>
-                                    </Label>
-                                    <Input
-                                        type="number"
-                                        value={marks}
-                                        onChange={(e) => setMarks(e.target.value)}
-                                        min="1"
-                                        className={!marks ? 'border-destructive' : ''}
-                                        placeholder="Enter marks"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </div>
-                <div className="mr-8">
-                    {(type === "MCQ" || type === "TRUE_FALSE") && (
-                        <div className="space-y-4">
-                            <div className="flex justify-between">
-                                <Label className="text-lg font-semibold">
-                                    {type === "TRUE_FALSE" ? "Select the correct answer" : "Options"}
-                                </Label>
-                                {type === "MCQ" && (
-                                    <Button
-                                        variant="outline"
-                                        className=" border-dashed"
-                                        onClick={handleAddOption}
-                                    >
-                                        <Plus className=" w-5 mr-2" />
-                                        Add Option
-                                    </Button>
-                                )}
-                            </div>
+            )}
 
-                            <div className={`grid ${type === "TRUE_FALSE" ? "grid-cols-2" : "grid-cols-1 md:grid-cols-1"} gap-4`}>
-                                {optionsWithIds.map((option, index) => (
-                                    <div key={option.optionId}
-                                        className={`flex flex-col gap-2 ${type === "TRUE_FALSE"
-                                            ? "justify-center p-4 hover:bg-gray-100 dark:hover:bg-gray-900 cursor-pointer"
-                                            : "bg-gray-50 dark:bg-gray-900 p-3"
-                                            } rounded-md ${correctOptions.includes(index)
-                                                ? "bg-green-100 dark:bg-green-900 border-2 border-green-500"
-                                                : ""
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Checkbox
-                                                checked={correctOptions.includes(index)}
-                                                onCheckedChange={(checked) => {
-                                                    if (type === 'TRUE_FALSE') {
-                                                        setCorrectOptions(checked ? [index] : []);
-                                                    } else {
-                                                        setCorrectOptions(prev =>
-                                                            checked
-                                                                ? [...prev, index]
-                                                                : prev.filter(i => i !== index)
-                                                        );
-                                                    }
-                                                }}
-                                            />
-                                            {type === "TRUE_FALSE" ? (
-                                                <span className="text-lg">{option.option}</span>
-                                            ) : (
-                                                <div className="flex-1 space-y-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Textarea
-                                                            value={option.option}
-                                                            onChange={(e) => handleOptionChange(index, e.target.value)}
-                                                            placeholder={`Option ${index + 1}`}
-                                                        />
-                                                    </div>
-                                                    <div className="text-sm text-muted-foreground p-2 bg-background rounded">
-                                                        <LatexPreview content={option.option} />
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {
-                                                type === "MCQ" && (
-                                                    <div className="flex flex-col">
-                                                        <Button variant="outline" className="relative overflow-hidden" size="icon">
-                                                            <input
-                                                                type="file"
-                                                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                                                accept="image/*"
-                                                                onChange={(e) => handleOptionImageUpload(index, e)}
-                                                            />
-                                                            <ImageIcon className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="hover:bg-destructive hover:text-white"
-                                                            onClick={() => handleDeleteOption(index)}
-                                                            disabled={optionsWithIds.length <= 2}
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                )
-                                            }
-                                        </div>
-                                        {option.image && (
-                                            <CustomImage
-                                                src={option.image}
-                                                alt={`Option ${index + 1}`}
-                                                className="rounded"
-                                            />
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+            {type === "MCQ" && renderMCQQuestion()}
+            {type === "TRUE_FALSE" && renderTrueFalseQuestion()}
+            {type === "FILL_IN_BLANK" && renderFillInBlankQuestion()}
+            {type === "DESCRIPTIVE" && renderDescriptiveQuestion()}
+            {type === "CODING" && renderCodingQuestion()}
+            {type === "FILE_UPLOAD" && renderFileUploadQuestion()}
+        </div>
+    );
 
-                        </div>
-                    )}
-
-                    {type === "FILL_IN_BLANK" && (
-                        <div className="space-y-2">
-                            <Label className="text-lg font-semibold">Correct Answer</Label>
-                            <Input
-                                value={correctAnswer}
-                                onChange={(e) => setCorrectAnswer(e.target.value)}
-                                placeholder="Enter the correct answer"
-                            />
-                        </div>
-                    )}
-
-                    {type === "DESCRIPTIVE" && (
-                        <div className="space-y-4">
-                            <div className="flex justify-end gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={enhanceQuestion}
-                                    disabled={isGenerating}
-                                >
-                                    <Sparkles className="h-4 w-4 mr-2" />
-                                    {isGenerating ? "Enhancing..." : "Enhance Question & Answer"}
-                                </Button>
-                                {prevContent && prevSampleAnswer && (
-                                    <Button
-                                        variant="ghost"
-                                        onClick={undoEnhancement}
-                                        className="text-yellow-600 hover:text-yellow-700"
-                                    >
-                                        <RotateCcw className="h-4 w-4 mr-2" />
-                                        Undo Enhancement
-                                    </Button>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-lg font-semibold">Expected Answer</Label>
-                                <Textarea
-                                    value={sampleAnswer}
-                                    onChange={(e) => setSampleAnswer(e.target.value)}
-                                    placeholder="Enter expected answer"
-                                    className="min-h-[100px]"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-lg font-semibold">Evaluation Guidelines</Label>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            onClick={generateGuidelines}
-                                            disabled={isGenerating}
-                                        >
-                                            {isGenerating ? "Generating..." : "Generate Guidelines"}
-                                        </Button>
-                                        {prevGuidelines && (
+    return (
+        <div className="h-full flex flex-col">
+            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                <div className="container mx-auto p-4">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex gap-2 overflow-x-auto">
+                            {questionTypes.map(qType => (
+                                <TooltipProvider key={qType.value}>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
                                             <Button
-                                                variant="ghost"
-                                                onClick={undoGuidelines}
-                                                className="text-yellow-600 hover:text-yellow-700"
+                                                variant={type === qType.value ? "default" : "outline"}
+                                                className={`flex-shrink-0 ${type === qType.value ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white' : ''}`}
+                                                onClick={() => handleTypeChange(qType.value as QuestionType)}
+                                                disabled={!!editingQuestion}
                                             >
-                                                <RotateCcw className="h-4 w-4 mr-2" />
-                                                Undo
+                                                {qType.label}
+                                                <qType.icon className="h-5 w-5 ml-2" />
                                             </Button>
-                                        )}
-                                    </div>
-                                </div>
-                                <Textarea
-                                    value={guidelines}
-                                    onChange={(e) => setGuidelines(e.target.value)}
-                                    placeholder="Enter guidelines for evaluating this answer"
-                                    className="min-h-[400px]"
-                                />
-                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>{qType.description}</p>
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            ))}
                         </div>
-                    )}
 
-                    {type === "CODING" && (
-                        <div className="space-y-2">
-                            <Label className="text-lg font-semibold">Test Cases</Label>
-                            <Textarea
-                                value={testCases}
-                                onChange={(e) => setTestCases(e.target.value)}
-                                placeholder="Enter test cases"
-                                className="min-h-[100px] font-mono"
-                            />
+                        <div className="flex items-center gap-2">
+                            <Button onClick={handleSubmit}>
+                                {editingQuestion ? 'Update Question' : 'Save Question'}
+                            </Button>
                         </div>
-                    )}
-
-                    {type === "FILE_UPLOAD" && (
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => document.getElementById('file-upload')?.click()}
-                                >
-                                    <Upload className="h-4 w-4 mr-2" />
-                                    {attachedFile ? 'Change File' : 'Upload File'}
-                                </Button>
-                                {attachedFile && (
-                                    <a
-                                        href={attachedFile}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-blue-500 hover:underline"
-                                    >
-                                        View Uploaded File
-                                    </a>
-                                )}
-                            </div>
-                            <input
-                                type="file"
-                                id="file-upload"
-                                className="hidden"
-                                onChange={handleFileUpload}
-                            />
-                        </div>
-                    )}
+                    </div>
                 </div>
             </div>
-            <div className="flex justify-end gap-3 pt-4 border-t mr-8">
-                <Button variant="outline" onClick={onCancel}>
-                    Cancel
-                </Button>
-                <Button onClick={handleSubmit} className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
-                    {editingQuestion ? (
-                        <>
-                            <Check className="h-4 w-4 mr-2" />
-                            Update Question
-                        </>
-                    ) : (
-                        <>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Save Question
-                        </>
-                    )}
-                </Button>
-            </div>
 
-        </ScrollArea >
+            <div className="flex-1 overflow-y-auto">
+                <div className="container mx-auto p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr,300px] gap-6">
+                        {renderQuestionDetails()}
+                        
+                        <div className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Question Settings</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label>Difficulty</Label>
+                                        <Select value={difficulty} onValueChange={(value: DifficultyLevel) => setDifficulty(value)}>
+                                            <SelectTrigger className={difficulty ? difficultyColors[difficulty] : ''}>
+                                                <SelectValue placeholder="Select difficulty" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="EASY">Easy</SelectItem>
+                                                <SelectItem value="MEDIUM">Medium</SelectItem>
+                                                <SelectItem value="HARD">Hard</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Blooms Taxonomy Level</Label>
+                                        <Select value={bloomsLevel} onValueChange={(value: BloomsTaxonomyLevel) => setBloomsLevel(value)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select level" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {bloomsLevels.map(level => (
+                                                    <SelectItem key={level.value} value={level.value}>
+                                                        {level.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Marks</Label>
+                                        <Input
+                                            type="number"
+                                            value={marks}
+                                            onChange={(e) => setMarks(e.target.value)}
+                                            min="1"
+                                            placeholder="Enter marks"
+                                        />
+                                    </div>
+
+                                    {/* Course Outcome Selection */}
+                                    <div className="space-y-2">
+                                        <Label>Course Outcome</Label>
+                                        <Select
+                                            value={courseOutcome}
+                                            onValueChange={setCourseOutcome}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select course outcome" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {Array.from({ length: 8 }, (_, i) => `CO${i + 1}`).map((co) => (
+                                                    <SelectItem key={co} value={co}>
+                                                        {co}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {requireTopics && (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Topics</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <Select onValueChange={handleAddTopic} disabled={availableTopics.length === 0}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder={availableTopics.length === 0 ? "All topics selected" : "Add topic..."} />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {availableTopics.map(topic => (
+                                                    <SelectItem key={topic.id} value={topic.id}>{topic.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {selectedTopics.length > 0 && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {selectedTopics.map(topicId => {
+                                                    const topic = topics.find(t => t.id === topicId);
+                                                    return topic ? (
+                                                        <Badge key={topicId} variant="secondary" className="flex items-center gap-1">
+                                                            {topic.name}
+                                                            <X className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveTopic(topicId)} />
+                                                        </Badge>
+                                                    ) : null;
+                                                })}
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 

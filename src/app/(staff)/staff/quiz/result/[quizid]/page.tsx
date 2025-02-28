@@ -667,7 +667,7 @@ export default function QuizPage() {
                                         <TableCell>{(result.student.user.rollNo as string).toUpperCase()}</TableCell>
                                         <TableCell>{result.score}</TableCell>
                                         <TableCell>{result.violations ? result.violations.split("\n").length - 1 : 0}</TableCell>
-                                        <TableCell>{new Date(result.submittedAt).toLocaleString()}</TableCell>
+                                        <TableCell>{result.submittedAt ? new Date(result.submittedAt).toLocaleString() : "-"}</TableCell>
                                         <TableCell className={!result.ip?.startsWith('172') ? 'text-red-500 font-medium' : ''}>
                                             {result.ip || 'N/A'}
                                         </TableCell>

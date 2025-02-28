@@ -75,7 +75,7 @@ export async function GET() {
                     some: { classId: student!.classId }
                 },
                 startTime: { lte: now },
-                endTime: { gte: now }
+                endTime: { gte: now },
             },
             orderBy: { startTime: 'asc' },
             select: {

@@ -475,7 +475,6 @@ const QuestionsPage = () => {
                         side="right"
                         className="w-[1200px] sm:max-w-[1200px] overflow-y-auto"
                         onInteractOutside={(e) => {
-                            // Prevent closing when interacting with elements outside the sheet
                             e.preventDefault();
                         }}
                     >

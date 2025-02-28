@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LatexPreview } from '@/components/latex-preview'
 import CodeEditor from '@/components/codeEditor/CodeEditor'
 import { nanoid } from 'nanoid'
+import { Input } from '@/components/ui/input'
 
 interface CodeFile {
     id: string
@@ -514,7 +515,7 @@ const QuizPage = () => {
         )
     }
 
-    // Add this component after the FileUpload component and before QuizPage component
+    // Add this component after the   component and before QuizPage component
     const AttachedFile = ({ fileUrl }: { fileUrl: string }) => {
         const fileName = fileUrl.split('/').pop() || 'Attached File';
 
@@ -692,7 +693,7 @@ const QuizPage = () => {
     interface FileUploadProps {
         quizId: string;
         questionId: string;
-        onUpload: (url: string) => void;
+        onUpload: (fileUrl: string) => void;
         currentFile?: string;
     }
 
@@ -716,7 +717,7 @@ const QuizPage = () => {
         const handleDrag = (e: React.DragEvent) => {
             e.preventDefault();
             e.stopPropagation();
-            if (e.type === "dragenter" || e.type === "dragleave") {
+            if (e.type === "dragenter" || e.type === "dragover") {
                 setDragActive(true);
             } else if (e.type === "dragleave") {
                 setDragActive(false);
@@ -749,7 +750,7 @@ const QuizPage = () => {
 
         const handleUpload = async (file: File) => {
             if (file.size > 10 * 1024 * 1024) {
-                toast.error('File size must be less than 10MB');
+                toast.error("File size must be less than 10MB");
                 return;
             }
 
@@ -793,17 +794,12 @@ const QuizPage = () => {
                 const data = await uploadPromise;
                 setLoadingState('completing');
 
-                await new Promise(resolve =>
-                    toast.success('File uploaded successfully', {
-                        onAutoClose: resolve,
-                        onDismiss: resolve
-                    })
-                );
+                toast.success("File uploaded successfully");
 
                 onUpload(data.url);
             } catch (error) {
                 console.error('Upload error:', error);
-                toast.error('Failed to upload file');
+                toast.error("Failed to upload file");
             } finally {
                 clearInterval(progressInterval);
                 if (operationProgressRef.current) {
@@ -822,7 +818,6 @@ const QuizPage = () => {
             operationProgressRef.current = startOperationProgress();
 
             try {
-                // Delete from MinIO first
                 await fetch('/api/quiz/delete-response', {
                     method: 'POST',
                     headers: {
@@ -835,17 +830,12 @@ const QuizPage = () => {
                 });
 
                 setLoadingState('completing');
-                await new Promise(resolve =>
-                    toast.success('File removed successfully', {
-                        onAutoClose: resolve,
-                        onDismiss: resolve
-                    })
-                );
+                toast.success("File removed successfully");
 
                 onUpload("");
             } catch (error) {
                 console.error('Remove error:', error);
-                toast.error('Failed to remove file');
+                toast.error("Failed to remove file");
             } finally {
                 if (operationProgressRef.current) {
                     clearInterval(operationProgressRef.current);
@@ -859,6 +849,7 @@ const QuizPage = () => {
         const handleDrop = async (e: React.DragEvent) => {
             e.preventDefault();
             e.stopPropagation();
+            setDragActive(false);
             const file = e.dataTransfer.files?.[0];
             if (file) {
                 await handleUpload(file);
@@ -866,33 +857,27 @@ const QuizPage = () => {
         };
 
         const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-            console.log('Change event triggered', e);
-            console.log('Files:', e.target.files);
+            const file = e.target.files?.[0];
+            if (!file) return;
 
-            const files = e.target.files;
-            if (!files || files.length === 0) {
-                console.log('No files selected');
-                return;
-            }
-
-            const file = files[0];
-            console.log('Selected file:', file.name, file.type, file.size);
-            handleUpload(file);
-
-            if (inputRef.current) {
-                inputRef.current.value = '';
+            try {
+                await handleUpload(file);
+            } catch (error) {
+                console.error('Upload error:', error);
+            } finally {
+                if (inputRef.current) {
+                    inputRef.current.value = '';
+                }
+                setFileInputKey(Date.now());
             }
         };
 
-        const handleClick = useCallback(() => {
-            console.log('Click handler triggered');
-            if (inputRef.current) {
-                setFileInputKey(Date.now());
-                setTimeout(() => {
-                    inputRef.current?.click();
-                }, 0);
+        const handleClick = (e: React.MouseEvent) => {
+            e.preventDefault();
+            if (loadingState === 'idle' && inputRef.current) {
+                inputRef.current.click();
             }
-        }, []);
+        };
 
         const getFileIcon = (fileName: string) => {
             const ext = fileName.split('.').pop()?.toLowerCase();
@@ -942,7 +927,10 @@ const QuizPage = () => {
                             ref={inputRef}
                             type="file"
                             className="hidden"
-                            onChange={handleChange}
+                            id="file"
+                            name="file"
+                            onChange={(e) => { console.log("Files : ",e.target.files); handleChange(e) }}
+                            accept="*/*"
                             disabled={loadingState !== 'idle'}
                         />
                         <div
@@ -959,34 +947,36 @@ const QuizPage = () => {
                             onDrop={handleDrop}
                             onClick={handleClick}
                         >
-                            {loadingState !== 'idle' ? (
-                                <div className="flex flex-col items-center gap-2">
-                                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                    {loadingState === 'uploading' && (
-                                        <>
-                                            <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full bg-primary transition-all duration-300"
-                                                    style={{ width: `${uploadProgress}%` }}
-                                                />
-                                            </div>
-                                            <span className="text-sm text-muted-foreground">
-                                                {uploadedFileName && `Uploading ${uploadedFileName}...`} {uploadProgress}%
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            ) : (
-                                <>
-                                    <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
-                                    <p className="text-sm text-muted-foreground">
-                                        Drag and drop or click to upload
-                                    </p>
-                                    <p className="text-xs text-muted-foreground/60 mt-1">
-                                        Any file up to 10MB
-                                    </p>
-                                </>
-                            )}
+                            {
+                                loadingState !== 'idle' ? (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                        {loadingState === 'uploading' && (
+                                            <>
+                                                <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-primary transition-all duration-300"
+                                                        style={{ width: `${uploadProgress}%` }}
+                                                    />
+                                                </div>
+                                                <span className="text-sm text-muted-foreground">
+                                                    {uploadedFileName && `Uploading ${uploadedFileName}...`} {uploadProgress}%
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Upload className="h-6 w-6 mb-2 text-muted-foreground" />
+                                        <p className="text-sm text-muted-foreground">
+                                            Drag and drop or click to upload
+                                        </p>
+                                        <p className="text-xs text-muted-foreground/60 mt-1">
+                                            Any file up to 10MB
+                                        </p>
+                                    </>
+                                )
+                            }
                         </div>
                     </>
                 ) : (
