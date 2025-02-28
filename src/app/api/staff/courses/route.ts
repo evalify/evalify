@@ -2,48 +2,62 @@ import { auth } from "@/lib/auth/auth";
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
-        const staff = await prisma.staff.findFirst({
-            where: {
-                user: {
-                    email: session.user.email
-                }
-            },
-            include: {
-                courses: {
-                    where: {
-                        isactive: true
-                    },
-                    include: {
-                        class: true
+        // Fetch courses based on role
+        if (session.user.role === "MANAGER") {
+            const manager = await prisma.manager.findFirst({
+                where: { id: session.user.id },
+                include: {
+                    class: {
+                        include: {
+                            courses: {
+                                include: {
+                                    class: true,
+                                    _count: {
+                                        select: {
+                                            quizzes: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        if (!staff) {
-            return NextResponse.json({ error: "Staff not found" }, { status: 404 });
+            // Flatten courses from all assigned classes
+            const courses = manager?.class.flatMap(cls =>
+                cls.courses.map(course => ({
+                    ...course,
+                    _count: course._count
+                }))
+            ) || [];
+            return NextResponse.json(courses);
+        } else {
+            // For staff members
+            const courses = await prisma.course.findMany({
+                where: {
+                    staffId: session.user.id,
+                },
+                include: {
+                    class: true,
+                    _count: {
+                        select: {
+                            quizzes: true
+                        }
+                    }
+                }
+            });
+            return NextResponse.json(courses);
         }
-
-        const courses = await prisma.course.findMany({
-            where: {
-                staffId: staff.id,
-                isactive: true
-            },
-            include: {
-                class: true
-            }
-        });
-
-        return NextResponse.json(courses);
     } catch (error) {
-        console.log('Error fetching courses:', error);
-        return NextResponse.json({ error: "Failed to fetch courses" }, { status: 500 });
+        console.error(error);
+        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 }

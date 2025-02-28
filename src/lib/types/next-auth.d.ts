@@ -1,7 +1,7 @@
 import { User } from "next-auth"
 import { JWT } from "next-auth/jwt"
 
-type UserRole = "STUDENT" | "STAFF" | "ADMIN"
+type UserRole = "STUDENT" | "STAFF" | "ADMIN" | "MANAGER"
 
 interface IUser extends User {
     id: string

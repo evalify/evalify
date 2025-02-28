@@ -22,7 +22,8 @@ export async function middleware(req: NextRequest) {
     const roleRoutes = {
         '/student': 'STUDENT',
         '/admin': 'ADMIN',
-        '/staff': 'STAFF'
+        '/staff': 'STAFF',
+        '/manager' : "MANAGER"
     };
 
     // Create absolute URL helper
@@ -39,6 +40,9 @@ export async function middleware(req: NextRequest) {
         }
         if (token.user.role === "ADMIN") {
             return NextResponse.redirect(absolute("/admin"));
+        }
+        if (token.user.role === "MANAGER") {
+            return NextResponse.redirect(absolute("/manager"));
         }
     }
 
@@ -76,6 +80,7 @@ export const config = {
         '/auth/:path*',
         '/staff/:path*',
         '/admin/:path*',
+        '/manager/:path*',
         '/student/:path*',
         '/ide',
         '/forum'

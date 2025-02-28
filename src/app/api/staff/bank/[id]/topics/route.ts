@@ -10,7 +10,7 @@ export async function GET(
         const { id } = await params;
 
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized", topics: [] }, { status: 401 })
         }
 
@@ -43,7 +43,7 @@ export async function POST(
     try {
         const { id } = await params;
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
@@ -77,7 +77,7 @@ export async function PATCH(
     try {
         const { id } = await params;
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
@@ -107,7 +107,7 @@ export async function DELETE(
     try {
         const { id } = await params;
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
