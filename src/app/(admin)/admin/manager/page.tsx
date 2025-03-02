@@ -33,19 +33,6 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { createUserWithRole } from "@/lib/actions/user-actions";
-import { cn } from "@/lib/utils";
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-} from "@/components/ui/command";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -169,22 +156,19 @@ export default function ManagerPage() {
 			const response = await fetch('/api/admin/classes');
 			const data = await response.json();
 
-			console.log('Classes API Response:', data); // Debug log
-
 			if (!response.ok) {
 				throw new Error(data.error || 'Failed to fetch classes');
 			}
 
-			if (!Array.isArray(data.classes)) {
+			if (!Array.isArray(data)) {
 				throw new Error('Invalid classes data received');
 			}
 
-			setAvailableClasses(data.classes);
-			setFilteredClasses(data.classes);
+			setAvailableClasses(data);
+			setFilteredClasses(data);
 
-			console.log('Available Classes:', data.classes); // Debug log
 		} catch (error) {
-			console.error('Error fetching classes:', error); // Debug log
+			console.error('Error fetching classes:', error);
 			toast({
 				variant: "destructive",
 				title: "Error",

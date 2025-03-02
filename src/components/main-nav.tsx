@@ -15,6 +15,7 @@ import {
   UserCog,
   LucideIcon,
   LibraryBig,
+  UserRoundPen,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 
@@ -50,7 +51,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
     { name: "Course", href: "/admin/course", icon: School },
     { name: "Staffs", href: "/admin/staffs", icon: UserCog },
     { name: "Students", href: "/admin/students", icon: Users },
-    { name: "Manager", href: "/admin/manager", icon: Users },
+    { name: "Manager", href: "/admin/manager", icon: UserRoundPen },
   ],
   MANAGER: [
     { name: "Home", href: "/manager", icon: Home },

@@ -10,7 +10,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
-        const { id } = params;
+        const { id } = await params;
 
         // For managers, we don't need additional checks
         if (session.user.role === "MANAGER") {
@@ -54,7 +54,7 @@ export async function PATCH(
     { params }: { params: { id: string } }
 ) {
     try {
-        const { id } = params;
+        const { id } = await params;
         const session = await auth();
         if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })

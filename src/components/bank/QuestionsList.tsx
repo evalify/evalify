@@ -264,20 +264,29 @@ export default function QuestionsList({
                     <div className="flex items-start justify-between gap-4">
                         <div className="space-y-2 flex-1">
                             <span className="font-medium">Question {index + 1}</span>
-                            <div className="flex items-center gap-2 text-muted-foreground">
+                            <div className="flex items-center gap-2 text-muted-foreground ">
+                                <div>
+
+                                </div>
                                 <div className="flex items-center gap-1.5">
                                     {getQuestionIcon(question.type)}
                                     <span className="text-sm">{question.type}</span>
                                 </div>
                                 <span className="text-sm px-2 py-0.5 rounded-full bg-muted">
-                                    {question.mark} marks
+                                    {question.mark || question.marks} marks
                                 </span>
                                 <span className={`text-sm px-2 py-0.5 rounded-full ${difficultyColors[question.difficulty]}`}>
                                     {question.difficulty}
                                 </span>
-                                <span className="text-sm px-2 py-0.5 rounded-full bg-muted">
-                                    {question.bloomsLevel}
-                                </span>
+                                {
+                                    question.bloomsLevel && (
+
+                                        <span className="text-sm px-2 py-0.5 rounded-full bg-muted">
+                                            {question.bloomsLevel}
+                                        </span>
+                                    )
+
+                                }
                                 {question.courseOutcome && (
                                     <span className="text-sm px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
                                         {question.courseOutcome}
@@ -344,8 +353,8 @@ export default function QuestionsList({
                                     <div
                                         key={option.optionId}
                                         className={`flex items-start gap-2 p-2 rounded-lg ${question.answer?.includes(option.optionId)
-                                                ? 'bg-green-500/10 dark:bg-green-500/20'
-                                                : 'bg-muted/50'
+                                            ? 'bg-green-500/10 dark:bg-green-500/20'
+                                            : 'bg-muted/50'
                                             }`}
                                     >
                                         {question.answer?.includes(option.optionId) ? (

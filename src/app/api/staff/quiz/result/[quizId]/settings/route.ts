@@ -46,8 +46,8 @@ export async function PUT(
         const session = await auth();
         const { quizId } = await params;
 
-        if (!session || session.user.role !== 'STAFF') {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
         const body = await request.json()

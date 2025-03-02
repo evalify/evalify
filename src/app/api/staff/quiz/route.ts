@@ -47,30 +47,25 @@ export async function POST(req: Request) {
             }
 
             // Get the staff member handling the first course
-            if (body.courseIds && body.courseIds.length > 0) {
-                const course = await prisma.course.findFirst({
-                    where: {
-                        id: body.courseIds[0]
-                    },
-                    include: {
-                        staff: true
-                    }
-                });
 
-                if (!course?.staff) {
-                    return NextResponse.json(
-                        { error: "No staff assigned to the course. Please assign a staff member first." },
-                        { status: 400 }
-                    );
+            const course = await prisma.course.findFirst({
+                where: {
+                    id: body.courseIds[0]
+                },
+                include: {
+                    staff: true
                 }
+            });
 
-                staffId = course.staff.id;
-            } else {
+            if (!course?.staff) {
                 return NextResponse.json(
-                    { error: "At least one course must be selected" },
+                    { error: "No staff assigned to the course. Please assign a staff member first." },
                     { status: 400 }
                 );
             }
+
+            staffId = course.staff.id;
+
         } else {
             // For staff members, use their own ID
             const staff = await prisma.staff.findFirst({
@@ -130,7 +125,7 @@ export async function GET(req: Request) {
     try {
         const session = await auth();
         const courseId = new URL(req.url).searchParams.get('courseId');
-        if (session?.user.role =="MANAGER" && courseId) {
+        if (session?.user.role == "MANAGER" && courseId) {
             const quiz = await prisma.quiz.findMany({
                 where: {
                     courses: {

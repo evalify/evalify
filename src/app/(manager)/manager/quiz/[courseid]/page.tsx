@@ -356,7 +356,7 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
             shuffle: true,
             autoSubmit: false,
         },
-        courseIds: [],
+        courseIds: [courseid],
     });
     const [courses, setCourses] = useState<Course[]>([]);
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
@@ -466,7 +466,7 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                 shuffle: true,
                 autoSubmit: false,
             },
-            courseIds: [],
+            courseIds: [courseid],
         });
         setEditMode(false);
     };
@@ -775,7 +775,7 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
+                                        {/* <div className="space-y-2">
                                             <Label className="text-indigo-900 dark:text-indigo-100">Select Courses</Label>
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[200px] overflow-y-auto p-4 bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700">
                                                 {courses.length === 0 ? (
@@ -801,11 +801,10 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                                             {formData.courseIds?.length === 0 && (
                                                 <p className="text-sm text-red-500">Please select at least one course</p>
                                             )}
-                                        </div>
+                                        </div> */}
                                         <Button
                                             type="submit"
                                             className="w-full bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white transition-colors duration-300"
-                                            disabled={formData.courseIds?.length === 0}
                                         >
                                             {editMode ? 'Update Quiz' : 'Create Quiz'}
                                         </Button>

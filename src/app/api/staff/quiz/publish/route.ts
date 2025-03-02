@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prismadb";
 import { auth } from "@/lib/auth/auth";
-import { metadata } from '../../../../layout';
+
 
 export async function POST(request: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
         const body = await request.json();

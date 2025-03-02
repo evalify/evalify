@@ -10,13 +10,14 @@ export async function GET() {
             select: {
                 id: true,
                 name: true,
-            },
-            orderBy: {
-                name: 'asc'
+                department: true,
+                semester: true,
+                batch: true,
             }
         });
 
-        return NextResponse.json({ classes });
+        return NextResponse.json(classes);
+
     } catch (error) {
         console.error("Error fetching classes:", error);
         return NextResponse.json(
@@ -26,7 +27,6 @@ export async function GET() {
     }
 }
 
-// POST to add a class
 export async function POST(req: Request) {
     try {
         const body = await req.json();

@@ -96,7 +96,7 @@ export function generateQuizHTML(quiz: any, questions: any[], showAnswers: boole
                     </div>
                     ${q.image ? `<img src="${q.image}" alt="Question Image">` : ''}
                     
-                    ${q.type === 'MCQ' ? `
+                    ${q.type === 'MCQ' || q.type === "TRUE_FALSE" ? `
                         <div class="options">
                             ${q.options.map((opt: any) => `
                                 <div class="option ${showAnswers && q.answer.includes(opt.optionId) ? 'correct-option' : ''}">
@@ -112,7 +112,7 @@ export function generateQuizHTML(quiz: any, questions: any[], showAnswers: boole
                         <div class="answer-section">
                             <strong>Answer:</strong> 
                             <div class="tex2jax_process">
-                                ${q.type === 'MCQ' 
+                                ${q.type === 'MCQ' || q.type === "TRUE_FALSE" 
                                     ? q.options
                                         .filter((opt: any) => q.answer.includes(opt.optionId))
                                         .map((opt: any) => opt.option)

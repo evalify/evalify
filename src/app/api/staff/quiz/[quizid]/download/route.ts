@@ -5,6 +5,7 @@ import { generateQuizHTML } from '@/utils/pdf-template';
 import { isValidQuizId } from '@/utils/validation';
 import clientPromise from '@/lib/db/mongo';
 import { prisma } from '@/lib/db/prismadb';
+import { auth } from '@/lib/auth/auth';
 
 
 const QUESTIONS_COLLECTION = "NEW_QUESTIONS";
@@ -15,6 +16,11 @@ export async function GET(
     { params }: { params: { quizid: string } }
 ) {
     try {
+        const session = await auth();
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
+        
         const { quizid } = await params;
         const searchParams = request.nextUrl.searchParams;
         const format = searchParams.get('format');
@@ -182,9 +188,9 @@ async function generateDetailedExcel(quiz: any, questions: any[]) {
             no: index + 1,
             type: q.type,
             question: q.question,
-            options: q.type === 'MCQ' ?
+            options: q.type === 'MCQ' || q.type === 'TRUE_FALSE'?
                 q.options.map((opt: any) => `${opt.option}`).join('\n') : '',
-            answer: q.type === 'MCQ' ?
+            answer: q.type === 'MCQ' || q.type === 'TRUE_FALSE' ?
                 q.options.filter((opt: any) => q.answer.includes(opt.optionId))
                     .map((opt: any) => opt.option).join('\n') :
                 q.expectedAnswer || '',
@@ -216,4 +222,29 @@ async function generateDetailedExcel(quiz: any, questions: any[]) {
     return response;
 }
 
+/**
+ * Mock implementation of renderMathInElement for server-side compatibility
+ * This function is normally provided by KaTeX's auto-render extension in the browser
+ * Since we're using it in a Puppeteer context, this mock will be overridden by the actual KaTeX implementation
+ */
+function renderMathInElement(element: HTMLElement, options: { 
+    delimiters: { left: string; right: string; display: boolean; }[]; 
+    throwOnError: boolean; 
+}): void {
+    // This is just a stub implementation that will be replaced by KaTeX's actual renderMathInElement
+    // In Puppeteer context, the actual KaTeX implementation will be loaded from the CDN
+    
+    // If we're in a browser-like environment with KaTeX available
+    if (typeof window !== 'undefined' && 'katex' in window) {
+        // @ts-ignore - KaTeX global object would normally handle this in browser
+        const katexRender = window.renderMathInElement || window.katex?.renderMathInElement;
+        if (typeof katexRender === 'function') {
+            katexRender(element, options);
+            return;
+        }
+    }
+    
+    // If KaTeX is not available, this function becomes a no-op
+    console.warn('KaTeX rendering was attempted but KaTeX is not available');
+}
 

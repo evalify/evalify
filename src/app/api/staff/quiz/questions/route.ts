@@ -8,6 +8,11 @@ const QUESTIONS_COLLECTION = "NEW_QUESTIONS";
 
 export async function GET(request: NextRequest) {
     try {
+        const session = await auth();
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
+        
         const quizId = request.nextUrl.searchParams.get('quizId');
 
         if (!quizId) {
@@ -33,6 +38,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
     try {
+        const session = await auth();
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+        }
+
         const question = await request.json();
 
         if (!question.quizId) {
@@ -63,7 +73,7 @@ export async function POST(request: Request) {
 export async function PUT(request: NextRequest) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
@@ -120,7 +130,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(req: Request) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json(
                 { message: "Unauthorized" },
                 { status: 401 }

@@ -46,9 +46,24 @@ export default function ClassPage() {
     const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
     const fetchClasses = async () => {
-        const response = await fetch('/api/admin/classes');
-        const data = await response.json();
-        setClasses(data);
+        try {
+            const response = await fetch('/api/admin/classes');
+            const data = await response.json();
+            // Ensure data is an array before setting state
+            if (Array.isArray(data)) {
+                setClasses(data);
+            } else {
+                console.error("API did not return an array:", data);
+                setClasses([]);
+            }
+        } catch (error) {
+            console.error("Error fetching classes:", error);
+            setClasses([]);
+            toast({
+                variant: "destructive",
+                description: "Failed to load classes.",
+            });
+        }
     };
 
     useEffect(() => {
@@ -114,11 +129,15 @@ export default function ClassPage() {
         }
     };
 
-    const filteredClasses = classes.filter((cls) =>
-        Object.values(cls).some((value) =>
-            value.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredClasses = Array.isArray(classes)
+        ? classes.filter((cls) =>
+            Object.values(cls).some((value) =>
+                value && typeof value === 'string'
+                    ? value.toLowerCase().includes(searchQuery.toLowerCase())
+                    : String(value).toLowerCase().includes(searchQuery.toLowerCase())
+            )
         )
-    );
+        : [];
 
     const handleSelectAll = (checked: boolean) => {
         setSelectedClasses(checked ? filteredClasses.map(cls => cls.id) : []);
@@ -263,15 +282,15 @@ export default function ClassPage() {
                             <TableCell>
                                 <Checkbox
                                     checked={selectedClasses.includes(cls.id)}
-                                    onCheckedChange={(checked) => 
+                                    onCheckedChange={(checked) =>
                                         handleSelectClass(cls.id, checked as boolean)
                                     }
                                     aria-label={`Select ${cls.name}`}
                                 />
                             </TableCell>
                             <TableCell>
-                                <Link 
-                                    href={`/admin/class/${cls.id}`} 
+                                <Link
+                                    href={`/admin/class/${cls.id}`}
                                     className="text-blue-600 hover:underline cursor-pointer"
                                 >
                                     {cls.name}
