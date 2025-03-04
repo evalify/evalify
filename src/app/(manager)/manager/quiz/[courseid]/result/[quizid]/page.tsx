@@ -113,7 +113,6 @@ export default function QuizPage() {
                 throw new Error('Failed to update show result setting');
             }
 
-            // Update local state
             setQuiz(prev => ({
                 ...prev,
                 settings: {
@@ -661,7 +660,7 @@ export default function QuizPage() {
                                     <TableRow
                                         key={result.id}
                                         className="cursor-pointer "
-                                        onClick={() => router.push(`/staff/quiz/result/${quizid}/student/${result.id}`)}
+                                        onClick={() => router.push(`/manager/quiz/result/${quizid}/student/${result.id}`)}
                                     >
                                         <TableCell>{result.student.user.name}</TableCell>
                                         <TableCell>{(result.student.user.rollNo as string).toUpperCase()}</TableCell>

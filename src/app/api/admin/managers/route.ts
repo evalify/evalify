@@ -31,7 +31,6 @@ export async function GET(request: Request) {
                 }
             }
         });
-        console.log({ managers })
 
         return NextResponse.json({ managers }, { status: 200 }); // Return as an object with managers key
     } catch (error) {
