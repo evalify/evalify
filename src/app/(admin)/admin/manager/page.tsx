@@ -219,7 +219,6 @@ export default function ManagerPage() {
 			.map(cls => cls.id);
 		setSelectedClasses(validClassIds);
 
-		console.log('Opening dialog for manager:', manager.user.name); // Debug log
 		setAssignClassDialogOpen(true);
 
 		// Fetch classes after dialog is opened

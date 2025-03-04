@@ -148,7 +148,6 @@ export default function QuizPage() {
                 throw new Error('Failed to update show result setting');
             }
 
-            // Update local state
             setQuiz(prev => ({
                 ...prev,
                 settings: {
