@@ -1,17 +1,26 @@
 "use client"
 
 import * as React from 'react'
-import Editor, { loader } from '@monaco-editor/react'
+import Editor from '@monaco-editor/react'
+import loader from '@monaco-editor/loader'
 import { useTheme } from 'next-themes'
 import { EditorToolbar } from './editor-toolbar'
 import { EditorTabs } from './editor-tabs'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import { nanoid } from 'nanoid'
 
+// Configure Monaco loader
+loader.config({
+    paths: {
+        // Use CDN by default, but this can be configured for different environments
+        vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs'
+    },
+});
+
 // Define available Monaco editor themes
 const monacoThemes = {
     'vs-dark': {
-        base: 'vs-dark',
+        base: 'vs-dark' as const,
         inherit: true,
         rules: [],
         colors: {
@@ -19,7 +28,7 @@ const monacoThemes = {
         },
     },
     'github-dark': {
-        base: 'vs-dark',
+        base: 'vs-dark' as const,
         inherit: true,
         rules: [],
         colors: {
@@ -28,7 +37,7 @@ const monacoThemes = {
         },
     },
     'github-light': {
-        base: 'vs',
+        base: 'vs' as const,
         inherit: true,
         rules: [],
         colors: {
@@ -37,7 +46,7 @@ const monacoThemes = {
         },
     },
     'slate-dark-blue': {
-        base: 'vs-dark',
+        base: 'vs-dark' as const,
         inherit: true,
         rules: [
             { token: '', foreground: 'e5e9f0', background: '0b1e34' }, // Default text
@@ -116,7 +125,7 @@ class EditorErrorBoundary extends React.Component<
 
     render() {
         if (this.state.hasError) {
-            return null 
+            return null
         }
 
         return this.props.children
@@ -157,70 +166,100 @@ export default function CodeEditor({
     const [mounted, setMounted] = React.useState(false)
     const editorRef = React.useRef(null)
     const [isFullscreen, setIsFullscreen] = React.useState(false)
+    const [monacoLoaded, setMonacoLoaded] = React.useState(false)
+    const [loadingError, setLoadingError] = React.useState<string | null>(null)
 
     const activeFile = files.find(file => file.id === activeFileId) || files[0]
 
     React.useEffect(() => {
         setMounted(true)
 
-        // Initialize Monaco editor
-        loader.init().then((monaco) => {
-            // Register Octave language
-            monaco.languages.register({ id: 'octave' });
-            monaco.languages.setMonarchTokensProvider('octave', {
-                tokenizer: {
-                    root: [
-                        [/%.*$/, 'comment'],
-                        [/"([^"\\]|\\.)*$/, 'string.invalid'],
-                        [/"/, { token: 'string.quote', next: '@string' }],
-                        [/\b(function|end|if|else|elseif|while|for|end|break|continue)\b/, 'keyword'],
-                        [/\d+(\.\d+)?/, 'number'],
-                        [/[=+\-.*/^~<>]/, 'operator'],
+        // Initialize Monaco editor with proper error handling
+        const loadMonaco = async () => {
+            try {
+                const monaco = await loader.init()
+
+                // Register Octave language
+                monaco.languages.register({ id: 'octave' });
+                monaco.languages.setMonarchTokensProvider('octave', {
+                    tokenizer: {
+                        root: [
+                            [/%.*$/, 'comment'],
+                            [/"([^"\\]|\\.)*$/, 'string.invalid'],
+                            [/"/, { token: 'string.quote', next: '@string' }],
+                            [/\b(function|end|if|else|elseif|while|for|end|break|continue)\b/, 'keyword'],
+                            [/\d+(\.\d+)?/, 'number'],
+                            [/[=+\-.*/^~<>]/, 'operator'],
+                        ],
+                        string: [
+                            [/[^"]+/, 'string'],
+                            [/"/, { token: 'string.quote', next: '@pop' }],
+                        ],
+                    },
+                    builtin: functions
+                });
+
+                // Register themes
+                Object.entries(monacoThemes).forEach(([themeName, themeData]) => {
+                    monaco.editor.defineTheme(themeName, themeData);
+                });
+
+                // Configure Octave language
+                monaco.languages.setLanguageConfiguration('octave', {
+                    comments: {
+                        lineComment: '%',
+                        blockComment: ['%{', '%}']
+                    },
+                    brackets: [['{', '}'], ['[', ']'], ['(', ')']],
+                    autoClosingPairs: [
+                        { open: '{', close: '}' },
+                        { open: '[', close: ']' },
+                        { open: '(', close: ')' },
+                        { open: "'", close: "'", notIn: ['string', 'comment'] },
+                        { open: '"', close: '"', notIn: ['string', 'comment'] },
                     ],
-                    string: [
-                        [/[^"]+/, 'string'],
-                        [/"/, { token: 'string.quote', next: '@pop' }],
-                    ],
-                },
-                builtin: functions
-            });
-        });
+                });
+
+                // Register completion provider
+                monaco.languages.registerCompletionItemProvider('octave', {
+                    provideCompletionItems: (model, position, context, token) => {
+                        const word = model.getWordUntilPosition(position);
+                        const range = {
+                            startLineNumber: position.lineNumber,
+                            endLineNumber: position.lineNumber,
+                            startColumn: word.startColumn,
+                            endColumn: word.endColumn
+                        };
+                        
+                        return {
+                            suggestions: functions.map(func => ({
+                                label: func,
+                                kind: monaco.languages.CompletionItemKind.Function,
+                                insertText: `${func}(${func === 'rand' || func === 'randn' ? '' : '${1:arg}'}${func === 'plot' ? ', ${2:arg}' : ''})`,
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                range: range
+                            }))
+                        };
+                    }
+                });
+
+                setMonacoLoaded(true);
+            } catch (error) {
+                console.error("Failed to load Monaco editor:", error);
+                setLoadingError("Failed to load code editor. Please try refreshing the page.");
+            }
+        };
+
+        loadMonaco();
+
+        // Cleanup function
+        return () => {
+            // No explicit cleanup needed for Monaco loader
+        };
     }, [functions]);
 
-    const handleEditorDidMount = (editor: any, monaco: any) => {
+    const handleEditorDidMount = (editor: any) => {
         editorRef.current = editor;
-
-        // Register themes and completion provider
-        Object.entries(monacoThemes).forEach(([themeName, themeData]) => {
-            monaco.editor.defineTheme(themeName, themeData);
-        });
-        monaco.editor.setTheme(getMonacoTheme());
-
-        monaco.languages.setLanguageConfiguration('octave', {
-            comments: {
-                lineComment: '%',
-                blockComment: ['%{', '%}']
-            },
-            brackets: [['{', '}'], ['[', ']'], ['(', ')']],
-            autoClosingPairs: [
-                { open: '{', close: '}' },
-                { open: '[', close: ']' },
-                { open: '(', close: ')' },
-                { open: "'", close: "'", notIn: ['string', 'comment'] },
-                { open: '"', close: '"', notIn: ['string', 'comment'] },
-            ],
-        });
-
-        monaco.languages.registerCompletionItemProvider('octave', {
-            provideCompletionItems: () => ({
-                suggestions: functions.map(func => ({
-                    label: func,
-                    kind: monaco.languages.CompletionItemKind.Function,
-                    insertText: `${func}(${func === 'rand' || func === 'randn' ? '' : '${1:arg}'}${func === 'plot' ? ', ${2:arg}' : ''})`,
-                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
-                }))
-            })
-        });
     };
 
     const runCode = async () => {
@@ -314,6 +353,10 @@ export default function CodeEditor({
         return <div className="flex h-full items-center justify-center">Loading editor...</div>
     }
 
+    if (loadingError) {
+        return <div className="flex h-full items-center justify-center text-red-500">{loadingError}</div>
+    }
+
     return (
         <div className={`flex bg-background border-2 rounded-xl px-2 ${isFullscreen ? 'fixed inset-0 z-50 min-h-screen' : 'h-[89vh]'}`}>
             <div className="flex-1 flex flex-col">
@@ -328,7 +371,7 @@ export default function CodeEditor({
                     onToggleOrientation={toggleOrientation}
                     language={activeFile.language}
                     onLanguageChange={handleLanguageChange}
-                                    />
+                />
                 <EditorTabs
                     tabs={files}
                     activeTab={activeFileId}
@@ -372,6 +415,10 @@ export default function CodeEditor({
                                         Loading...
                                     </div>
                                 }
+                                beforeMount={(monaco) => {
+                                    // This ensures the theme is applied correctly
+                                    monaco.editor.setTheme(getMonacoTheme());
+                                }}
                             />
                         </ResizablePanel>
                         <ResizableHandle withHandle />
