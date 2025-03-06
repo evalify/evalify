@@ -119,7 +119,11 @@ export async function GET(req: Request) {
                 type: Array.isArray(question.answer) && question.answer.length > 1 ? 'MMCQ' : question.type,
                 quizId: question.quizId,
                 ...(question.options && { options: question.options }),
-                ...(question.attachedFile && { attachedFile: question.attachedFile })
+                ...(question.attachedFile && { attachedFile: question.attachedFile }),
+                ...(question.driverCode && { driverCode: question.driverCode }),
+                ...(question.boilerplateCode && { boilerplateCode: question.boilerplateCode }),
+                ...(question.functionDetails && { language: question.functionDetails.language }),
+                
             }));
 
             // Cache the original questions

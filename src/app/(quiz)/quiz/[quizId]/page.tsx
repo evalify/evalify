@@ -42,7 +42,7 @@ interface Question {
     question: string
     options?: Option[]
     mark: number
-    type: 'MCQ' | 'MMCQ' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'DESCRIPTIVE' | 'FILE_UPLOAD';
+    type: 'MCQ' | 'MMCQ' | 'TRUE_FALSE' | 'FILL_IN_BLANK' | 'DESCRIPTIVE' | 'FILE_UPLOAD' | "CODING";
     isMultiple?: boolean;
     attachedFile?: string;
 }
@@ -682,6 +682,51 @@ const QuizPage = () => {
                                     </div>
                                 </div>
                             );
+                        case 'CODING':
+                            // Initialize editor with boilerplate code if available
+                            const codingLanguage = question.language || 'python';
+                            const boilerplateCode = question.boilerplateCode || '';
+
+                            // Create initial file with the correct language and boilerplate code
+                            const initialFile = {
+                                id: nanoid(),
+                                name: 'solution',
+                                language: codingLanguage,
+                                content: boilerplateCode
+                            };
+
+                            // Initialize files if not already in answers
+                            const codingFiles = userAnswers[question.id]?.[0]
+                                ? JSON.parse(userAnswers[question.id][0])
+                                : [initialFile];
+
+                            // Set activeFileId to the first file
+                            const activeFileId = codingFiles[0]?.id;
+
+                            return (
+                                <div className="w-full">
+                                    <CodeEditor
+                                        files={codingFiles}
+                                        activeFileId={activeFileId}
+                                        onFileChange={(files) => {
+                                            const fileData = JSON.stringify(files);
+                                            handleDescriptiveAnswer(question.id, [fileData]);
+                                        }}
+                                        onActiveFileChange={(fileId) => {
+                                            // No need to change answer, just update active file
+                                        }}
+                                        driverCode={question.driverCode || ''}
+                                    />
+                                    {/* {question.driverCode && (
+                                        <div className="mt-4 p-3 border rounded bg-muted/20">
+                                            <p className="text-sm font-medium mb-2">Test Cases</p>
+                                            <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
+                                                {question.driverCode}
+                                            </pre>
+                                        </div>
+                                    )} */}
+                                </div>
+                            );
                         default:
                             return <div>Unsupported question type</div>
                     }
@@ -929,7 +974,7 @@ const QuizPage = () => {
                             className="hidden"
                             id="file"
                             name="file"
-                            onChange={(e) => { console.log("Files : ",e.target.files); handleChange(e) }}
+                            onChange={(e) => { console.log("Files : ", e.target.files); handleChange(e) }}
                             accept="*/*"
                             disabled={loadingState !== 'idle'}
                         />

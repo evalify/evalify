@@ -93,8 +93,7 @@ interface CodeEditorProps {
     activeFileId: string;
     onFileChange: (files: CodeFile[]) => void;
     onActiveFileChange: (fileId: string) => void;
-    functionDetails?: FunctionDetails;
-    testCases?: TestCase[];
+    driverCode?: string;
     showConsole?: boolean;
 }
 
@@ -129,8 +128,7 @@ export default function CodeEditor({
     activeFileId,
     onFileChange,
     onActiveFileChange,
-    functionDetails,
-    testCases,
+    driverCode = '',
     showConsole = false
 }: CodeEditorProps) {
     const functions = [
@@ -233,7 +231,7 @@ export default function CodeEditor({
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    source_code: activeFile.content,
+                    source_code: activeFile.content + "\n\n" + driverCode,
                     language: activeFile.language
                 })
             })
