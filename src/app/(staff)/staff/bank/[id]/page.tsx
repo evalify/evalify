@@ -237,6 +237,7 @@ const QuestionsPage = () => {
             {/* Fixed Sidebar */}
             <div className="w-[280px] fixed  h-[88vh] border-r dark:border-gray-800 bg-background">
                 <div className="flex flex-col h-full">
+
                     <div className="flex-none border-b dark:border-gray-800">
                         <h2 className="font-semibold text-lg">Topics</h2>
                     </div>
@@ -315,6 +316,7 @@ const QuestionsPage = () => {
                         </div>
                     </ScrollArea>
 
+             
                     {/* Add Topic Form */}
                     <div className="flex-none p-4 border-t dark:border-gray-800">
                         <div className="flex gap-2">
@@ -392,7 +394,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -403,7 +405,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -414,7 +416,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -425,7 +427,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -436,7 +438,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -447,7 +449,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -462,8 +464,8 @@ const QuestionsPage = () => {
 
             {/* Sheets and Dialogs remain the same */}
             {(isAddingQuestion || editingQuestion) && (
-                <Sheet 
-                    open={true} 
+                <Sheet
+                    open={true}
                     onOpenChange={(open) => {
                         if (!open) {
                             setIsAddingQuestion(false);

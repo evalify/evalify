@@ -32,6 +32,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
                     { staffs: { some: { id: staff?.id } } },
                     { bankOwners: { some: { id: staff?.id } } }
                 ]
+            },
+            include: {
+                bankOwners: true
             }
         });
 

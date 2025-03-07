@@ -252,6 +252,7 @@ const QuestionsPage = () => {
                     <div className="flex-none border-b dark:border-gray-800">
                         <h2 className="font-semibold text-lg">Topics</h2>
                     </div>
+        
                     <ScrollArea className="flex-1">
                         <div className="p-2 space-y-1">
                             {topics.map((topic) => (
@@ -386,6 +387,7 @@ const QuestionsPage = () => {
                     </div>
                 </div>
 
+
                 {/* Scrollable Content Area */}
                 <div className="flex-1  p-6">
                     {selectedTopics.length > 0 ? (
@@ -406,7 +408,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -417,7 +419,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -428,7 +430,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -439,7 +441,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -450,7 +452,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
@@ -461,7 +463,7 @@ const QuestionsPage = () => {
                                     bankId={params.id}
                                     topic={selectedTopics.map(t => t.id)}
                                     onEdit={handleEditQuestion}
-                                    allTopics={allTopics}
+                                    topics={topics}
                                     editingQuestion={editingQuestion}
                                 />
                             </TabsContent>
