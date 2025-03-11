@@ -71,7 +71,7 @@ export default function QuestionsList({
     onEdit,
     bankId,
     topic,
-    topics = [], // Add default empty array
+    topics = [],
     onQuestionUpdate,
     editingQuestion,
     requireTopics = true,
@@ -265,9 +265,6 @@ export default function QuestionsList({
                         <div className="space-y-2 flex-1">
                             <span className="font-medium">Question {index + 1}</span>
                             <div className="flex items-center gap-2 text-muted-foreground ">
-                                <div>
-
-                                </div>
                                 <div className="flex items-center gap-1.5">
                                     {getQuestionIcon(question.type)}
                                     <span className="text-sm">{question.type}</span>
@@ -322,8 +319,8 @@ export default function QuestionsList({
                     {requireTopics && (
                         <div className="flex flex-row justify-between">
                             <div className="flex flex-wrap gap-2">
-                                {question.topics?.map((topicId) => (
-                                    <Badge key={topicId} variant="secondary">
+                                {question.topics?.map((topicId, index) => (
+                                    <Badge key={`topic_${questionId}_${topicId}_${index}`} variant="secondary">
                                         {topicMap.get(topicId) || 'Unknown Topic'}
                                     </Badge>
                                 ))}
