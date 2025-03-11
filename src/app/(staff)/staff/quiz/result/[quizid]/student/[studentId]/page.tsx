@@ -93,7 +93,7 @@ export default function StudentResultPage() {
 
             if (response.ok) {
                 toast.success('Marks updated successfully');
-                fetchData(); // Refresh data
+                fetchData(); 
             } else {
                 toast.error('Failed to update marks');
             }
@@ -107,7 +107,7 @@ export default function StudentResultPage() {
     };
 
     const renderOptions = (question: Question, studentResponse: Response) => {
-        const isNotAttempted = !studentResponse || !studentResponse.student_answer?.length || 
+        const isNotAttempted = !studentResponse || !studentResponse.student_answer?.length ||
             (Array.isArray(studentResponse.student_answer) && studentResponse.student_answer.every(ans => !ans));
 
         if (isNotAttempted) {
@@ -154,7 +154,7 @@ export default function StudentResultPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                         {question.options.map((option, index) => {
                             const isCorrect = question.answer.includes(option.optionId);
-                            const isSelected = studentResponse?.student_answer?.includes(option?.optionId) || false;
+                            const isSelected = studentResponse?.student_answer?.includes(option?.optionId) ||  studentResponse.includes(option.optionId)  ||false;
 
                             return (
                                 <div
@@ -191,7 +191,7 @@ export default function StudentResultPage() {
                         <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
                             <div className="font-medium mb-2">Student's Answer:</div>
                             <div className="whitespace-pre-wrap">
-                                <TiptapRenderer content={studentResponse.student_answer[0] || "No response"} />
+                                <TiptapRenderer content={studentResponse.student_answer[0] || studentResponse[0] || "No response"} />
                             </div>
                         </div>
 

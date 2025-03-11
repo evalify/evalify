@@ -174,9 +174,8 @@ end`;
         if (files[0]) {
             const newContent = files[0].content;
             onStudentAnswerChange(newContent);
-            // Since solution is modified by user, update the expected answer as well
-            onDriverCodeChange(newContent.split('\n\n')[1] || ''); // Extract driver code part
-            onBoilerplateCodeChange(newContent.split('\n\n')[0] || ''); // Extract boilerplate part
+            // onBoilerplateCodeChange(newContent.split('\n\n')[0] || ''); // Extract boilerplate part
+            // onDriverCodeChange(newContent.split('\n\n')[1] || ''); // Extract driver code part
         }
     };
 
@@ -338,14 +337,6 @@ end`;
                             >
                                 <ClipboardCopy className="h-4 w-4 mr-2" />
                                 Copy
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleCopyCode(`${boilerplateCode}\n\n${driverCode}`)}
-                            >
-                                <Share2 className="h-4 w-4 mr-2" />
-                                Share All
                             </Button>
                         </div>
                     </div>
