@@ -19,6 +19,7 @@ class RedisClient {
             }
 
             RedisClient.instance = new Redis(redisUrl, {
+                database: 1,
                 maxRetriesPerRequest: 3,
                 retryStrategy(times) {
                     const delay = Math.min(times * 500, 2000);

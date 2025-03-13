@@ -207,7 +207,7 @@ const PublishQuizDialog = ({ quizId, onPublish, questions, quizDetails }: {
 };
 
 export default function QuizPage() {
-    const { quizid } = useParams()
+    const { quizid, courseid } = useParams()
     const { data: session } = useSession()  // Add this line near other hooks
     const [questions, setQuestions] = useState<Question[]>([])
     const [quizDetails, setQuizDetails] = useState<QuizDetails | null>(null)
@@ -427,7 +427,7 @@ export default function QuizPage() {
                                 questions={questions}
                                 quizDetails={quizDetails}
                             />
-                            <Button onClick={() => router.push(`/manager/quiz/result/${quizid}`)}
+                            <Button onClick={() => router.push(`/manager/quiz/${courseid}/result/${quizid}`)}
                                 disabled={questions.length === 0}>
                                 View Results
                             </Button>

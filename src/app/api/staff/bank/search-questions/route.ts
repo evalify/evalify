@@ -1,7 +1,6 @@
 import { auth } from "@/lib/auth/auth";
 import clientPromise from "@/lib/db/mongo";
 import { prisma } from "@/lib/db/prismadb";
-import { access } from "fs";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -12,7 +11,16 @@ export async function POST(req: Request) {
         }
 
         const { bankIds, topics, difficulty, types, count, random, quizId } = await req.json();
+        
+        // Validate required parameters
+        if (!bankIds || !Array.isArray(bankIds) || bankIds.length === 0) {
+            return NextResponse.json({ message: "At least one bank ID is required" }, { status: 400 });
+        }
+
         const requestedCount = parseInt(count) || 50;
+        if (requestedCount <= 0) {
+            return NextResponse.json({ message: "Count must be a positive number" }, { status: 400 });
+        }
 
         let authorizedBankIds: string[] = [];
 
@@ -88,12 +96,15 @@ export async function POST(req: Request) {
         }
 
         // Get existing quiz questions
-        const existingQuizQuestions = await (await clientPromise)
-            .db()
-            .collection('NEW_QUESTIONS')
-            .find({ quizId })
-            .project({ question: 1, content: 1, type: 1 })
-            .toArray();
+        let existingQuizQuestions = [];
+        if (quizId) {
+            existingQuizQuestions = await (await clientPromise)
+                .db()
+                .collection('NEW_QUESTIONS')
+                .find({ quizId })
+                .project({ question: 1, content: 1, type: 1 })
+                .toArray();
+        }
 
         // Create lookup set for fast duplicate checking
         const existingKeys = new Set(
@@ -105,7 +116,7 @@ export async function POST(req: Request) {
 
         // Build base query
         let searchQuery: any = {
-            bankId: { $in: authorizedBankIds }
+            bankId: { $in: bankIds }
         };
 
         if (topics?.length > 0) searchQuery.topics = { $in: topics };
@@ -138,6 +149,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ questions }, { status: 200 });
     } catch (error) {
         console.log('error:', error);
-        return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ 
+            message: "Internal Server Error",
+            details: error instanceof Error ? error.message : "Unknown error"
+        }, { status: 500 });
     }
 }

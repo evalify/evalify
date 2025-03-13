@@ -124,6 +124,17 @@ export function BankSearchDialog({ onQuestionsAdd, existingQuestions, quizId }: 
     };
 
     const handleFetchQuestions = async () => {
+        // Validate required selections
+        if (!selectedBank) {
+            toast.error("Please select a question bank");
+            return;
+        }
+
+        if (questionCount < 1) {
+            toast.error("Number of questions must be at least 1");
+            return;
+        }
+
         try {
             setIsLoading(true);
             
@@ -137,18 +148,30 @@ export function BankSearchDialog({ onQuestionsAdd, existingQuestions, quizId }: 
                     types: selectedType === '_ANY' ? [] : selectedType ? [selectedType] : [],
                     count: questionCount,
                     random: true,
-                    quizId // Pass quizId instead of existingQuestions
+                    quizId
                 })
             });
 
-            if (!response.ok) throw new Error('Failed to fetch questions');
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to fetch questions');
+            }
 
             const { questions } = await response.json();
+            
+            if (!questions || questions.length === 0) {
+                toast.warning("No questions found matching your criteria");
+                setFetchedQuestions([]);
+                return;
+            }
+
             // Shuffle the questions before setting them
             setFetchedQuestions(shuffleArray(questions).slice(0, questionCount));
+            toast.success(`Found ${questions.length} questions`);
         } catch (error) {
-            toast.error("Failed to fetch questions");
+            toast.error(error instanceof Error ? error.message : "Failed to fetch questions");
             console.error('Fetch error:', error);
+            setFetchedQuestions([]);
         } finally {
             setIsLoading(false);
         }
@@ -282,7 +305,12 @@ export function BankSearchDialog({ onQuestionsAdd, existingQuestions, quizId }: 
                                 disabled={!selectedBank || isLoading}
                                 className="w-full"
                             >
-                                {isLoading ? "Fetching..." : "Fetch Questions"}
+                                {isLoading ? 
+                                    "Fetching..." : 
+                                    fetchedQuestions.length > 0 ? 
+                                        "Fetch New Questions" : 
+                                        "Fetch Questions"
+                                }
                             </Button>
                         </div>
                     </div>

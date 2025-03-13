@@ -389,7 +389,7 @@ export default function QuizPage() {
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
-                <Button variant="ghost" onClick={() => router.push('/manager/quiz')}>
+                <Button variant="ghost" onClick={() => router.back()}>
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Quizzes
                 </Button>
