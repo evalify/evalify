@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function QuizPage() {
-    const { quizid } = useParams()
+    const { quizid, courseid } = useParams()
     const [quiz, setQuiz] = useState<any>()
     const [questions, setQuestions] = useState<any>([])
     const [quizResults, setQuizResults] = useState<any>([])
@@ -661,7 +661,7 @@ export default function QuizPage() {
                                     <TableRow
                                         key={result.id}
                                         className="cursor-pointer "
-                                        onClick={() => router.push(`/staff/quiz/result/${quizid}/student/${result.id}`)}
+                                        onClick={() => router.push(`/manager/quiz/${courseid}/result/${quizid}/student/${result.id}`)}
                                     >
                                         <TableCell>{result.student.user.name}</TableCell>
                                         <TableCell>{(result.student.user.rollNo as string).toUpperCase()}</TableCell>

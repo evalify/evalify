@@ -8,7 +8,7 @@ export async function GET(req: Request, { params }: { params: { studentId: strin
     try {
         const param = await params;
         const session = await auth();
-        if (!session?.user?.role || session?.user?.role !== 'STAFF') {
+        if (!session?.user?.role || (session?.user?.role !== 'STAFF' && session?.user?.role !== 'MANAGER')) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

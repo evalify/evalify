@@ -2,17 +2,21 @@ import { auth } from "@/lib/auth/auth";
 import clientPromise from "@/lib/db/mongo";
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
-import { redis, CACHE_KEYS, clearQuizCache } from "@/lib/db/redis";
+// import { redis, CACHE_KEYS, clearQuizCache } from "@/lib/db/redis";
 
 export async function GET(req: Request) {
     try {
         const session = await auth();
+
+        
+        
         if (!session?.user?.role || (session?.user?.role !== 'STAFF' && session?.user?.role !== 'MANAGER')) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
+        
         const { searchParams } = new URL(req.url);
         const quizid = searchParams.get('quizid');
+
 
         // // Try to get from cache first
         // const cached = await redis.get(CACHE_KEYS.quizResults(quizid));
@@ -87,32 +91,14 @@ export async function PUT(req: Request) {
         const body = await req.json();
         const { quizId } = body;
 
-        // For managers, verify they have access to this quiz's class
-        if (session?.user?.role === 'MANAGER') {
-            const hasAccess = await prisma.quiz.findFirst({
-                where: {
-                    id: quizId,
-                    courses: {
-                        some: {
-                            class: {
-                                manager: {
-                                    some: {
-                                        id: session.user.id
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            });
 
-            if (!hasAccess) {
-                return NextResponse.json({ error: "Unauthorized access to this quiz" }, { status: 403 });
-            }
+        if (!quizId) {
+            return NextResponse.json({ error: "QuizID is required" }, { status: 400 });
         }
 
         const URL = `${process.env.EVALUATION_API}/evaluate`;
         console.log({ quizId, URL });
+        
         await fetch(URL, {
             method: 'POST',
             headers: {

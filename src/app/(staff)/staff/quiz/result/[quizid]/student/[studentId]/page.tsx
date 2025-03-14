@@ -154,7 +154,7 @@ export default function StudentResultPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                         {question.options.map((option, index) => {
                             const isCorrect = question.answer.includes(option.optionId);
-                            const isSelected = studentResponse?.student_answer?.includes(option?.optionId) ||  studentResponse.includes(option.optionId)  ||false;
+                            const isSelected = studentResponse?.student_answer?.includes(option?.optionId) ||false;
 
                             return (
                                 <div
