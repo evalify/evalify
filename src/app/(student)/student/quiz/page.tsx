@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { RefreshCw, ClipboardList, Calendar, Clock, User, AlarmClock, CheckCircle2, BookOpen, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-
 
 type QuizInfo = {
     id: string
@@ -41,9 +40,29 @@ type QuizInfo = {
 }
 
 function QuizManagement() {
+    const router = useRouter()
+    const searchParams = useSearchParams()
+    const status = searchParams.get('status') || 'live'
     const [quizInfo, setQuizInfo] = useState<QuizInfo[] | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [activeTab, setActiveTab] = useState<string>(status)
+    
+    // Validate that status is one of the allowed values
+    const validStatuses = ['live', 'upcoming', 'completed', 'missed']
+    
+    // Initialize the current status from the URL parameter
+    useEffect(() => {
+        const currentStatus = searchParams.get('status')
+        if (currentStatus && validStatuses.includes(currentStatus)) {
+            setActiveTab(currentStatus)
+        } else {
+            // Only update the URL if the status is invalid
+            const newParams = new URLSearchParams(searchParams.toString())
+            newParams.set('status', 'live')
+            router.replace(`/student/quiz?${newParams.toString()}`)
+        }
+    }, [searchParams])
 
     async function getQuiz() {
         try {
@@ -70,6 +89,14 @@ function QuizManagement() {
     useEffect(() => {
         getQuiz()
     }, [])
+    
+    const handleTabChange = (value: string) => {
+        setActiveTab(value)
+        // Update the URL with the new status parameter
+        const newParams = new URLSearchParams(searchParams.toString())
+        newParams.set('status', value)
+        router.push(`/student/quiz?${newParams.toString()}`)
+    }
 
     if (isLoading) {
         return <LoadingSkeleton />
@@ -88,7 +115,11 @@ function QuizManagement() {
             {quizInfo?.length === 0 ? (
                 <EmptyState />
             ) : (
-                <Tabs defaultValue="live" className="w-full">
+                <Tabs 
+                    value={activeTab} 
+                    className="w-full"
+                    onValueChange={handleTabChange}
+                >
                     <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="live">Live</TabsTrigger>
                         <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
@@ -102,10 +133,10 @@ function QuizManagement() {
                         <QuizList quizzes={quizInfo?.filter(q => q.status === 'upcoming')} status="upcoming" />
                     </TabsContent>
                     <TabsContent value="completed">
-                        <QuizList quizzes={quizInfo?.filter(q => q.status === 'completed')} status="completed" />
+                        <QuizList quizzes={quizInfo?.filter(q => q.status === 'completed').reverse()} status="completed" />
                     </TabsContent>
                     <TabsContent value="missed">
-                        <QuizList quizzes={quizInfo?.filter(q => q.status === 'missed')} status="missed" />
+                        <QuizList quizzes={quizInfo?.filter(q => q.status === 'missed').reverse()} status="missed" />
                     </TabsContent>
                 </Tabs>
             )}
@@ -129,13 +160,11 @@ function QuizList({ quizzes, status }: { quizzes: QuizInfo[] | undefined, status
     )
 }
 
-
-
 function QuizCard({ id, title, description, startTime, endTime, duration, staff, status, showResult, isLiveQuiz }: QuizInfo) {
     const router = useRouter()
 
     function getScore(quizId: string) {
-
+        // Future implementation
     }
 
     const getStatusBadge = (status: string) => {
@@ -241,9 +270,9 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff,
                         View Results
                     </Button>
                 ) : (
-                    <Button className="w-full" onClick={() => { getScore(id) }} disabled>
+                    <Button className="w-full" disabled>
                         <AlarmClock className="mr-2 h-4 w-4" />
-                        View Score
+                        View Results
                     </Button>
                 )}
             </CardFooter>
@@ -251,12 +280,11 @@ function QuizCard({ id, title, description, startTime, endTime, duration, staff,
     )
 }
 
-
 function LoadingSkeleton() {
     return (
         <div className="container mx-auto p-4 space-y-4">
             <Skeleton className="h-12 w-[250px]" />
-            {[...Array(3)].map((_, i) => (
+            {[...Array(5)].map((_, i) => (
                 <Card key={i} className="w-full mb-4">
                     <CardHeader>
                         <Skeleton className="h-6 w-[250px]" />
@@ -296,4 +324,3 @@ function EmptyState() {
 }
 
 export default QuizManagement
-

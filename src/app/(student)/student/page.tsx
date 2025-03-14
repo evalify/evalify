@@ -192,7 +192,7 @@ export default function DashboardPage() {
                                     <Button 
                                         className="w-full"
                                         size="sm"
-                                        onClick={() => router.push(`/student/quiz`)}
+                                        onClick={() => router.push(`/student/quiz?status=live`)}
                                     >
                                         Take Quiz
                                     </Button>

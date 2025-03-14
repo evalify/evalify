@@ -369,7 +369,7 @@ export default function StudentResultPage() {
             </Card>
 
             <QuizResultSummary questions={data.questions} responses={data.result.responses} />
-            
+
             <Tabs defaultValue="all" className="w-full">
                 <TabsList>
                     <TabsTrigger value="all">All Questions</TabsTrigger>
@@ -409,7 +409,7 @@ export default function StudentResultPage() {
                         renderOptions={renderOptions}
                         data={data}
                     />
-                </TabsContent>s
+                </TabsContent>
             </Tabs>
         </div>
     )
