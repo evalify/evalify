@@ -23,6 +23,63 @@ export async function GET() {
             include: { class: true }
         });
 
+        // Get all courses for the student
+        const courses = await prisma.course.findMany({
+            where: {
+                classId: student!.classId,
+                isactive: true
+            },
+            select: {
+                id: true,
+                name: true,
+                code: true,
+                quizzes: {
+                    where: {
+                        endTime: { lt: now },
+                        settings: { showResult: true }
+                    },
+                    select: {
+                        id: true,
+                        title: true,
+                        results: {
+                            where: { studentId: student!.id },
+                            select: {
+                                score: true,
+                                totalScore: true,
+                                submittedAt: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const coursePerformance = courses.map(course => {
+            const totalQuizzes = course.quizzes.length;
+            const attemptedQuizzes = course.quizzes.filter(q => q.results.length > 0).length;
+            const scores = course.quizzes
+                .filter(q => q.results.length > 0)
+                .map(q => (q.results[0].score / q.results[0].totalScore) * 100);
+            
+            const avgScore = scores.length > 0 
+                ? scores.reduce((a, b) => a + b, 0) / scores.length 
+                : 0;
+
+            return {
+                id: course.id,
+                name: course.name,
+                code: course.code,
+                totalQuizzes,
+                attemptedQuizzes,
+                missedQuizzes: totalQuizzes - attemptedQuizzes,
+                averageScore: avgScore,
+                lastQuizScore: scores[scores.length - 1] || 0,
+                improvement: scores.length > 1 
+                    ? scores[scores.length - 1] - scores[scores.length - 2]
+                    : 0
+            };
+        });
+
         const recentResults = await prisma.quizResult.findMany({
             where: { 
                 studentId: student!.id,
@@ -76,6 +133,12 @@ export async function GET() {
                 },
                 startTime: { lte: now },
                 endTime: { gte: now },
+                results: {
+                    none: { 
+                        studentId: student!.id, 
+                        isSubmitted: true 
+                    }
+                }
             },
             orderBy: { startTime: 'asc' },
             select: {
@@ -175,7 +238,11 @@ export async function GET() {
             recentResults,
             upcomingQuizzes,
             liveQuizzes,
-            performanceData
+            coursePerformance,
+            studentInfo: {
+                name: student?.user?.name,
+                class: student?.class?.name
+            }
         };
 
         await redis.setex(cacheKey, 300, JSON.stringify(dashboardData));

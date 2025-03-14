@@ -1123,7 +1123,7 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                                         }}
                                     />
                                     <Label htmlFor={`course-${course.id}`}>
-                                        {course.code} - {course.class.name}
+                                        {course.code} - {course.name} -{course.class.name}
                                     </Label>
                                 </div>
                             ))}
