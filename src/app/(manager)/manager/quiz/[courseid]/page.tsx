@@ -11,7 +11,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -366,6 +366,9 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [quizToDelete, setQuizToDelete] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedQuizzes, setSelectedQuizzes] = useState<string[]>([]);
+    const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
+    const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
 
     const isManager = session?.user?.role === "MANAGER";
 
@@ -603,6 +606,39 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
         });
     };
 
+    const handleSelectQuiz = (quizId: string) => {
+        setSelectedQuizzes(prev => 
+            prev.includes(quizId) 
+                ? prev.filter(id => id !== quizId)
+                : [...prev, quizId]
+        );
+    };
+
+    const handleBulkCourseUpdate = async () => {
+        try {
+            const response = await fetch('/api/staff/quiz/bulk-update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    quizIds: selectedQuizzes,
+                    courseIds: selectedCourses
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+
+            toast.success('Courses updated successfully');
+            setBulkUpdateOpen(false);
+            setSelectedQuizzes([]);
+            fetchQuizzes();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to update courses');
+        }
+    };
+
     const filteredAndSortedQuizzes = React.useMemo(() => {
         let filtered = quizzes.filter(quiz => {
             const matchesSearch = quiz.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -815,6 +851,22 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                     </div>
                 </header>
 
+                {/* Add bulk actions bar when quizzes are selected */}
+                {selectedQuizzes.length > 0 && (
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 mb-6 flex items-center justify-between">
+                        <span className="text-indigo-700 dark:text-indigo-300">
+                            {selectedQuizzes.length} quiz{selectedQuizzes.length !== 1 ? 'zes' : ''} selected
+                        </span>
+                        <Button
+                            variant="outline"
+                            onClick={() => setBulkUpdateOpen(true)}
+                            className="bg-indigo-600 text-white hover:bg-indigo-700"
+                        >
+                            Update Courses
+                        </Button>
+                    </div>
+                )}
+
                 <div className="bg-white dark:bg-slate-800/50 rounded-lg shadow-md p-4 mb-6 backdrop-blur-sm">
                     <div className="flex flex-col sm:flex-row gap-4">
                         <div className="flex-1 relative">
@@ -899,6 +951,17 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="dark:border-gray-700">
+                                            <TableHead className="w-12">
+                                                <Checkbox
+                                                    checked={selectedQuizzes.length === filteredAndSortedQuizzes.length}
+                                                    onCheckedChange={(checked) => {
+                                                        setSelectedQuizzes(checked 
+                                                            ? filteredAndSortedQuizzes.map(q => q.id)
+                                                            : []
+                                                        );
+                                                    }}
+                                                />
+                                            </TableHead>
                                             <TableHead className="dark:text-gray-200">Status</TableHead>
                                             <TableHead className="dark:text-gray-200">Title</TableHead>
                                             <TableHead className="dark:text-gray-200">Description</TableHead>
@@ -920,6 +983,12 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                                                 const { icon, color } = getQuizStatus(quiz.startTime, quiz.endTime);
                                                 return (
                                                     <TableRow key={quiz.id} className="dark:border-gray-700">
+                                                        <TableCell>
+                                                            <Checkbox
+                                                                checked={selectedQuizzes.includes(quiz.id)}
+                                                                onCheckedChange={() => handleSelectQuiz(quiz.id)}
+                                                            />
+                                                        </TableCell>
                                                         <TableCell className={`${color} dark:text-gray-200`}>
                                                             <div className={color}>{icon}</div>
                                                         </TableCell>
@@ -987,14 +1056,21 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                             <div className="grid grid-cols-1 gap-6">
                                 <AnimatePresence>
                                     {filteredAndSortedQuizzes.map((quiz) => (
-                                        <QuizCard
-                                            key={quiz.id}
-                                            quiz={quiz}
-                                            onEdit={handleEdit}
-                                            onDelete={handleDeleteClick}
-                                            router={router}
-                                            courseid={courseid}  // Pass courseid here
-                                        />
+                                        <div key={quiz.id} className="relative">
+                                            <div className="absolute top-4 left-4 z-10">
+                                                <Checkbox
+                                                    checked={selectedQuizzes.includes(quiz.id)}
+                                                    onCheckedChange={() => handleSelectQuiz(quiz.id)}
+                                                />
+                                            </div>
+                                            <QuizCard
+                                                quiz={quiz}
+                                                onEdit={handleEdit}
+                                                onDelete={handleDeleteClick}
+                                                router={router}
+                                                courseid={courseid}
+                                            />
+                                        </div>
                                     ))}
                                 </AnimatePresence>
                             </div>
@@ -1021,6 +1097,46 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Add bulk update dialog */}
+            <Dialog open={bulkUpdateOpen} onOpenChange={setBulkUpdateOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle>Update Courses</DialogTitle>
+                        <DialogDescription>
+                            Select courses for the selected quizzes. This will update all selected quizzes.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                            {courses.map((course) => (
+                                <div key={course.id} className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id={`course-${course.id}`}
+                                        checked={selectedCourses.includes(course.id)}
+                                        onCheckedChange={(checked) => {
+                                            setSelectedCourses(prev =>
+                                                checked
+                                                    ? [...prev, course.id]
+                                                    : prev.filter(id => id !== course.id)
+                                            );
+                                        }}
+                                    />
+                                    <Label htmlFor={`course-${course.id}`}>
+                                        {course.code} - {course.class.name}
+                                    </Label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setBulkUpdateOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleBulkCourseUpdate}>Update</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
