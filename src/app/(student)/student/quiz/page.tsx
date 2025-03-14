@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { RefreshCw, ClipboardList, Calendar, Clock, User, AlarmClock, CheckCircle2, BookOpen, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { Button } from "@/components/ui/button"
@@ -20,32 +20,17 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 
-type QuizInfo = {
-    id: string
-    title: string
-    description: string
-    startTime: string
-    endTime: string
-    duration: string
-    status: 'live' | 'upcoming' | 'completed' | 'missed'
-    staff: {
-        name: string
-        id: string
-    }
-    settings?: {
-        showResult: boolean
-    }
-    showResult: boolean
-    isLiveQuiz: boolean
-}
-
-function QuizManagement() {
+// Component to handle the part that uses useSearchParams
+function QuizTabs() {
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const status = searchParams.get('status') || 'live'
     const [quizInfo, setQuizInfo] = useState<QuizInfo[] | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    
+    // Import useSearchParams inside the component to use it safely
+    const { useSearchParams } = require('next/navigation')
+    const searchParams = useSearchParams()
+    const status = searchParams.get('status') || 'live'
     const [activeTab, setActiveTab] = useState<string>(status)
     
     // Validate that status is one of the allowed values
@@ -141,6 +126,33 @@ function QuizManagement() {
                 </Tabs>
             )}
         </div>
+    )
+}
+
+type QuizInfo = {
+    id: string
+    title: string
+    description: string
+    startTime: string
+    endTime: string
+    duration: string
+    status: 'live' | 'upcoming' | 'completed' | 'missed'
+    staff: {
+        name: string
+        id: string
+    }
+    settings?: {
+        showResult: boolean
+    }
+    showResult: boolean
+    isLiveQuiz: boolean
+}
+
+function QuizManagement() {
+    return (
+        <Suspense fallback={<LoadingSkeleton />}>
+            <QuizTabs />
+        </Suspense>
     )
 }
 
