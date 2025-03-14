@@ -20,29 +20,26 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 
-// Component to handle the part that uses useSearchParams
 function QuizTabs() {
     const router = useRouter()
     const [quizInfo, setQuizInfo] = useState<QuizInfo[] | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     
-    // Import useSearchParams inside the component to use it safely
     const { useSearchParams } = require('next/navigation')
     const searchParams = useSearchParams()
     const status = searchParams.get('status') || 'live'
     const [activeTab, setActiveTab] = useState<string>(status)
     
-    // Validate that status is one of the allowed values
+
     const validStatuses = ['live', 'upcoming', 'completed', 'missed']
     
-    // Initialize the current status from the URL parameter
+
     useEffect(() => {
         const currentStatus = searchParams.get('status')
         if (currentStatus && validStatuses.includes(currentStatus)) {
             setActiveTab(currentStatus)
         } else {
-            // Only update the URL if the status is invalid
             const newParams = new URLSearchParams(searchParams.toString())
             newParams.set('status', 'live')
             router.replace(`/student/quiz?${newParams.toString()}`)
@@ -77,7 +74,6 @@ function QuizTabs() {
     
     const handleTabChange = (value: string) => {
         setActiveTab(value)
-        // Update the URL with the new status parameter
         const newParams = new URLSearchParams(searchParams.toString())
         newParams.set('status', value)
         router.push(`/student/quiz?${newParams.toString()}`)
@@ -161,7 +157,6 @@ function QuizList({ quizzes, status }: { quizzes: QuizInfo[] | undefined, status
         return <div className="text-gray-500 text-center py-4">No {status} quizzes available</div>
     }
     
-    // If there is any Live quiz, student will not be able to view the results of other quizzes
     const isLiveQuiz = quizzes.filter(q => q.status === 'live').length > 0;
     return (
         <div className="space-y-4 mt-4">

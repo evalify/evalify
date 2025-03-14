@@ -31,6 +31,7 @@ const navItemsByRole: Record<UserRole, NavItem[]> = {
   STUDENT: [
     { name: "Home", href: "/student", icon: Home },
     { name: "Quiz", href: "/student/quiz", icon: BookOpen },
+    { name: "Courses", href: "/student/course", icon: School },
     { name: "Assignments", href: "/student/assignments", icon: FileText },
     // { name: "SharePoint", href: "/student/sharepoint", icon: Cloudy },
     { name: "IDE", href: "/ide", icon: Terminal },

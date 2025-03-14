@@ -12,6 +12,14 @@ import { Separator } from '@/components/ui/separator'
 import TiptapRenderer from '@/components/ui/tiptap-renderer'
 import { QuizResultSummary } from '@/components/quiz-result-summary'
 import ReactMarkdown from 'react-markdown'
+import * as XLSX from 'xlsx'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu"
 
 export default function StudentQuizResultPage() {
     const { quizId } = useParams()
@@ -36,6 +44,122 @@ export default function StudentQuizResultPage() {
         }
     }
 
+    // New function to download detailed quiz report
+    const downloadDetailedReport = () => {
+        if (!data) return;
+        
+        try {
+            const { result, questions } = data;
+            const { responses } = result;
+            
+            // Basic quiz information
+            const quizInfo = {
+                "Quiz Title": result.quiz.title,
+                "Date Taken": new Date(result.startTime).toLocaleDateString(),
+                "Time Started": new Date(result.startTime).toLocaleTimeString(),
+                "Time Submitted": result.submittedAt ? new Date(result.submittedAt).toLocaleTimeString() : "N/A",
+                "Total Score": `${result.score} / ${result.totalScore}`,
+                "Percentage": `${((result.score / result.totalScore) * 100).toFixed(2)}%`,
+            };
+            
+            // Question-wise breakdown
+            const questionDetails = questions.map((question, index) => {
+                const response = responses ? responses[question._id] : null;
+                const isNotAttempted = !response || !response.student_answer?.length ||
+                    (Array.isArray(response.student_answer) && response.student_answer.every(ans => !ans));
+                
+                let studentAnswer = "Not attempted";
+                if (!isNotAttempted) {
+                    if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
+                        // Get option texts for selected answers
+                        studentAnswer = question.options
+                            .filter(opt => response.student_answer.includes(opt.optionId))
+                            .map(opt => opt.option.replace(/<[^>]*>/g, ''))
+                            .join(", ");
+                    } else {
+                        studentAnswer = Array.isArray(response.student_answer) 
+                            ? response.student_answer[0]?.replace(/<[^>]*>/g, '') || "No response" 
+                            : response.student_answer?.replace(/<[^>]*>/g, '') || "No response";
+                    }
+                }
+                
+                // Clean HTML tags from correct answers
+                let correctAnswer = "";
+                if (question.type === 'MCQ' || question.type === 'TRUE_FALSE') {
+                    correctAnswer = question.options
+                        .filter(opt => question.answer.includes(opt.optionId))
+                        .map(opt => opt.option.replace(/<[^>]*>/g, ''))
+                        .join(", ");
+                } else if (question.expectedAnswer) {
+                    correctAnswer = question.expectedAnswer.replace(/<[^>]*>/g, '');
+                } else {
+                    correctAnswer = "Not provided";
+                }
+                
+                return {
+                    "Question Number": index + 1,
+                    "Question": question.question.replace(/<[^>]*>/g, ''),
+                    "Type": question.type,
+                    "Your Answer": studentAnswer,
+                    "Correct Answer": correctAnswer,
+                    "Points Earned": isNotAttempted ? 0 : (response.score || 0),
+                    "Max Points": question.mark || 0,
+                    "Feedback": response?.remarks || "No feedback provided"
+                };
+            });
+            
+            // Create workbook and add sheets
+            const workbook = XLSX.utils.book_new();
+            
+            // Add quiz summary sheet
+            const summaryData = [
+                ["Quiz Result Summary"],
+                [""],
+                ["Student Name", result.student?.user?.name || ""],
+                ["Roll Number", result.student?.user?.rollNo || ""],
+                ["Email", result.student?.user?.email || ""],
+                [""],
+                ["Quiz Information"],
+                ["Quiz Title", result.quiz.title],
+                ["Date Taken", new Date(result.startTime).toLocaleDateString()],
+                ["Time Started", new Date(result.startTime).toLocaleTimeString()],
+                ["Time Submitted", result.submittedAt ? new Date(result.submittedAt).toLocaleTimeString() : "N/A"],
+                [""],
+                ["Performance"],
+                ["Total Score", `${result.score} / ${result.totalScore}`],
+                ["Percentage", `${((result.score / result.totalScore) * 100).toFixed(2)}%`],
+            ];
+            
+            const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+            XLSX.utils.book_append_sheet(workbook, summaryWs, "Summary");
+            
+            // Add detailed questions sheet
+            const questionsWs = XLSX.utils.json_to_sheet(questionDetails);
+            XLSX.utils.book_append_sheet(workbook, questionsWs, "Question Details");
+            
+            // Set column widths for questions sheet
+            const questionColWidths = [
+                { wch: 10 }, // Question Number
+                { wch: 40 }, // Question
+                { wch: 15 }, // Type
+                { wch: 30 }, // Your Answer
+                { wch: 30 }, // Correct Answer
+                { wch: 12 }, // Points Earned
+                { wch: 10 }, // Max Points
+                { wch: 40 }, // Feedback
+            ];
+            
+            questionsWs['!cols'] = questionColWidths;
+            
+            // Generate Excel file and download
+            XLSX.writeFile(workbook, `${result.quiz.title.replace(/\s+/g, '_')}_Result.xlsx`);
+            toast.success("Detailed quiz report downloaded successfully");
+        } catch (error) {
+            console.error("Error generating detailed report:", error);
+            toast.error("Failed to download detailed report");
+        }
+    };
+
     if (!data) return <div className="flex justify-center items-center h-screen">Loading...</div>
 
     const { result, questions } = data
@@ -46,11 +170,32 @@ export default function StudentQuizResultPage() {
 
     return (
         <div className="container mx-auto py-8 space-y-8">
-            <Button variant="ghost" onClick={() => router.back()}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Quizzes
-            </Button>
-
+            <div className="flex items-center justify-between">
+                <Button variant="ghost" onClick={() => router.back()}>
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back to Quizzes
+                </Button>
+                
+                {/* Export dropdown */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="flex items-center gap-2">
+                            <FileDown className="h-4 w-4" />
+                            <span>Export Result</span>
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuItem onClick={downloadDetailedReport} className="cursor-pointer">
+                            <FileDown className="mr-2 h-4 w-4" />
+                            <span>Download Detailed Report</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <div className="p-2 text-xs text-muted-foreground">
+                            Export your result as Excel worksheet
+                        </div>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
             <div className="grid gap-6">
                 <Card>

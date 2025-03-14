@@ -4,17 +4,16 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
     try {
-        // const session = await auth();
-        // const email = session?.user?.email;
-        const email = "cb.ai.u4aid23003@cb.students.amrita.edu"
-        if (!email) {
+        const session = await auth();
+
+        if (!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
         const student = await prisma.student.findFirst({
             where: {
                 user: {
-                    email: email
+                    id:session.user.id
                 }
             },
             select: {
