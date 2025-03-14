@@ -1,0 +1,114 @@
+name: Bug Report
+description: Create a report to help us improve
+title: "[BUG] "
+labels: ["bug"]
+projects: ["evalify/2"]
+assignees:
+  - Aksaykanthan
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+  - type: input
+    id: contact
+    attributes:
+      label: Contact Details
+      description: How can we get in touch with you if we need more info?
+      placeholder: ex. email@example.com
+    validations:
+      required: true 
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What Happened?
+      description: A clear and concise description of what the bug is?
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+ - type: textarea
+    id: screenshot
+    attributes:
+      label: "Screenshots"
+      description: If applicable, add screenshots to help explain your problem.
+      value: |
+	Copy and paste your image here or embed with markdown -
+        ![DESCRIPTION](LINK.png)
+      render: bash
+    validations:
+      required: false
+  - type: textarea
+    id: expected-output 
+    attributes:
+      label: What is expected to happen.
+      description: A clear and concise description of what you expected to happen.
+      placeholder: It should not do xyz... and should do abc...
+    validations:
+      required: true
+  - type: textarea
+    id: to-reproduce 
+    attributes:
+      label: To Reproduce
+      description: Tell us how we can reproduce the issue!
+      placeholder: |
+	Steps to reproduce the behavior
+	1. Go to '...'
+	2. Click on '....'
+	3. Scroll down to '....'
+	4. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: What version of our software are you running?
+      options:
+        - 1.0.0 (Current)
+      default: 0
+    validations:
+      required: true
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: What browsers are you seeing the problem on?
+      multiple: true
+      options:
+        - Firefox
+        - Chrome
+	- Brave
+        - Safari
+        - Microsoft Edge
+	- Other
+  - type: dropdown
+    id: os 
+    attributes:
+      label: What operating system are you seeing the problem on?
+      multiple: true
+      options:
+        - Windows
+	- Linux
+	- MacOS
+	- Android
+	- iOS
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      render: shell
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
+      placeholder: |
+	Additionally I would like you to refer...
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://github.com/evalify/evalify/blob/development/CODE_OF_CONDUCT.md). 
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true
