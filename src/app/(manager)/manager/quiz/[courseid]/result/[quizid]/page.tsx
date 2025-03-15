@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,11 +12,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
 import * as XLSX from 'xlsx'
-import { Download, Settings } from 'lucide-react'
+import { Download, Settings, StopCircle, RefreshCw, Clock, CheckCircle2, XCircle, Loader2, FileSpreadsheet } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Progress } from "@/components/ui/progress"
 
 export default function QuizPage() {
     const { quizid, courseid } = useParams()
@@ -35,6 +36,29 @@ export default function QuizPage() {
         markDistribution: true
     });
     const [settings, setSettings] = useState<any>(null)
+    const [evalProgress, setEvalProgress] = useState<null | {
+        progress: number;
+        total: number;
+        current: number;
+        elapsed: number;
+        rate: number;
+        remaining: number;
+        current_phase: string;
+        job_status: string;
+    }>(null)
+    const [evalOptions, setEvalOptions] = useState({
+        override_evaluated: false,
+        types_to_evaluate: {
+            MCQ: true,
+            DESCRIPTIVE: true,
+            CODING: true,
+            TRUE_FALSE: true,
+            FILL_IN_BLANK: true
+        }
+    });
+    const [isRegeneratingReport, setIsRegeneratingReport] = useState(false);
+    
+    const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const toggleChart = (chartName: keyof typeof chartVisibility) => {
         setChartVisibility(prev => ({
@@ -58,6 +82,17 @@ export default function QuizPage() {
                 setQuiz(data.quiz)
                 setQuestions(data.questions)
                 setQuizResults(data.quizResults)
+                
+                // Check if the quiz is currently being evaluated
+                if (data.quiz.isEvaluated === 'EVALUATING' || data.quiz.isEvaluated === 'QUEUED') {
+                    console.log("Quiz is being evaluated, starting polling");
+                    // Make an immediate check before starting interval
+                    checkEvaluationStatus();
+                    startPolling();
+                } else {
+                    // Make sure polling is stopped if quiz is no longer evaluating
+                    stopPolling();
+                }
             } else {
                 toast('Error', {
                     description: data.error || 'Failed to fetch quiz data',
@@ -128,6 +163,87 @@ export default function QuizPage() {
         }
     };
 
+    const checkEvaluationStatus = async () => {
+        try {
+            const response = await fetch(`/api/eval/evaluation/status/${quizid}`);
+            
+            if (!response.ok) {
+                console.error("Error response from evaluation status API:", response.status);
+                return; // Don't update state if the response is not ok
+            }
+            
+            const data = await response.json();
+            
+            // If job status exists, we have an evaluation running or queued
+            if (data.job_status) {
+                setEvalProgress({
+                    ...data,
+                    progress: data.progress || 0,
+                    current_phase: data.phase || 'waiting',
+                    job_status: data.job_status
+                });
+                
+                // Only consider active if the status is EVALUATING or QUEUED
+                setIsEvaluating(['EVALUATING', 'QUEUED'].includes(data.job_status));
+                
+                // If the job is complete, we can stop polling
+                if (['COMPLETED', 'FAILED', 'EVALUATED'].includes(data.job_status)) {
+                    stopPolling();
+                    // Refresh quiz data to get updated evaluation results
+                    if (data.job_status === 'EVALUATED' || data.job_status === 'COMPLETED') {
+                        setTimeout(() => getQuizData(quizid), 1000);
+                    }
+                }
+            } else if (data.message === "No Evaluation is Running") {
+                setEvalProgress(null);
+                setIsEvaluating(false);
+                stopPolling();
+            }
+        } catch (error) {
+            console.error("Error checking evaluation status:", error);
+            // Don't stop polling on temporary errors
+        }
+    };
+
+    const startPolling = () => {
+        // Clear any existing interval first to prevent duplicates
+        stopPolling();
+        
+        console.log("Starting polling for evaluation status");
+        pollingIntervalRef.current = setInterval(checkEvaluationStatus, 1000);
+    };
+
+    const stopPolling = () => {
+        if (pollingIntervalRef.current) {
+            console.log("Stopping polling for evaluation status");
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+    };
+
+    const stopEvaluation = async () => {
+        try {
+            const response = await fetch(`/api/eval/workers/jobs/stop/${quizid}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                toast.success('Evaluation stopped successfully');
+                setIsEvaluating(false);
+                setEvalProgress(null);
+                stopPolling();
+                // Refresh quiz data to get updated status
+                getQuizData(quizid);
+            } else {
+                toast.error(data.error || 'Failed to stop evaluation');
+            }
+        } catch (error) {
+            toast.error('Failed to stop evaluation');
+        }
+    };
+
     useEffect(() => {
         if (!quizid) {
             toast('Error', {
@@ -136,6 +252,12 @@ export default function QuizPage() {
             return
         }
         getQuizData(quizid)
+        
+        checkEvaluationStatus();
+        
+        return () => {
+            stopPolling();
+        }
     }, [quizid])
 
     useEffect(() => {
@@ -241,27 +363,34 @@ export default function QuizPage() {
     }
 
     const evaluateAllResponses = async () => {
-        setIsEvaluating(true)
+        setIsEvaluating(true);
         try {
-            const response = await fetch(`/api/staff/result`, {
-                method: 'PUT',
+            const response = await fetch(`/api/eval/evaluation/evaluate`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ quizId: quizid })
-            })
+                body: JSON.stringify({
+                    quiz_id: quizid,
+                    ...evalOptions
+                })
+            });
 
-            const data = await response.json()
+            const data = await response.json();
             if (response.ok) {
-                toast.success('Quiz Evaluation added to the queue, will be evaluated soon')
-                getQuizData(quizid)
+                toast.success('Quiz Evaluation added to the queue, will be evaluated soon');
+                
+                checkEvaluationStatus();
+                startPolling();
+                
+                setTimeout(() => getQuizData(quizid as string), 1000);
             } else {
-                toast.error(data.error || 'Failed to evaluate responses')
+                toast.error(data.error || 'Failed to evaluate responses');
+                setIsEvaluating(false);
             }
         } catch (error) {
-            toast.error('Failed to evaluate responses')
-        } finally {
-            setIsEvaluating(false)
+            toast.error('Failed to evaluate responses');
+            setIsEvaluating(false);
         }
-    }
+    };
 
     const downloadExcel = () => {
         const sortedResults = [...quizResults].sort((a, b) =>
@@ -386,6 +515,222 @@ export default function QuizPage() {
         </div>
     );
 
+    const renderEvaluationDialog = () => (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button variant="default" disabled={isEvaluating}>
+                    {isEvaluating ? (
+                        <>
+                            <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
+                            Evaluating...
+                        </>
+                    ) : (
+                        'Evaluate All Responses'
+                    )}
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="sm:max-w-[425px]">
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Evaluation Options</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Select which types of questions to evaluate and other options.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="override">Re-evaluate already evaluated responses</Label>
+                        <Switch
+                            id="override"
+                            checked={evalOptions.override_evaluated}
+                            onCheckedChange={(checked) => 
+                                setEvalOptions(prev => ({
+                                    ...prev,
+                                    override_evaluated: checked
+                                }))
+                            }
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Question Types to Evaluate</Label>
+                        {Object.entries(evalOptions.types_to_evaluate).map(([type, checked]) => (
+                            <div key={type} className="flex items-center justify-between">
+                                <Label htmlFor={type}>{type.replace('_', ' ')}</Label>
+                                <Switch
+                                    id={type}
+                                    checked={checked}
+                                    onCheckedChange={(checked) => 
+                                        setEvalOptions(prev => ({
+                                            ...prev,
+                                            types_to_evaluate: {
+                                                ...prev.types_to_evaluate,
+                                                [type]: checked
+                                            }
+                                        }))
+                                    }
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={evaluateAllResponses}>
+                        Start Evaluation
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+
+    const renderEvaluationProgress = () => {
+        if (!evalProgress) return null;
+        
+        const progressPercent = evalProgress.progress || 0;
+        const estimatedTimeRemaining = evalProgress.remaining ? 
+            new Date(evalProgress.remaining * 1000).toISOString().substring(11, 19) : 
+            "Calculating...";
+            
+        let statusIcon;
+        let statusText;
+        let statusColor;
+        
+        // Determine status display based on job_status and phase
+        switch(evalProgress.job_status) {
+            case 'QUEUED':
+                statusIcon = <Clock className="h-5 w-5 text-yellow-500" />;
+                statusText = "Queued for evaluation";
+                statusColor = "text-yellow-500";
+                break;
+            case 'EVALUATING':
+                statusIcon = <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+                
+                // Refine status text based on phase
+                switch(evalProgress.current_phase) {
+                    case 'initializing':
+                        statusText = "Initializing evaluation";
+                        break;
+                    case 'validation':
+                        statusText = "Validating submissions";
+                        break;
+                    case 'evaluation_start':
+                        statusText = "Starting evaluation";
+                        break;
+                    case 'evaluation_in_progress':
+                        statusText = "Evaluation in progress";
+                        break;
+                    case 'evaluation_completed':
+                        statusText = "Finalizing evaluation";
+                        break;
+                    default:
+                        statusText = "Evaluating";
+                }
+                statusColor = "text-blue-500";
+                break;
+            case 'COMPLETED':
+            case 'EVALUATED':
+                statusIcon = <CheckCircle2 className="h-5 w-5 text-green-500" />;
+                statusText = "Evaluation completed";
+                statusColor = "text-green-500";
+                break;
+            case 'FAILED':
+                statusIcon = <XCircle className="h-5 w-5 text-red-500" />;
+                statusText = "Evaluation failed";
+                statusColor = "text-red-500";
+                break;
+            default:
+                statusIcon = <FileSpreadsheet className="h-5 w-5" />;
+                statusText = "Status unknown";
+                statusColor = "text-gray-500";
+        }
+        
+        return (
+            <Card className="mt-4">
+                <CardHeader>
+                    <CardTitle className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            {statusIcon}
+                            <span className={statusColor}>{statusText}</span>
+                        </div>
+                        {evalProgress.job_status === 'EVALUATING' && (
+                            <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={stopEvaluation}
+                                className="flex items-center gap-2"
+                            >
+                                <StopCircle className="h-4 w-4" />
+                                Stop Evaluation
+                            </Button>
+                        )}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {evalProgress.job_status === 'EVALUATING' && (
+                        <>
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span>Progress: {progressPercent.toFixed(1)}%</span>
+                                    <span>{evalProgress.current} of {evalProgress.total}</span>
+                                </div>
+                                <Progress value={progressPercent} className="h-2" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div className="font-medium">Estimated Time Remaining</div>
+                                    <div>{estimatedTimeRemaining}</div>
+                                </div>
+                                <div>
+                                    <div className="font-medium">Current Phase</div>
+                                    <div className="capitalize">{evalProgress.current_phase?.replace(/_/g, ' ')}</div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                    {evalProgress.job_status === 'QUEUED' && (
+                        <div className="text-center py-2 text-yellow-500">
+                            Your evaluation is in the queue and will start soon...
+                        </div>
+                    )}
+                    {evalProgress.job_status === 'FAILED' && (
+                        <div className="text-center py-2 text-red-500">
+                            Evaluation encountered an error. Please try again.
+                        </div>
+                    )}
+                    {(evalProgress.job_status === 'COMPLETED' || evalProgress.job_status === 'EVALUATED') && (
+                        <div className="text-center py-2 text-green-500">
+                            Evaluation has been completed successfully.
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        );
+    };
+
+    const regenerateReport = async () => {
+        setIsRegeneratingReport(true);
+        try {
+            const response = await fetch(`/api/eval/evaluation/regenerate-quiz-report/${quizid}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            
+            const data = await response.json();
+            if (response.ok) {
+                toast.success('Quiz report is being regenerated');
+                setTimeout(() => getQuizData(quizid as string), 2000);
+            } else {
+                toast.error(data.error || 'Failed to regenerate report');
+            }
+        } catch (error) {
+            toast.error('Failed to regenerate quiz report');
+        } finally {
+            setIsRegeneratingReport(false);
+        }
+    };
+
+    // Check if quiz has been evaluated (either fully or partially)
+    const isQuizEvaluated = quiz?.isEvaluated === 'EVALUATED';
+
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
@@ -435,9 +780,31 @@ export default function QuizPage() {
                 </>
             )}
 
+            {renderEvaluationProgress()}
+
             <div className='flex justify-between items-center'>
                 {renderShowResultToggle()}
                 <div className="flex justify-end gap-4">
+                    {isQuizEvaluated && (
+                        <Button
+                            variant="outline"
+                            onClick={regenerateReport}
+                            disabled={isRegeneratingReport}
+                            className="flex items-center gap-2"
+                        >
+                            {isRegeneratingReport ? (
+                                <>
+                                    <ReloadIcon className="h-4 w-4 animate-spin" />
+                                    Regenerating...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="h-4 w-4" />
+                                    Regenerate Report
+                                </>
+                            )}
+                        </Button>
+                    )}
                     <Button
                         variant="outline"
                         onClick={downloadExcel}
@@ -446,39 +813,9 @@ export default function QuizPage() {
                         <Download className="w-4 h-4" />
                         Download Report
                     </Button>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="default" disabled={isEvaluating}>
-                                {isEvaluating ? (
-                                    <>
-                                        <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />
-                                        Evaluating...
-                                    </>
-                                ) : (
-                                    'Evaluate All Responses'
-                                )}
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Evaluate All Responses?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will recalculate scores for all submissions based on the correct answers.
-                                    Existing manual evaluations will be overwritten.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={evaluateAllResponses}>
-                                    Continue
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-
+                    {renderEvaluationDialog()}
                 </div>
             </div>
-
 
             <Card className="mt-6 dark:bg-gray-900">
                 <CardHeader>
@@ -667,7 +1004,7 @@ export default function QuizPage() {
                                         <TableCell>{(result.student.user.rollNo as string).toUpperCase()}</TableCell>
                                         <TableCell>{result.score}</TableCell>
                                         <TableCell>{result.violations ? result.violations.split("\n").length - 1 : 0}</TableCell>
-                                        <TableCell>{new Date(result.submittedAt).toLocaleString()}</TableCell>
+                                        <TableCell>{result.submittedAt ? new Date(result.submittedAt).toLocaleString() : "-"}</TableCell>
                                         <TableCell className={!result.ip?.startsWith('172') ? 'text-red-500 font-medium' : ''}>
                                             {result.ip || 'N/A'}
                                         </TableCell>
