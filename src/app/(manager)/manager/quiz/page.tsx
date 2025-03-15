@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { List, LayoutGrid, Search, BookOpen } from 'lucide-react';
@@ -19,11 +19,15 @@ import { Course } from '@/types/quiz';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 
-export default function CoursesPage() {
+// Component that uses useSearchParams - will be wrapped in Suspense
+function CourseContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Import useSearchParams inside this component
+  const { useSearchParams } = require('next/navigation');
+  const searchParams = useSearchParams();
   
   // Get initial values from URL search params
   const [viewMode, setViewMode] = useState<'table' | 'grid'>(
@@ -313,32 +317,73 @@ export default function CoursesPage() {
   );
 
   return (
+    <>
+      <header className="flex justify-between items-center mb-8">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-8 w-8 text-indigo-600" />
+          <h1 className="text-4xl font-bold">Courses</h1>
+        </div>
+        <Tabs value={viewMode} onValueChange={handleViewModeChange}>
+          <TabsList>
+            <TabsTrigger value="table">
+              <List className="h-4 w-4 mr-1" />
+              Table
+            </TabsTrigger>
+            <TabsTrigger value="grid">
+              <LayoutGrid className="h-4 w-4 mr-1" />
+              Grid
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </header>
+
+      {renderFilterControls()}
+
+      <div className="rounded-lg p-6">
+        {viewMode === 'grid' ? renderGrid() : renderTable()}
+      </div>
+    </>
+  );
+}
+
+// Loading fallback component
+function CoursePageSkeleton() {
+  return (
     <div className="min-h-screen p-8">
       <div className="max-w-[90rem] mx-auto">
         <header className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-2">
-            <BookOpen className="h-8 w-8 text-indigo-600" />
-            <h1 className="text-4xl font-bold">Courses</h1>
+            <div className="h-8 w-8 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+            <div className="h-10 w-40 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
           </div>
-          <Tabs value={viewMode} onValueChange={handleViewModeChange}>
-            <TabsList>
-              <TabsTrigger value="table">
-                <List className="h-4 w-4 mr-1" />
-                Table
-              </TabsTrigger>
-              <TabsTrigger value="grid">
-                <LayoutGrid className="h-4 w-4 mr-1" />
-                Grid
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="h-10 w-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
         </header>
-
-        {renderFilterControls()}
-
+        <div className="bg-white dark:bg-slate-800/50 rounded-lg shadow-md p-4 mb-6 h-16 animate-pulse" />
         <div className="rounded-lg p-6">
-          {viewMode === 'grid' ? renderGrid() : renderTable()}
+          {Array(3).fill(0).map((_, i) => (
+            <div key={i} className="mb-8">
+              <div className="h-6 w-32 bg-slate-200 dark:bg-slate-700 rounded mb-4 animate-pulse" />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {Array(3).fill(0).map((_, j) => (
+                  <div key={j} className="h-32 rounded-lg animate-pulse bg-slate-100 dark:bg-slate-800" />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Main page component that wraps CourseContent in a Suspense boundary
+export default function CoursesPage() {
+  return (
+    <div className="min-h-screen p-8">
+      <div className="max-w-[90rem] mx-auto">
+        <Suspense fallback={<CoursePageSkeleton />}>
+          <CourseContent />
+        </Suspense>
       </div>
     </div>
   );
