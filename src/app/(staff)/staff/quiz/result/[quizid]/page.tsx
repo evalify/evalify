@@ -208,7 +208,7 @@ export default function QuizPage() {
         try {
             if (!quiz?.settingsId) return;
 
-            const response = await fetch(`/api/staff/quiz/settings/${quiz.settingsId}`, {
+            const response = await fetch(`/api/staff/quiz/settings/${quiz.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ showResult: checked })
