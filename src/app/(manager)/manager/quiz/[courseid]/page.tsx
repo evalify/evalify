@@ -337,6 +337,18 @@ const LoadingSkeleton = () => (
     </div>
 );
 
+// Add this helper function before the main component
+const groupCoursesByClass = (courses: Course[]) => {
+    return courses.reduce((acc, course) => {
+        const className = course.class.name;
+        if (!acc[className]) {
+            acc[className] = [];
+        }
+        acc[className].push(course);
+        return acc;
+    }, {} as Record<string, Course[]>);
+};
+
 export default function QuizPage({ params }: { params: Promise<{ courseid: string }> }) {
     const { courseid } = use(params);
     const router = useRouter();
@@ -633,6 +645,7 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
             toast.success('Courses updated successfully');
             setBulkUpdateOpen(false);
             setSelectedQuizzes([]);
+            setSelectedCourses([]);
             fetchQuizzes();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to update courses');
@@ -1098,7 +1111,7 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Add bulk update dialog */}
+            {/* Replace the bulk update dialog */}
             <Dialog open={bulkUpdateOpen} onOpenChange={setBulkUpdateOpen}>
                 <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
@@ -1108,23 +1121,35 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
-                        <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                            {courses.map((course) => (
-                                <div key={course.id} className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id={`course-${course.id}`}
-                                        checked={selectedCourses.includes(course.id)}
-                                        onCheckedChange={(checked) => {
-                                            setSelectedCourses(prev =>
-                                                checked
-                                                    ? [...prev, course.id]
-                                                    : prev.filter(id => id !== course.id)
-                                            );
-                                        }}
-                                    />
-                                    <Label htmlFor={`course-${course.id}`}>
-                                        {course.code} - {course.name} -{course.class.name}
-                                    </Label>
+                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-4">
+                            {Object.entries(groupCoursesByClass(courses)).map(([className, classifiedCourses]) => (
+                                <div key={className} className="space-y-2">
+                                    <h4 className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 px-2">
+                                        {className}
+                                    </h4>
+                                    <div className="ml-4 space-y-2 border-l-2 border-indigo-100 dark:border-indigo-900 pl-4">
+                                        {classifiedCourses.map((course) => (
+                                            <div key={course.id} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded-lg shadow-sm">
+                                                <Label htmlFor={`course-${course.id}`} className="flex-1">
+                                                    <span className="font-medium">{course.code}</span>
+                                                    <span className="text-gray-500 dark:text-gray-400 ml-2">
+                                                        {course.name}
+                                                    </span>
+                                                </Label>
+                                                <Checkbox
+                                                    id={`course-${course.id}`}
+                                                    checked={selectedCourses.includes(course.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        setSelectedCourses(prev =>
+                                                            checked
+                                                                ? [...prev, course.id]
+                                                                : prev.filter(id => id !== course.id)
+                                                        );
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -1133,7 +1158,13 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                         <Button variant="outline" onClick={() => setBulkUpdateOpen(false)}>
                             Cancel
                         </Button>
-                        <Button onClick={handleBulkCourseUpdate}>Update</Button>
+                        <Button 
+                            onClick={handleBulkCourseUpdate}
+                            disabled={selectedCourses.length === 0}
+                            className="bg-indigo-600 hover:bg-indigo-700"
+                        >
+                            Update {selectedQuizzes.length} quiz{selectedQuizzes.length !== 1 ? 'zes' : ''}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
