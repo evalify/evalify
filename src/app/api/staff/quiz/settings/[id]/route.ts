@@ -9,12 +9,10 @@ export async function PATCH(
     try {
         const { id } = await params;
         const session = await auth();
-        if (!session?.user?.email) {
-            return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
-            );
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
+            return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
+
 
         const body = await request.json();
         const { showResult } = body;
@@ -26,43 +24,26 @@ export async function PATCH(
             );
         }
 
-        const staff = await prisma.staff.findFirst({
+        const settings = await prisma.quiz.findUnique({
             where: {
-                user: {
-                    email: session.user.email
-                }
+                id
+            },
+            select: {
+                settingsId: true
             }
         });
 
-        if (!staff && session.user.role !== "MANAGER") {
+        if (!settings) {
             return NextResponse.json(
-                { error: "Unauthorized" },
-                { status: 401 }
+                { error: "Quiz not found" },
+                { status: 404 }
             );
-        }
-
-        if (staff) {
-            const quiz = await prisma.quiz.findFirst({
-                where: {
-                    settings: {
-                        id: id
-                    },
-                    createdbyId: staff.id
-                }
-            });
-    
-            if (!quiz) {
-                return NextResponse.json(
-                    { error: "Quiz not found or unauthorized" },
-                    { status: 404 }
-                );
-            }
         }
 
         // Update the settings
         const updatedSettings = await prisma.quizSettings.update({
             where: {
-                id: id
+                id: settings?.settingsId
             },
             data: {
                 showResult
