@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { List, LayoutGrid, Search, BookOpen } from 'lucide-react';
@@ -21,17 +21,75 @@ import { Button } from '@/components/ui/button';
 
 export default function CoursesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('grid');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortField, setSortField] = useState<'code' | 'name' | 'quizzes'>('code');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [selectedClass, setSelectedClass] = useState<string>('all');
+  
+  // Get initial values from URL search params
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(
+    (searchParams.get('view') as 'table' | 'grid') || 'grid'
+  );
+  const [searchQuery, setSearchQuery] = useState(
+    searchParams.get('search') || ''
+  );
+  const [sortField, setSortField] = useState<'code' | 'name' | 'quizzes'>(
+    (searchParams.get('sortBy') as 'code' | 'name' | 'quizzes') || 'code'
+  );
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(
+    (searchParams.get('order') as 'asc' | 'desc') || 'asc'
+  );
+  const [selectedClass, setSelectedClass] = useState<string>(
+    searchParams.get('class') || 'all'
+  );
+
+  // Function to update URL search params
+  const updateSearchParams = (params: Record<string, string>) => {
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) {
+        newSearchParams.set(key, value);
+      } else {
+        newSearchParams.delete(key);
+      }
+    });
+    
+    router.push(`?${newSearchParams.toString()}`, { scroll: false });
+  };
 
   useEffect(() => {
     fetchCourses();
   }, []);
+
+  // Update handlers to modify URL search params
+  const handleViewModeChange = (value: string) => {
+    const newMode = value as 'table' | 'grid';
+    setViewMode(newMode);
+    updateSearchParams({ view: newMode });
+  };
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    updateSearchParams({ search: value });
+  };
+  
+  const handleSortFieldChange = (value: string) => {
+    const newSortField = value as 'code' | 'name' | 'quizzes';
+    setSortField(newSortField);
+    updateSearchParams({ sortBy: newSortField });
+  };
+  
+  const handleSortDirectionToggle = () => {
+    const newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    setSortDirection(newDirection);
+    updateSearchParams({ order: newDirection });
+  };
+  
+  const handleClassChange = (value: string) => {
+    setSelectedClass(value);
+    updateSearchParams({ class: value });
+  };
 
   const fetchCourses = async () => {
     try {
@@ -96,11 +154,11 @@ export default function CoursesPage() {
           <Input
             placeholder="Search courses..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={handleSearchChange}
             className="pl-9 dark:bg-gray-700"
           />
         </div>
-        <Select value={selectedClass} onValueChange={setSelectedClass}>
+        <Select value={selectedClass} onValueChange={handleClassChange}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Filter by class" />
           </SelectTrigger>
@@ -112,7 +170,7 @@ export default function CoursesPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={sortField} onValueChange={(value: any) => setSortField(value)}>
+        <Select value={sortField} onValueChange={handleSortFieldChange}>
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -124,7 +182,7 @@ export default function CoursesPage() {
         </Select>
         <Button
           variant="outline"
-          onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
+          onClick={handleSortDirectionToggle}
           className="w-[140px]"
         >
           {sortDirection === 'asc' ? '↑ Ascending' : '↓ Descending'}
@@ -262,7 +320,7 @@ export default function CoursesPage() {
             <BookOpen className="h-8 w-8 text-indigo-600" />
             <h1 className="text-4xl font-bold">Courses</h1>
           </div>
-          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'table' | 'grid')}>
+          <Tabs value={viewMode} onValueChange={handleViewModeChange}>
             <TabsList>
               <TabsTrigger value="table">
                 <List className="h-4 w-4 mr-1" />

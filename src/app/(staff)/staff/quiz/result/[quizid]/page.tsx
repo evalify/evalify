@@ -84,9 +84,14 @@ export default function QuizPage() {
                 setQuizResults(data.quizResults)
                 
                 // Check if the quiz is currently being evaluated
-                if (data.quiz.isEvaluated === 'EVALUATING') {
+                if (data.quiz.isEvaluated === 'EVALUATING' || data.quiz.isEvaluated === 'QUEUED') {
+                    console.log("Quiz is being evaluated, starting polling");
+                    // Make an immediate check before starting interval
                     checkEvaluationStatus();
                     startPolling();
+                } else {
+                    // Make sure polling is stopped if quiz is no longer evaluating
+                    stopPolling();
                 }
             } else {
                 toast('Error', {
@@ -103,50 +108,56 @@ export default function QuizPage() {
     const checkEvaluationStatus = async () => {
         try {
             const response = await fetch(`/api/eval/evaluation/status/${quizid}`);
+            
+            if (!response.ok) {
+                console.error("Error response from evaluation status API:", response.status);
+                return; // Don't update state if the response is not ok
+            }
+            
             const data = await response.json();
             
-            if (response.ok) {
-                // If job status exists, we have an evaluation running or queued
-                if (data.job_status) {
-                    setEvalProgress({
-                        ...data,
-                        progress: data.progress || 0,
-                        current_phase: data.phase || 'waiting',
-                        job_status: data.job_status
-                    });
-                    
-                    // Only consider active if the status is EVALUATING
-                    setIsEvaluating(data.job_status === 'EVALUATING');
-                    
-                    // If the job is complete, we can stop polling
-                    if (['COMPLETED', 'FAILED', 'EVALUATED'].includes(data.job_status)) {
-                        stopPolling();
-                        // Refresh quiz data to get updated evaluation results
-                        if (data.job_status === 'EVALUATED' || data.job_status === 'COMPLETED') {
-                            setTimeout(() => getQuizData(quizid as string), 1000);
-                        }
-                    }
-                } else if (data.message === "No Evaluation is Running") {
-                    setEvalProgress(null);
-                    setIsEvaluating(false);
+            // If job status exists, we have an evaluation running or queued
+            if (data.job_status) {
+                setEvalProgress({
+                    ...data,
+                    progress: data.progress || 0,
+                    current_phase: data.phase || 'waiting',
+                    job_status: data.job_status
+                });
+                
+                // Only consider active if the status is EVALUATING or QUEUED
+                setIsEvaluating(['EVALUATING', 'QUEUED'].includes(data.job_status));
+                
+                // If the job is complete, we can stop polling
+                if (['COMPLETED', 'FAILED', 'EVALUATED'].includes(data.job_status)) {
                     stopPolling();
+                    // Refresh quiz data to get updated evaluation results
+                    if (data.job_status === 'EVALUATED' || data.job_status === 'COMPLETED') {
+                        setTimeout(() => getQuizData(quizid as string), 1000);
+                    }
                 }
-            } else {
-                console.error("Error checking evaluation status:", data.error);
+            } else if (data.message === "No Evaluation is Running") {
+                setEvalProgress(null);
+                setIsEvaluating(false);
+                stopPolling();
             }
         } catch (error) {
             console.error("Error checking evaluation status:", error);
+            // Don't stop polling on temporary errors
         }
     };
 
     const startPolling = () => {
-        if (!pollingIntervalRef.current) {
-            pollingIntervalRef.current = setInterval(checkEvaluationStatus, 1000);
-        }
+        // Clear any existing interval first to prevent duplicates
+        stopPolling();
+        
+        console.log("Starting polling for evaluation status");
+        pollingIntervalRef.current = setInterval(checkEvaluationStatus, 1000);
     };
 
     const stopPolling = () => {
         if (pollingIntervalRef.current) {
+            console.log("Stopping polling for evaluation status");
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
         }
@@ -248,8 +259,11 @@ export default function QuizPage() {
             const data = await response.json();
             if (response.ok) {
                 toast.success('Quiz Evaluation added to the queue, will be evaluated soon');
-                getQuizData(quizid);
+                
+                checkEvaluationStatus();
                 startPolling();
+                
+                setTimeout(() => getQuizData(quizid as string), 1000);
             } else {
                 toast.error(data.error || 'Failed to evaluate responses');
                 setIsEvaluating(false);
@@ -271,7 +285,6 @@ export default function QuizPage() {
             const data = await response.json();
             if (response.ok) {
                 toast.success('Quiz report is being regenerated');
-                // Refresh data after a short delay to allow time for report generation
                 setTimeout(() => getQuizData(quizid as string), 2000);
             } else {
                 toast.error(data.error || 'Failed to regenerate report');
@@ -290,13 +303,13 @@ export default function QuizPage() {
             })
             return
         }
-        getQuizData(quizid)
+        getQuizData(quizid as string)
         
-        // Check evaluation status initially
         checkEvaluationStatus();
         
-        // Cleanup polling on component unmount
-        return () => stopPolling();
+        return () => {
+            stopPolling();
+        }
     }, [quizid])
 
     useEffect(() => {
