@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { Button } from "@/components/ui/button"
 import * as XLSX from 'xlsx'
-import { Download, Settings, StopCircle, RefreshCw } from 'lucide-react'
+import { Download, Settings, StopCircle, RefreshCw, Clock, CheckCircle2, XCircle, Loader2, FileSpreadsheet } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -44,6 +44,7 @@ export default function QuizPage() {
         rate: number;
         remaining: number;
         current_phase: string;
+        job_status: string;
     }>(null)
     const [evalOptions, setEvalOptions] = useState({
         override_evaluated: false,
@@ -104,13 +105,34 @@ export default function QuizPage() {
             const response = await fetch(`/api/eval/evaluation/status/${quizid}`);
             const data = await response.json();
             
-            if (response.ok && data.progress !== undefined) {
-                setEvalProgress(data);
-                setIsEvaluating(true);
-            } else if (data.message === "No Evaluation is Running") {
-                setEvalProgress(null);
-                setIsEvaluating(false);
-                stopPolling();
+            if (response.ok) {
+                // If job status exists, we have an evaluation running or queued
+                if (data.job_status) {
+                    setEvalProgress({
+                        ...data,
+                        progress: data.progress || 0,
+                        current_phase: data.phase || 'waiting',
+                        job_status: data.job_status
+                    });
+                    
+                    // Only consider active if the status is EVALUATING
+                    setIsEvaluating(data.job_status === 'EVALUATING');
+                    
+                    // If the job is complete, we can stop polling
+                    if (['COMPLETED', 'FAILED', 'EVALUATED'].includes(data.job_status)) {
+                        stopPolling();
+                        // Refresh quiz data to get updated evaluation results
+                        if (data.job_status === 'EVALUATED' || data.job_status === 'COMPLETED') {
+                            setTimeout(() => getQuizData(quizid as string), 1000);
+                        }
+                    }
+                } else if (data.message === "No Evaluation is Running") {
+                    setEvalProgress(null);
+                    setIsEvaluating(false);
+                    stopPolling();
+                }
+            } else {
+                console.error("Error checking evaluation status:", data.error);
             }
         } catch (error) {
             console.error("Error checking evaluation status:", error);
@@ -576,41 +598,118 @@ export default function QuizPage() {
         const estimatedTimeRemaining = evalProgress.remaining ? 
             new Date(evalProgress.remaining * 1000).toISOString().substring(11, 19) : 
             "Calculating...";
+            
+        let statusIcon;
+        let statusText;
+        let statusColor;
+        
+        // Determine status display based on job_status and phase
+        switch(evalProgress.job_status) {
+            case 'QUEUED':
+                statusIcon = <Clock className="h-5 w-5 text-yellow-500" />;
+                statusText = "Queued for evaluation";
+                statusColor = "text-yellow-500";
+                break;
+            case 'EVALUATING':
+                statusIcon = <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+                
+                // Refine status text based on phase
+                switch(evalProgress.current_phase) {
+                    case 'initializing':
+                        statusText = "Initializing evaluation";
+                        break;
+                    case 'validation':
+                        statusText = "Validating submissions";
+                        break;
+                    case 'evaluation_start':
+                        statusText = "Starting evaluation";
+                        break;
+                    case 'evaluation_in_progress':
+                        statusText = "Evaluation in progress";
+                        break;
+                    case 'evaluation_completed':
+                        statusText = "Finalizing evaluation";
+                        break;
+                    default:
+                        statusText = "Evaluating";
+                }
+                statusColor = "text-blue-500";
+                break;
+            case 'COMPLETED':
+            case 'EVALUATED':
+                statusIcon = <CheckCircle2 className="h-5 w-5 text-green-500" />;
+                statusText = "Evaluation completed";
+                statusColor = "text-green-500";
+                break;
+            case 'FAILED':
+                statusIcon = <XCircle className="h-5 w-5 text-red-500" />;
+                statusText = "Evaluation failed";
+                statusColor = "text-red-500";
+                break;
+            default:
+                statusIcon = <FileSpreadsheet className="h-5 w-5" />;
+                statusText = "Status unknown";
+                statusColor = "text-gray-500";
+        }
         
         return (
             <Card className="mt-4">
                 <CardHeader>
                     <CardTitle className="flex justify-between items-center">
-                        <span>Evaluation Progress</span>
-                        <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            onClick={stopEvaluation}
-                            className="flex items-center gap-2"
-                        >
-                            <StopCircle className="h-4 w-4" />
-                            Stop Evaluation
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            {statusIcon}
+                            <span className={statusColor}>{statusText}</span>
+                        </div>
+                        {evalProgress.job_status === 'EVALUATING' && (
+                            <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={stopEvaluation}
+                                className="flex items-center gap-2"
+                            >
+                                <StopCircle className="h-4 w-4" />
+                                Stop Evaluation
+                            </Button>
+                        )}
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                            <span>Progress: {progressPercent.toFixed(1)}%</span>
-                            <span>{evalProgress.current} of {evalProgress.total}</span>
+                    {evalProgress.job_status === 'EVALUATING' && (
+                        <>
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span>Progress: {progressPercent.toFixed(1)}%</span>
+                                    <span>{evalProgress.current} of {evalProgress.total}</span>
+                                </div>
+                                <Progress value={progressPercent} className="h-2" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <div className="font-medium">Estimated Time Remaining</div>
+                                    <div>{estimatedTimeRemaining}</div>
+                                </div>
+                                <div>
+                                    <div className="font-medium">Current Phase</div>
+                                    <div className="capitalize">{evalProgress.current_phase?.replace(/_/g, ' ')}</div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                    {evalProgress.job_status === 'QUEUED' && (
+                        <div className="text-center py-2 text-yellow-500">
+                            Your evaluation is in the queue and will start soon...
                         </div>
-                        <Progress value={progressPercent} className="h-2" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <div className="font-medium">Estimated Time Remaining</div>
-                            <div>{estimatedTimeRemaining}</div>
+                    )}
+                    {evalProgress.job_status === 'FAILED' && (
+                        <div className="text-center py-2 text-red-500">
+                            Evaluation encountered an error. Please try again.
                         </div>
-                        <div>
-                            <div className="font-medium">Current Status</div>
-                            <div className="capitalize">{evalProgress.current_phase?.replace(/_/g, ' ')}</div>
+                    )}
+                    {(evalProgress.job_status === 'COMPLETED' || evalProgress.job_status === 'EVALUATED') && (
+                        <div className="text-center py-2 text-green-500">
+                            Evaluation has been completed successfully.
                         </div>
-                    </div>
+                    )}
                 </CardContent>
             </Card>
         );
