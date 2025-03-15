@@ -257,151 +257,53 @@ export default function CoursesPage() {
   
   const chartData = prepareChartData();
 
-  const renderSkeletons = () => {
-    return Array(6)
-      .fill(0)
-      .map((_, index) => (
-        <Card key={index} className="relative overflow-hidden">
-          <CardHeader>
-            <Skeleton className="h-6 w-2/3 mb-2" />
-            <Skeleton className="h-4 w-1/3" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-4 w-full mb-2" />
-            <Skeleton className="h-4 w-2/3" />
-          </CardContent>
-          <CardFooter>
-            <Skeleton className="h-9 w-full" />
-          </CardFooter>
-        </Card>
-      ));
-  };
-
-  const renderGrid = () => {
-    if (loading) {
-      return (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">{renderSkeletons()}</div>
+  // Apply filters to performance data
+  const getFilteredPerformanceData = () => {
+    if (!performanceData.length) return [];
+    
+    let filtered = [...performanceData];
+    
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (course) =>
+          course.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          course.courseCode.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    if (filteredCourses.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold">No courses found</h3>
-          <p className="text-muted-foreground mt-2">
-            {searchQuery || filterSemester !== "all"
-              ? "Try adjusting your search or filters"
-              : "You are not enrolled in any courses yet"}
-          </p>
-        </div>
-      );
+    
+    // Apply semester filter using the courses data
+    if (filterSemester !== "all") {
+      const coursesInSemester = courses
+        .filter(c => c.semester?.toString() === filterSemester)
+        .map(c => c.id);
+      filtered = filtered.filter(course => coursesInSemester.includes(course.courseId));
     }
-
-    return (
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredCourses.map((course) => (
-          <Card
-            key={course.id}
-            className="overflow-hidden transition-all hover:shadow-md cursor-pointer"
-            onClick={() => router.push(`/student/course/${course.id}`)}
-          >
-            <CardHeader className="pb-2">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg">{course.name}</CardTitle>
-                  <CardDescription className="mt-1">{course.code}</CardDescription>
-                </div>
-                {course.semester && (
-                  <Badge variant="outline">Semester {course.semester}</Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="pb-0">
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {course.description || "No description available"}
-              </p>
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Users className="mr-2 h-4 w-4" />
-                  <span>{course.class.name}</span>
-                </div>
-                {course.staff && (
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <GraduationCap className="mr-2 h-4 w-4" />
-                    <span>{course.staff.name}</span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="pt-4 pb-3">
-              <Button variant="outline" className="w-full">
-                <BookOpen className="mr-2 h-4 w-4" /> View Course
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-    );
+    
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.courseName.localeCompare(b.courseName);
+        case "name_desc":
+          return b.courseName.localeCompare(a.courseName);
+        case "code":
+          return a.courseCode.localeCompare(b.courseCode);
+        case "performance_high":
+          return b.performance - a.performance;
+        case "performance_low":
+          return a.performance - b.performance;
+        case "quizzes":
+          return b.totalAttempted - a.totalAttempted;
+        default:
+          return a.courseName.localeCompare(b.courseName);
+      }
+    });
+    
+    return filtered;
   };
 
-  const renderList = () => {
-    if (loading) {
-      return Array(5)
-        .fill(0)
-        .map((_, index) => (
-          <div key={index} className="flex items-center space-x-4 py-4 border-b last:border-0">
-            <Skeleton className="h-12 w-12 rounded" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-5 w-1/3" />
-              <Skeleton className="h-4 w-1/2" />
-            </div>
-            <Skeleton className="h-9 w-24" />
-          </div>
-        ));
-    }
-
-    if (filteredCourses.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold">No courses found</h3>
-          <p className="text-muted-foreground mt-2">
-            {searchQuery || filterSemester !== "all"
-              ? "Try adjusting your search or filters"
-              : "You are not enrolled in any courses yet"}
-          </p>
-        </div>
-      );
-    }
-
-    return filteredCourses.map((course) => (
-      <div
-        key={course.id}
-        className="flex flex-col md:flex-row md:items-center justify-between py-4 border-b last:border-0 hover:bg-muted/50 rounded-md px-2 cursor-pointer transition-colors"
-        onClick={() => router.push(`/student/course/${course.id}`)}
-      >
-        <div className="flex items-center space-x-4">
-          <div className="bg-primary/10 p-2 rounded-full">
-            <BookOpen className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h3 className="font-medium">{course.name}</h3>
-            <div className="flex items-center mt-1">
-              <Badge variant="outline" className="mr-2">{course.code}</Badge>
-              {course.semester && <span className="text-xs text-muted-foreground">Semester {course.semester}</span>}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center space-x-4 mt-4 md:mt-0">
-          <div className="hidden md:block text-sm text-muted-foreground">{course.class.name}</div>
-          <Button size="sm" variant="ghost">
-            <BookOpen className="h-4 w-4 mr-2" /> View
-          </Button>
-        </div>
-      </div>
-    ));
-  };
+  // Remove renderGrid() and renderList() functions as they won't be needed
 
   const renderPerformanceChart = () => {
     if (chartLoading) {
@@ -424,6 +326,8 @@ export default function CoursesPage() {
       );
     }
 
+    const filteredPerformanceData = getFilteredPerformanceData();
+
     return (
       <div className="w-full">
         <ResponsiveContainer width="100%" height={350}>
@@ -442,7 +346,11 @@ export default function CoursesPage() {
               stroke={theme === "dark" ? "#ffffff" : "#000000"}
             />
             <Tooltip 
-              formatter={(value) => [`${value}%`, 'Score']} 
+              formatter={(value, name) => {
+                const courseCode = name
+                const course = performanceData.find(c => c.courseCode === courseCode);
+                return [`${value.toFixed(2)}%`, course ? course.courseName : courseCode];
+              }} 
               labelFormatter={(value) => `${value}`}
               contentStyle={{
                 backgroundColor: theme === "dark" ? '#1a1a1a' : '#ffffff',
@@ -450,8 +358,14 @@ export default function CoursesPage() {
                 borderRadius: '6px',
                 color: theme === "dark" ? '#ffffff' : '#000000',
               }}
+              itemStyle={{
+                color: theme === "dark" ? '#ffffff' : '#000000',
+              }}
+              labelStyle={{
+                color: theme === "dark" ? '#ffffff' : '#000000',
+              }}
             />
-            {performanceData.map((course) => (
+            {filteredPerformanceData.map((course) => (
               <Line
                 key={course.courseId}
                 type="monotone"
@@ -466,35 +380,101 @@ export default function CoursesPage() {
           </LineChart>
         </ResponsiveContainer>
         
-        {/* Course Performance Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-          {performanceData.map((course) => (
-            <Card key={course.courseId} className="border-l-4" style={{ borderLeftColor: course.color }}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="font-medium">{course.courseCode}</h4>
-                    <p className="text-sm text-muted-foreground">{course.courseName}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {course.totalAttempted} Quiz{course.totalAttempted !== 1 ? 'zes' : ''} Completed
-                    </p>
+        {/* Enhanced Course Performance Summary with Search and Filter */}
+        <div className="mt-6 mb-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-6">
+            <div className="relative w-full sm:w-auto sm:flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search courses by name or code..."
+                className="pl-9 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Select value={filterSemester} onValueChange={setFilterSemester}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <div className="flex items-center">
+                    <Filter className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Filter semester" />
                   </div>
-                  <div className="text-right">
-                    <Badge variant={course.performance >= 60 ? "default" : "destructive"}>
-                      {course.performance}%
-                    </Badge>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Semesters</SelectItem>
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <SelectItem key={i + 1} value={(i + 1).toString()}>
+                      Semester {i + 1}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <div className="flex items-center">
+                    <ArrowUpDown className="mr-2 h-4 w-4" />
+                    <SelectValue placeholder="Sort by" />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name (A-Z)</SelectItem>
+                  <SelectItem value="name_desc">Name (Z-A)</SelectItem>
+                  <SelectItem value="code">Course Code</SelectItem>
+                  <SelectItem value="performance_high">Performance (High to Low)</SelectItem>
+                  <SelectItem value="performance_low">Performance (Low to High)</SelectItem>
+                  <SelectItem value="quizzes">Number of Quizzes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          {filteredPerformanceData.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-xl font-semibold">No courses found</h3>
+              <p className="text-muted-foreground mt-2">
+                Try adjusting your search or filters
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredPerformanceData.map((course) => (
+                <Card 
+                  key={course.courseId} 
+                  className="border-l-4 hover:shadow-md transition-all cursor-pointer" 
+                  style={{ borderLeftColor: course.color }}
+                  onClick={() => router.push(`/student/course/${course.courseId}`)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h4 className="font-medium">{course.courseCode}</h4>
+                        <p className="text-sm text-muted-foreground">{course.courseName}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {course.totalAttempted} Quiz{course.totalAttempted !== 1 ? 'zes' : ''} Completed
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant={course.performance >= 60 ? "default" : "destructive"}>
+                          {course.performance}%
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="container py-8 ">
+    <div className="container py-8">
       <div className="flex flex-col gap-6">
         <header>
           <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
@@ -514,83 +494,21 @@ export default function CoursesPage() {
           </CardContent>
         </Card>
 
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <div className="relative w-full sm:w-auto sm:flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search courses by name or code..."
-              className="pl-9 w-full"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <Select value={filterSemester} onValueChange={setFilterSemester}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <div className="flex items-center">
-                  <Filter className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Filter semester" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Semesters</SelectItem>
-                {Array.from({ length: 8 }, (_, i) => (
-                  <SelectItem key={i + 1} value={(i + 1).toString()}>
-                    Semester {i + 1}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <div className="flex items-center">
-                  <ArrowUpDown className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder="Sort by" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="name">Name (A-Z)</SelectItem>
-                <SelectItem value="name_desc">Name (Z-A)</SelectItem>
-                <SelectItem value="code">Course Code</SelectItem>
-                <SelectItem value="semester_asc">Semester (Low to High)</SelectItem>
-                <SelectItem value="semester_desc">Semester (High to Low)</SelectItem>
-                <SelectItem value="recent">Recently Updated</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="ml-auto sm:ml-0"
-              onClick={() => setViewMode(viewMode === "grid" ? "list" : "grid")}
-              title={viewMode === "grid" ? "Switch to list view" : "Switch to grid view"}
-            >
-              {viewMode === "grid" ? (
-                <List className="h-4 w-4" />
-              ) : (
-                <LayoutGrid className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-2">
-          {viewMode === "grid" ? renderGrid() : (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">All Courses ({filteredCourses.length})</CardTitle>
-              </CardHeader>
-              <ScrollArea className="h-[calc(100vh-700px)]">
-                <CardContent className="px-6">
-                  {renderList()}
-                </CardContent>
-              </ScrollArea>
-            </Card>
-          )}
-        </div>
+        {/* Replace the old filter/sort controls and grid/list view with a message */}
+        {!loading && filteredCourses.length > 0 && performanceData.length === 0 && (
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center justify-center text-center">
+                <AlertTriangle className="h-12 w-12 text-yellow-500 mb-4" />
+                <h3 className="text-xl font-semibold">No quiz performance data available</h3>
+                <p className="text-muted-foreground mt-2 max-w-lg">
+                  Your courses are available, but there isn't any quiz performance data yet. 
+                  Complete quizzes in your courses to see performance analytics.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

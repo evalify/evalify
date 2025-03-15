@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { 
     CalendarIcon, Clock, Target, Activity, AlertCircle, 
     Loader2, BookOpen, TrendingUp, TrendingDown, Minus,
-    GraduationCap, School
+    GraduationCap, School, CheckCircle, ArrowRight
 } from "lucide-react"
 import { format } from "date-fns"
 import { useRouter } from 'next/navigation'
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
 
 type DashboardData = {
     coursePerformance: {
@@ -65,149 +66,288 @@ export default function DashboardPage() {
     if (loading) return <LoadingState />
     if (error) return <ErrorState error={error} />
 
-    return (
-        <div className="min-h-screen p-6 bg-gradient-to-br from-background to-secondary/5">
-            <div className="mx-auto space-y-8">
-                {/* Header Section */}
-                <header className="space-y-2">
-                    <h1 className="text-4xl font-bold tracking-tight">
-                        Welcome back, <span className="text-primary">{session?.user.name}</span>!
-                    </h1>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <School className="h-4 w-4" />
-                        <span>{dashboardData?.studentInfo?.class}</span>
-                    </div>
-                </header>
+    // Determine if there's any important notification to show
+    const hasLiveQuizzes = dashboardData?.liveQuizzes?.length > 0
+    const hasCourses = dashboardData?.coursePerformance?.length > 0
 
-                {/* Live Quizzes Alert */}
-                {dashboardData?.liveQuizzes?.length > 0 && (
-                    <div className="animate-pulse">
-                        <LiveQuizzes quizzes={dashboardData.liveQuizzes} router={router} />
+    return (
+        <div className="container py-8">
+            <div className="space-y-8">
+                {/* Header with Welcome */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                            Welcome back, {session?.user.name}
+                        </h1>
+                        <div className="flex items-center gap-2 mt-2 text-muted-foreground">
+                            <School className="h-4 w-4" />
+                            <span>{dashboardData?.studentInfo?.class}</span>
+                        </div>
+                    </div>
+                    
+                    <Button 
+                        onClick={() => router.push('/student/course')} 
+                        className="md:self-end"
+                        variant="outline"
+                    >
+                        View All Courses
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </div>
+
+                {/* Live Quizzes Alert - With modern styling */}
+                {hasLiveQuizzes && (
+                    <div className="relative overflow-hidden rounded-lg border bg-gradient-to-r from-red-500/10 via-red-500/5 to-background border-red-500/20 shadow-sm">
+                        <div className="absolute top-0 right-0 h-20 w-20 rotate-12 translate-x-2 -translate-y-2 bg-red-500/10 blur-2xl rounded-full"></div>
+                        <div className="px-6 py-5">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                                    <Activity className="h-5 w-5 text-red-500 dark:text-red-400" />
+                                </div>
+                                <div>
+                                    <h2 className="font-semibold text-lg mb-1">Live Quizzes Available!</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        You have {dashboardData?.liveQuizzes.length} active {dashboardData?.liveQuizzes.length === 1 ? 'quiz' : 'quizzes'} that {dashboardData?.liveQuizzes.length === 1 ? 'requires' : 'require'} your attention.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                {dashboardData?.liveQuizzes.map((quiz) => (
+                                    <Card key={quiz.id} className="bg-white/50 dark:bg-black/20 backdrop-blur-sm border border-red-200 dark:border-red-800/30">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-base">{quiz.title}</CardTitle>
+                                            <CardDescription>{quiz.courses[0]?.name}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="pb-3">
+                                            <div className="flex items-center text-xs text-muted-foreground">
+                                                <Clock className="mr-1 h-3 w-3" />
+                                                Ends: {format(new Date(quiz.endTime), 'h:mm a')}
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="pt-0">
+                                            <Button 
+                                                className="w-full"
+                                                onClick={() => router.push(`/student/quiz?status=live`)}
+                                                variant="default"
+                                            >
+                                                Start Now
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
 
-                {/* Course Performance Cards */}
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {dashboardData?.coursePerformance.map((course) => (
-                        <Card key={course.id} className="backdrop-blur-sm">
-                            <CardHeader>
-                                <CardTitle className="flex items-center justify-between">
-                                    <span>{course.code}</span>
-                                    <Badge variant={course.averageScore >= 60 ? "success" : "destructive"}>
-                                        {course.averageScore.toFixed(1)}%
-                                    </Badge>
-                                </CardTitle>
-                                <CardDescription>{course.name}</CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <Progress value={course.averageScore} className="h-2" />
-                                
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="space-y-2">
-                                        <p className="text-muted-foreground">Completed</p>
-                                        <p className="text-2xl font-bold">{course.attemptedQuizzes}</p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-muted-foreground">Total</p>
-                                        <p className="text-2xl font-bold">{course.totalQuizzes}</p>
-                                    </div>
-                                </div>
+                {/* Course Performance Section */}
+                {hasCourses && (
+                    <div>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-semibold">Course Performance</h2>
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-sm"
+                                onClick={() => router.push('/student/course')}
+                            >
+                                View All
+                                <ArrowRight className="ml-1 h-3 w-3" />
+                            </Button>
+                        </div>
+                        
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {dashboardData?.coursePerformance.map((course) => (
+                                <Card 
+                                    key={course.id} 
+                                    className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                                    onClick={() => router.push(`/student/course/${course.id}`)}
+                                >
+                                    <CardHeader className="pb-2">
+                                        <div className="flex justify-between items-start">
+                                            <CardTitle>{course.code}</CardTitle>
+                                            <div className="flex items-center gap-1">
+                                                {course.improvement > 0 ? (
+                                                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                                                ) : course.improvement < 0 ? (
+                                                    <TrendingDown className="h-4 w-4 text-red-500" />
+                                                ) : (
+                                                    <Minus className="h-4 w-4 text-gray-500" />
+                                                )}
+                                            </div>
+                                        </div>
+                                        <CardDescription>{course.name}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="pb-3">
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-muted-foreground">Progress</span>
+                                                    <span className="font-medium">{course.attemptedQuizzes}/{course.totalQuizzes} Quizzes</span>
+                                                </div>
+                                                <Progress 
+                                                    value={course.totalQuizzes ? (course.attemptedQuizzes / course.totalQuizzes) * 100 : 0} 
+                                                    className="h-2" 
+                                                />
+                                            </div>
+                                            
+                                            {/* <div className="flex items-center justify-between">
+                                                <div className="text-sm">
+                                                    <span className="text-muted-foreground">Score</span>
+                                                    <div className="font-medium">
+                                                        {course.averageScore.toFixed(1)} pts
+                                                    </div>
+                                                </div>
+                                                <Badge 
+                                                    className={`flex gap-1 items-center ${
+                                                        course.improvement > 0 
+                                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50' 
+                                                            : course.improvement < 0 
+                                                            ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/50' 
+                                                            : 'bg-secondary/50'
+                                                    }`}
+                                                    variant="outline"
+                                                >
+                                                    {course.improvement > 0 ? (
+                                                        <>
+                                                            <TrendingUp className="h-3 w-3" />
+                                                            +{course.improvement.toFixed(1)}
+                                                        </>
+                                                    ) : course.improvement < 0 ? (
+                                                        <>
+                                                            <TrendingDown className="h-3 w-3" />
+                                                            {course.improvement.toFixed(1)}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Minus className="h-3 w-3" />
+                                                            0
+                                                        </>
+                                                    )}
+                                                </Badge>
+                                            </div> */}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
-                                <div className="flex items-center gap-2">
-                                    {course.improvement > 0 ? (
-                                        <Badge variant="success" className="flex items-center gap-1">
-                                            <TrendingUp className="h-3 w-3" />
-                                            +{course.improvement.toFixed(1)}%
-                                        </Badge>
-                                    ) : course.improvement < 0 ? (
-                                        <Badge variant="destructive" className="flex items-center gap-1">
-                                            <TrendingDown className="h-3 w-3" />
-                                            {course.improvement.toFixed(1)}%
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="secondary" className="flex items-center gap-1">
-                                            <Minus className="h-3 w-3" />
-                                            No Change
-                                        </Badge>
-                                    )}
-                                    <span className="text-xs text-muted-foreground">
-                                        from last quiz
-                                    </span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-
-                {/* Bottom Grid */}
+                {/* Upcoming and Recent Results Row */}
                 <div className="grid gap-6 md:grid-cols-2">
-                    {/* Upcoming Quizzes */}
-                    <Card className="backdrop-blur-sm">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <CalendarIcon className="h-5 w-5" />
-                                Upcoming Quizzes
-                            </CardTitle>
+                    {/* Upcoming Quizzes - Modern Card */}
+                    <Card className="overflow-hidden">
+                        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-lg">Upcoming Quizzes</CardTitle>
+                                <CardDescription>Scheduled assessments</CardDescription>
+                            </div>
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                                <CalendarIcon className="h-4 w-4 text-primary" />
+                            </div>
                         </CardHeader>
-                        <CardContent>
-                            <ScrollArea className="h-[300px] pr-4">
-                                <div className="space-y-4">
-                                    {dashboardData?.upcomingQuizzes.map((quiz) => (
-                                        <div key={quiz.id} 
-                                            className="flex items-center space-x-4 rounded-lg border p-3 transition-colors hover:bg-muted/50"
-                                        >
-                                            <BookOpen className="h-4 w-4 text-primary" />
-                                            <div className="flex-1 space-y-1">
-                                                <p className="text-sm font-medium">{quiz.title}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {quiz.courses[0]?.name}
-                                                </p>
-                                                <div className="flex items-center text-xs text-muted-foreground">
-                                                    <Clock className="mr-1 h-3 w-3" />
-                                                    {format(new Date(quiz.startTime), 'PPp')}
+                        
+                        <ScrollArea className="h-[360px]">
+                            <CardContent>
+                                {dashboardData?.upcomingQuizzes?.length ? (
+                                    <div className="space-y-4">
+                                        {dashboardData.upcomingQuizzes.map((quiz) => (
+                                            <div 
+                                                key={quiz.id} 
+                                                className="group flex items-center gap-4 rounded-lg border bg-card p-3 transition-colors hover:bg-accent hover:text-accent-foreground"
+                                            >
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20">
+                                                    <BookOpen className="h-4 w-4 text-primary" />
+                                                </div>
+                                                <div className="flex-1 space-y-1">
+                                                    <p className="font-medium">{quiz.title}</p>
+                                                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                                        <span>{quiz.courses[0]?.name}</span>
+                                                        <span className="flex h-1 w-1 rounded-full bg-muted-foreground"></span>
+                                                        <span className="flex items-center">
+                                                            <Clock className="mr-1 h-3 w-3" />
+                                                            {format(new Date(quiz.startTime), 'MMM d, h:mm a')}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                                            <CalendarIcon className="h-6 w-6 text-primary opacity-70" />
                                         </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        </CardContent>
+                                        <h3 className="mt-4 text-lg font-medium">No upcoming quizzes</h3>
+                                        <p className="mt-2 text-sm text-muted-foreground">
+                                            You're all caught up! Check back later.
+                                        </p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </ScrollArea>
                     </Card>
 
-                    {/* Recent Results */}
-                    <Card className="backdrop-blur-sm">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Target className="h-5 w-5" />
-                                Recent Results
-                            </CardTitle>
+                    {/* Recent Results - Modern Card */}
+                    <Card className="overflow-hidden">
+                        <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle className="text-lg">Recent Results</CardTitle>
+                                <CardDescription>Your quiz performance</CardDescription>
+                            </div>
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                                <Target className="h-4 w-4 text-primary" />
+                            </div>
                         </CardHeader>
-                        <CardContent>
-                            <ScrollArea className="h-[300px] pr-4">
-                                <div className="space-y-4">
-                                    {dashboardData?.recentResults.map((result) => (
-                                        <div key={result.id}
-                                            className="flex items-center space-x-4 rounded-lg border p-3 transition-colors hover:bg-muted/50 cursor-pointer"
-                                            onClick={() => router.push(`/student/quiz/result/${result.quizId}`)}
-                                        >
-                                            <div className="flex-1 space-y-1">
-                                                <p className="text-sm font-medium">{result.quiz.title}</p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {result.quiz.courses[0]?.name}
-                                                </p>
+                        
+                        <ScrollArea className="h-[360px]">
+                            <CardContent>
+                                {dashboardData?.recentResults?.length ? (
+                                    <div className="space-y-4">
+                                        {dashboardData.recentResults.map((result) => (
+                                            <div 
+                                                key={result.id}
+                                                onClick={() => router.push(`/student/quiz/result/${result.quizId}`)}
+                                                className="group flex items-center justify-between gap-4 rounded-lg border bg-card p-3 transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20">
+                                                        <CheckCircle className="h-4 w-4 text-primary" />
+                                                    </div>
+                                                    <div className="flex-1 space-y-1">
+                                                        <p className="font-medium">{result.quiz.title}</p>
+                                                        <span className="text-sm text-muted-foreground">{result.quiz.courses[0]?.name}</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex flex-col items-end">
+                                                    <div className="font-medium">
+                                                        {result.score}/{result.totalScore}
+                                                    </div>
+                                                    <div className="w-16 mt-1">
+                                                        <Progress
+                                                            value={(result.score / result.totalScore) * 100}
+                                                            className="h-1.5"
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <Badge variant={
-                                                (result.score / result.totalScore) * 100 >= 60 
-                                                    ? "success" 
-                                                    : "destructive"
-                                            }>
-                                                {result.score}/{result.totalScore}
-                                            </Badge>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                                            <Target className="h-6 w-6 text-primary opacity-70" />
                                         </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                        </CardContent>
+                                        <h3 className="mt-4 text-lg font-medium">No results yet</h3>
+                                        <p className="mt-2 text-sm text-muted-foreground">
+                                            Complete quizzes to see your results here
+                                        </p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </ScrollArea>
                     </Card>
                 </div>
             </div>
@@ -215,71 +355,38 @@ export default function DashboardPage() {
     )
 }
 
-// Add these component definitions at the end of the file
+// Update the loading and error states for a more modern look
 const LoadingState = () => (
     <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
     </div>
 )
 
 const ErrorState = ({ error }: { error: string }) => (
     <div className="flex h-screen items-center justify-center">
-        <Card className="w-96">
+        <Card className="max-w-md w-full">
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5 text-destructive" />
-                    Error
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                        <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <CardTitle>Error Loading Dashboard</CardTitle>
+                </div>
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">{error}</p>
+                <p className="text-muted-foreground">{error}</p>
             </CardContent>
+            <CardFooter>
+                <Button 
+                    onClick={() => window.location.reload()} 
+                    className="w-full"
+                >
+                    Try Again
+                </Button>
+            </CardFooter>
         </Card>
     </div>
-)
-
-const LiveQuizzes = ({ quizzes, router }: { quizzes: any[], router: any }) => (
-    <Card className="col-span-full dark:bg-card/50">
-        <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-red-500" />
-                Live Quizzes
-            </CardTitle>
-            <CardDescription>Currently active assessments</CardDescription>
-        </CardHeader>
-        <CardContent>
-            {quizzes.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {quizzes.map((quiz) => (
-                        <Card key={quiz.id} className="border-2 border-red-400/30 bg-red-500/5 dark:bg-red-950/20">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm">{quiz.title}</CardTitle>
-                                <CardDescription>{quiz.courses[0]?.name}</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-2">
-                                    <div className="flex items-center text-xs">
-                                        <Clock className="mr-1 h-3 w-3" />
-                                        Ends at: {format(new Date(quiz.endTime), 'PPp')}
-                                    </div>
-                                    <Button 
-                                        className="w-full"
-                                        size="sm"
-                                        onClick={() => router.push(`/student/quiz?status=live`)}
-                                    >
-                                        Take Quiz
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            ) : (
-                <div className="flex h-[100px] items-center justify-center text-muted-foreground">
-                    No live quizzes available
-                </div>
-            )}
-        </CardContent>
-    </Card>
 )
 

@@ -82,17 +82,23 @@ interface Quiz {
 
 const COLORS = ['#00C49F', '#FFBB28', '#FF8042', '#FF0000'];
 
-// Add theme-aware chart colors
+// Enhanced theme-aware chart colors
 const chartTheme = {
   dark: {
     background: '#1a1a1a',
     text: '#ffffff',
     grid: '#333333',
+    tooltipBg: '#1a1a1a',
+    tooltipBorder: '#444444',
+    pieLabelColor: '#ffffff'
   },
   light: {
     background: '#ffffff',
     text: '#000000',
     grid: '#e5e5e5',
+    tooltipBg: '#ffffff',
+    tooltipBorder: '#e5e5e5',
+    pieLabelColor: '#000000'
   }
 };
 
@@ -461,7 +467,7 @@ export default function CourseDetailsPage() {
                     <>
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-muted-foreground">Average Score</span>
+                          <span className="text-sm text-muted-foreground">Normalized Average Score</span>
                           <span className="font-medium">
                             {performanceStats.averagePercentage.toFixed(1)}%
                           </span>
@@ -539,18 +545,30 @@ export default function CourseDetailsPage() {
                             outerRadius={70}
                             fill="#8884d8"
                             dataKey="value"
+                            labelStyle={{ fill: isDarkMode ? chartTheme.dark.pieLabelColor : chartTheme.light.pieLabelColor }}
                           >
                             {[0, 1, 2, 3].map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              <Cell 
+                                key={`cell-${index}`} 
+                                fill={COLORS[index % COLORS.length]} 
+                                stroke={isDarkMode ? chartTheme.dark.background : chartTheme.light.background}
+                              />
                             ))}
                           </Pie>
                           <Tooltip 
                             formatter={(value) => [`${value} Quiz(es)`, 'Count']}
                             contentStyle={{
-                              backgroundColor: theme === "dark" ? '#1a1a1a' : '#ffffff',
-                              border: `1px solid ${theme === "dark" ? '#333333' : '#e5e5e5'}`,
+                              backgroundColor: isDarkMode ? chartTheme.dark.tooltipBg : chartTheme.light.tooltipBg,
+                              border: `1px solid ${isDarkMode ? chartTheme.dark.tooltipBorder : chartTheme.light.tooltipBorder}`,
                               borderRadius: '6px',
-                              color: theme === "dark" ? '#ffffff' : '#000000',
+                              color: isDarkMode ? chartTheme.dark.text : chartTheme.light.text,
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                            }}
+                            itemStyle={{
+                              color: isDarkMode ? chartTheme.dark.text : chartTheme.light.text
+                            }}
+                            labelStyle={{
+                              color: isDarkMode ? chartTheme.dark.text : chartTheme.light.text
                             }}
                           />
                         </PieChart>
@@ -569,25 +587,36 @@ export default function CourseDetailsPage() {
                         >
                           <CartesianGrid 
                             strokeDasharray="3 3" 
-                            stroke={theme === "dark" ? chartTheme.dark.grid : chartTheme.light.grid}
+                            stroke={isDarkMode ? chartTheme.dark.grid : chartTheme.light.grid}
+                            // Fix for white dotted border
+                            strokeOpacity={isDarkMode ? 0.5 : 1}
                           />
                           <XAxis 
                             dataKey="name" 
-                            stroke={theme === "dark" ? chartTheme.dark.text : chartTheme.light.text}
+                            stroke={isDarkMode ? chartTheme.dark.text : chartTheme.light.text}
+                            tick={{ fill: isDarkMode ? chartTheme.dark.text : chartTheme.light.text }}
                           />
                           <YAxis 
                             domain={[0, 100]} 
                             tickFormatter={(value) => `${value}%`}
-                            stroke={theme === "dark" ? chartTheme.dark.text : chartTheme.light.text}
+                            stroke={isDarkMode ? chartTheme.dark.text : chartTheme.light.text}
+                            tick={{ fill: isDarkMode ? chartTheme.dark.text : chartTheme.light.text }}
                           />
                           <Tooltip 
                             formatter={(value, name, props) => [`${value.toFixed(1)}%`, props.payload.title]}
                             labelFormatter={(value) => `${value}`}
                             contentStyle={{
-                              backgroundColor: theme === "dark" ? '#1a1a1a' : '#ffffff',
-                              border: `1px solid ${theme === "dark" ? '#333333' : '#e5e5e5'}`,
+                              backgroundColor: isDarkMode ? chartTheme.dark.tooltipBg : chartTheme.light.tooltipBg,
+                              border: `1px solid ${isDarkMode ? chartTheme.dark.tooltipBorder : chartTheme.light.tooltipBorder}`,
                               borderRadius: '6px',
-                              color: theme === "dark" ? '#ffffff' : '#000000',
+                              color: isDarkMode ? chartTheme.dark.text : chartTheme.light.text,
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+                            }}
+                            itemStyle={{
+                              color: isDarkMode ? chartTheme.dark.text : chartTheme.light.text
+                            }}
+                            labelStyle={{
+                              color: isDarkMode ? chartTheme.dark.text : chartTheme.light.text
                             }}
                           />
                           <Bar 
@@ -595,11 +624,15 @@ export default function CourseDetailsPage() {
                             name="Score" 
                             fill="#8884d8"
                             isAnimationActive={true}
+                            // Remove any default stroke borders
+                            stroke="none"
                           >
                             {performanceStats.scoreByQuiz.map((entry, index) => (
                               <Cell 
                                 key={`cell-${index}`} 
                                 fill={entry.status === 'missed' ? '#FF0000' : (entry.score >= 85 ? '#00C49F' : (entry.score >= 70 ? '#FFBB28' : (entry.score >= 50 ? '#FF8042' : '#FF0000')))}
+                                // Remove stroke for better dark mode display
+                                stroke="none"
                               />
                             ))}
                           </Bar>
