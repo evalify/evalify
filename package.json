@@ -113,6 +113,8 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@types/react-katex": "^3.0.4",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
     "i": "^0.3.7",
