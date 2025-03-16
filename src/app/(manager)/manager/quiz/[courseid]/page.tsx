@@ -56,7 +56,9 @@ type Quiz = {
         fullscreen: boolean;
         calculator: boolean;
         shuffle: boolean;
-        autoSubmit: boolean; // Add this line
+        autoSubmit: boolean; 
+        linear_quiz : boolean;
+        shuffle_options : boolean;
     };
     courses: Course[];
     courseIds: string[]
@@ -367,6 +369,8 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
             calculator: false,
             shuffle: true,
             autoSubmit: false,
+            linear_quiz: false,
+            shuffle_options: true
         },
         courseIds: [courseid],
     });
@@ -480,6 +484,8 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
                 calculator: false,
                 shuffle: true,
                 autoSubmit: false,
+                linear_quiz: false,
+                shuffle_options: true
             },
             courseIds: [courseid],
         });
@@ -679,7 +685,7 @@ export default function QuizPage({ params }: { params: Promise<{ courseid: strin
         });
     }, [quizzes, searchQuery, sortBy, filterStatus]);
 
-    const settingsFields = ['fullscreen', 'calculator', 'shuffle', 'autoSubmit'];
+    const settingsFields = ['fullscreen', 'calculator', 'shuffle', 'autoSubmit', 'linear_quiz', 'shuffle_options'];
 
     return (
         <div className="min-h-screen bg-gradient-to-br p-8">
