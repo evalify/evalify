@@ -1,3 +1,56 @@
+/**
+ * @swagger
+ * /api/quiz/upload-response:
+ *   post:
+ *     summary: Upload file response for quiz question
+ *     description: Handles file uploads for quiz questions that require file submissions
+ *     tags:
+ *       - Quiz
+ *     security:
+ *       - session: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *               - quizId
+ *               - questionId
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: File to be uploaded (max 10MB)
+ *               quizId:
+ *                 type: string
+ *                 description: ID of the quiz
+ *               questionId:
+ *                 type: string
+ *                 description: ID of the question
+ *     responses:
+ *       200:
+ *         description: File uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *                   description: URL of the uploaded file
+ *                 fileInfo:
+ *                   type: object
+ *                   description: Additional information about the uploaded file
+ *       400:
+ *         description: Missing fields or file size exceeds limit
+ *       401:
+ *         description: Unauthorized - User must be logged in
+ *       500:
+ *         description: Server error while uploading file
+ */
+
 import { auth } from "@/lib/auth/auth";
 import { NextRequest, NextResponse } from "next/server";
 import { uploadQuizSubmission } from "@/lib/db/minio";

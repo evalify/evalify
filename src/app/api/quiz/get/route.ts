@@ -4,6 +4,62 @@ import { prisma } from "@/lib/db/prismadb";
 import { redis } from "@/lib/db/redis";
 import { NextResponse } from "next/server";
 
+/**
+ * @swagger
+ * /api/quiz/get:
+ *   get:
+ *     summary: Retrieve a quiz for a student
+ *     description: Fetches quiz details, questions, and student attempt information. Handles question shuffling and caching.
+ *     parameters:
+ *       - in: query
+ *         name: quizId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the quiz to retrieve
+ *     responses:
+ *       200:
+ *         description: Quiz retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 quiz:
+ *                   type: object
+ *                   properties:
+ *                     title: { type: string }
+ *                     settings: { type: object }
+ *                     duration: { type: number }
+ *                     startTime: { type: string, format: date-time }
+ *                     endTime: { type: string, format: date-time }
+ *                 questions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: { type: string }
+ *                       question: { type: string }
+ *                       mark: { type: number }
+ *                       type: { type: string }
+ *                 responses:
+ *                   type: object
+ *                   nullable: true
+ *                 quizAttempt:
+ *                   type: object
+ *                   properties:
+ *                     startTime: { type: string, format: date-time }
+ *       400:
+ *         description: Quiz already completed
+ *       401:
+ *         description: Unauthorized access
+ *       403:
+ *         description: Quiz not available at this time
+ *       404:
+ *         description: Quiz or QuizID not found
+ *       500:
+ *         description: Internal server error
+ */
 export async function GET(req: Request) {
     try {
         const session = await auth();

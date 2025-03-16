@@ -1,3 +1,46 @@
+/**
+ * @swagger
+ * /api/quiz/update-response:
+ *   post:
+ *     summary: Update quiz responses in cache
+ *     description: Temporarily stores student's quiz responses in Redis cache
+ *     tags:
+ *       - Quiz
+ *     security:
+ *       - session: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - quizId
+ *               - responses
+ *             properties:
+ *               quizId:
+ *                 type: string
+ *                 description: The ID of the quiz being attempted
+ *               responses:
+ *                 type: object
+ *                 description: Object containing question IDs and their responses
+ *     responses:
+ *       200:
+ *         description: Responses updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid request - missing quizId or responses
+ *       401:
+ *         description: Unauthorized - User must be logged in as a student
+ *       500:
+ *         description: Server error while updating response
+ */
 import { auth } from "@/lib/auth/auth";
 import { redis } from "@/lib/db/redis";
 import { NextResponse } from "next/server";

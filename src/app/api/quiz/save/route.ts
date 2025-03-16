@@ -2,6 +2,58 @@ import { auth } from "@/lib/auth/auth";
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
 
+/**
+ * @swagger
+ * /api/quiz/save:
+ *   post:
+ *     summary: Submit a quiz attempt
+ *     description: Saves the student's quiz responses and marks the quiz as submitted
+ *     tags:
+ *       - Quiz
+ *     security:
+ *       - session: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - quizId
+ *               - responses
+ *             properties:
+ *               quizId:
+ *                 type: string
+ *                 description: The ID of the quiz being submitted
+ *               responses:
+ *                 type: object
+ *                 description: Object containing question IDs and their responses
+ *               violations:
+ *                 type: string
+ *                 description: Any recorded violations during the quiz attempt
+ *     responses:
+ *       200:
+ *         description: Quiz submitted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *       400:
+ *         description: Quiz already submitted
+ *       401:
+ *         description: Unauthorized - User must be logged in as a student
+ *       403:
+ *         description: Quiz submission window closed
+ *       404:
+ *         description: No quiz attempt found
+ *       504:
+ *         description: Request timeout
+ */
 export const maxDuration = 60; // Set maximum duration to 60 seconds
 
 export async function POST(req: Request) {
