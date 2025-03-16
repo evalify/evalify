@@ -474,7 +474,8 @@ export default function QuizPage() {
     const renderSettingsButton = () => (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline">
+                    Evalution Settings
                     <Settings className="h-4 w-4" />
                 </Button>
             </DropdownMenuTrigger>
@@ -490,6 +491,9 @@ export default function QuizPage() {
                             onCheckedChange={(checked) => updateSetting({ negativeMark: checked })}
                         />
                     </div>
+                    <span className="text-sm text-gray-500">
+                        50% of the marks will be deducted for wrong answers
+                    </span>
                     <div className="flex items-center justify-between space-x-2">
                         <Label htmlFor="mcq-partial">MCQ Partial Marks</Label>
                         <Switch

@@ -21,7 +21,7 @@ model User {
     isActive           Boolean   @default(true)
     Student            Student[]
     Staff              Staff[]
-    Manager Manager[]
+    Manager            Manager[]
 }
 
 enum Role {
@@ -40,7 +40,7 @@ model Class {
     students   Student[]
     courses    Course[]
     sharePoint String
-    manager   Manager[]
+    manager    Manager[]
 }
 
 model Student {
@@ -94,10 +94,9 @@ model Staff {
     Quiz       Quiz[]
 }
 
-model Manager{
-    id         String   @id @default(cuid())
-    user       User     @relation(fields: [id], references: [id])
-
+model Manager {
+    id   String @id @default(cuid())
+    user User   @relation(fields: [id], references: [id])
 
     class Class[]
 }
@@ -134,12 +133,14 @@ model Quiz {
 }
 
 model QuizSettings {
-    id         String  @id @default(cuid())
-    fullscreen Boolean @default(false)
-    calculator Boolean @default(false)
-    shuffle    Boolean @default(false)
-    showResult Boolean @default(false)
-    autoSubmit Boolean @default(false)
+    id              String  @id @default(cuid())
+    fullscreen      Boolean @default(false)
+    calculator      Boolean @default(false)
+    shuffle         Boolean @default(false)
+    showResult      Boolean @default(false)
+    autoSubmit      Boolean @default(false)
+    shuffle_options Boolean @default(false)
+    linear_quiz     Boolean @default(false)
 
     Quiz Quiz[]
 }

@@ -145,15 +145,6 @@ export default function DashboardPage() {
                     <div>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-semibold">Course Performance</h2>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="text-sm"
-                                onClick={() => router.push('/student/course')}
-                            >
-                                View All
-                                <ArrowRight className="ml-1 h-3 w-3" />
-                            </Button>
                         </div>
                         
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

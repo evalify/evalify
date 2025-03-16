@@ -247,7 +247,7 @@ const QuizCard = ({ quiz, onEdit, onDelete, router, courseid }: {
                                 key={course.id}
                                 className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 text-xs font-medium px-2.5 py-0.5 rounded-full"
                             >
-                                {course.code} - {course.class.name}
+                                {course.code} - {course.name} - {course.class.name}
                             </span>
                         ))}
                     </div>

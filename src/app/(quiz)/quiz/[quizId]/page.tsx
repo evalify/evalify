@@ -22,7 +22,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LatexPreview } from '@/components/latex-preview'
 import CodeEditor from '@/components/codeEditor/CodeEditor'
 import { nanoid } from 'nanoid'
-import { Input } from '@/components/ui/input'
 
 interface CodeFile {
     id: string
@@ -55,9 +54,10 @@ interface Quiz {
     endTime: string
     settings: {
         shuffle?: boolean;
-        autoSubmit: Boolean;
-        fullscreen: Boolean;
-        calculator: Boolean;
+        autoSubmit: boolean;
+        fullscreen: boolean;
+        calculator: boolean;
+        shuffle_options: boolean;
     };
     duration: number
 }
@@ -70,7 +70,7 @@ interface Violation {
 function useQuizTimer(
     quiz: Quiz | null,
     quizStartTime: Date | null,
-    onTimeUp: () => void,
+    onTimeUp: () => Promise<boolean>,
     setIsTimeWarning: (value: boolean) => void,
     setWarningMessage: (value: string | null) => void
 ) {
@@ -159,6 +159,9 @@ const QuizPage = () => {
     const quizId = params.quizId;
     const router = useRouter();
 
+    // Extract question parameter from URL
+    const questionParam = searchParams.get('question');
+    
     // Group all state hooks together
     const [quiz, setQuiz] = useState<Quiz | null>(null);
 
@@ -166,9 +169,13 @@ const QuizPage = () => {
     const isFullscreenRequired = quiz?.settings?.fullscreen ?? false;
     const isAutoSubmitEnabled = quiz?.settings?.autoSubmit ?? false;
     const isCalculatorEnabled = quiz?.settings.calculator ?? false;
+    const isLinearQuizEnabled = quiz?.settings?.shuffle_options ?? false;
 
     const [questions, setQuestions] = useState<Question[]>([]);
+    // Initialize with questionParam if available
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    // Track if we've initialized from URL
+    const initializedFromUrl = useRef(false);
     const [userAnswers, setUserAnswers] = useState<Record<string, string[]>>({});
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
@@ -181,6 +188,11 @@ const QuizPage = () => {
     const [hasPermission, setHasPermission] = useState(false);
     const [quizStartTime, setQuizStartTime] = useState<Date | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submissionError, setSubmissionError] = useState<string | null>(null);
+    const [isAutoSubmitting, setIsAutoSubmitting] = useState(false);
+    const maxRetryAttempts = 5;
+    const [retryAttempts, setRetryAttempts] = useState(0);
+    const [showRetryDialog, setShowRetryDialog] = useState(false);
 
     // Initialize editor files without localStorage
     const [editorFiles, setEditorFiles] = useState<CodeFile[]>([
@@ -213,8 +225,32 @@ const QuizPage = () => {
         }
     }, [activeEditorFile, quizId]);
 
-    const handleSubmitQuiz = useCallback(async () => {
+    // Handle URL updates separately from state
+    const changeQuestion = useCallback((index: number) => {
+        setCurrentQuestionIndex(index);
+        
+        // Update URL without triggering a re-render
+        const url = new URL(window.location.href);
+        url.searchParams.set('question', index.toString());
+        window.history.replaceState({}, '', url.toString());
+        window.scrollTo(0, 0);
+    }, []);
+
+    // Initialize from URL only once when questions load
+    useEffect(() => {
+        if (questions.length > 0 && questionParam && !initializedFromUrl.current) {
+            const index = parseInt(questionParam);
+            if (!isNaN(index) && index >= 0 && index < questions.length) {
+                setCurrentQuestionIndex(index);
+            }
+            initializedFromUrl.current = true;
+        }
+    }, [questions.length, questionParam]);
+
+    const handleSubmitQuiz = useCallback(async (): Promise<boolean> => {
         setIsSubmitting(true);
+        setSubmissionError(null);
+        
         try {
             const res = await fetch('/api/quiz/save', {
                 method: 'POST',
@@ -234,16 +270,20 @@ const QuizPage = () => {
                 throw new Error(data?.error || 'Failed to submit quiz');
             }
 
+            // On success, clean up and redirect
             localStorage.removeItem(getStorageKey(quizId, 'answers'));
             localStorage.removeItem(`violations_${quizId}`);
             localStorage.removeItem(`calculator_files_${quizId}`);
             localStorage.removeItem(`calculator_active_file_${quizId}`);
-            localStorage.clear()
+            localStorage.clear();
+            
             router.push('/student/quiz');
+            return true;
         } catch (error) {
             console.error('Error saving quiz:', error);
-            toast.error(error instanceof Error ? error.message : "Failed to submit quiz");
+            setSubmissionError(error instanceof Error ? error.message : "Failed to submit quiz");
             setIsSubmitting(false);
+            return false;
         }
     }, [quizId, userAnswers, violations, router]);
 
@@ -259,8 +299,53 @@ const QuizPage = () => {
         }
     }, [quizId]);
 
-    // Now we can use handleSubmitQuiz in useQuizTimer
-    const timeLeft = useQuizTimer(quiz, quizStartTime, handleSubmitQuiz, setIsTimeWarning, setWarningMessage);
+    // Handle auto-submission with retries
+    const handleAutoSubmit = useCallback(async (): Promise<boolean> => {
+        setIsAutoSubmitting(true);
+        setRetryAttempts(0);
+        
+        const attemptSubmission = async (): Promise<boolean> => {
+            try {
+                // Show the warning that time is up and quiz is being submitted
+                setWarningMessage("Time's up! Submitting your quiz...");
+                
+                const success = await handleSubmitQuiz();
+                if (success) {
+                    setIsAutoSubmitting(false);
+                    return true;
+                } else {
+                    throw new Error("Submission failed");
+                }
+            } catch (error) {
+                console.error("Auto-submit attempt failed:", error);
+                if (retryAttempts < maxRetryAttempts) {
+                    setRetryAttempts(prev => prev + 1);
+                    // Wait 2 seconds before retrying
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return attemptSubmission();
+                } else {
+                    setShowRetryDialog(true);
+                    setIsAutoSubmitting(false);
+                    return false;
+                }
+            }
+        };
+        
+        return attemptSubmission();
+    }, [handleSubmitQuiz, maxRetryAttempts, retryAttempts, setWarningMessage]);
+
+    // Use the updated function for the timer
+    const timeLeft = useQuizTimer(quiz, quizStartTime, handleAutoSubmit, setIsTimeWarning, setWarningMessage);
+
+    // Manual retry function for user-initiated retries
+    const handleRetrySubmission = async () => {
+        setShowRetryDialog(false);
+        setIsSubmitting(true);
+        const success = await handleSubmitQuiz();
+        if (!success) {
+            setShowRetryDialog(true);
+        }
+    };
 
     // Group related effects together
     useEffect(() => {
@@ -717,14 +802,6 @@ const QuizPage = () => {
                                         }}
                                         driverCode={question.driverCode || ''}
                                     />
-                                    {/* {question.driverCode && (
-                                        <div className="mt-4 p-3 border rounded bg-muted/20">
-                                            <p className="text-sm font-medium mb-2">Test Cases</p>
-                                            <pre className="text-xs overflow-x-auto whitespace-pre-wrap">
-                                                {question.driverCode}
-                                            </pre>
-                                        </div>
-                                    )} */}
                                 </div>
                             );
                         default:
@@ -841,7 +918,8 @@ const QuizPage = () => {
 
                 toast.success("File uploaded successfully");
 
-                onUpload(data.url);
+                onUpload(data.url);   
+                    
             } catch (error) {
                 console.error('Upload error:', error);
                 toast.error("Failed to upload file");
@@ -1101,6 +1179,17 @@ const QuizPage = () => {
         return <div className="flex items-center justify-center h-screen">Loading...</div>
     }
 
+    // Update the navigation button handlers
+    const handlePrevious = () => {
+        const newIndex = Math.max(0, currentQuestionIndex - 1);
+        changeQuestion(newIndex);
+    };
+
+    const handleNext = () => {
+        const newIndex = Math.min(questions.length - 1, currentQuestionIndex + 1);
+        changeQuestion(newIndex);
+    };
+
     return (
         <div className="h-[90vh] flex flex-col bg-background">
             {isFullscreenRequired && <ViolationsCounter />}
@@ -1189,11 +1278,8 @@ const QuizPage = () => {
                             <div className="flex justify-between items-center">
                                 <Button
                                     variant="outline"
-                                    onClick={() => {
-                                        setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
-                                        window.scrollTo(0, 0);
-                                    }}
-                                    disabled={currentQuestionIndex === 0}
+                                    onClick={handlePrevious}
+                                    disabled={currentQuestionIndex === 0 || isLinearQuizEnabled}
                                 >
                                     <ChevronLeft className="mr-2 h-4 w-4" /> Previous
                                 </Button>
@@ -1203,10 +1289,7 @@ const QuizPage = () => {
                                     </Button>
                                 ) : (
                                     <Button
-                                        onClick={() => {
-                                            setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1));
-                                            window.scrollTo(0, 0);
-                                        }}
+                                        onClick={handleNext}
                                     >
                                         Next <ChevronRight className="ml-2 h-4 w-4" />
                                     </Button>
@@ -1231,7 +1314,8 @@ const QuizPage = () => {
                                                     "w-10 h-10",
                                                     userAnswers[q.id] && userAnswers[q.id].length > 0 && "bg-primary/20"
                                                 )}
-                                                onClick={() => setCurrentQuestionIndex(index)}
+                                                onClick={() => changeQuestion(index)}
+                                                disabled={isLinearQuizEnabled || false}
                                             >
                                                 {index + 1}
                                             </Button>
@@ -1268,13 +1352,45 @@ const QuizPage = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            
+            {/* Add a retry dialog */}
+            <AlertDialog open={showRetryDialog} onOpenChange={setShowRetryDialog}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Submission Failed</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            We couldn't submit your quiz. {submissionError ? `Error: ${submissionError}` : ''}
+                            Please try again.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction
+                            onClick={handleRetrySubmission}
+                            disabled={isSubmitting}
+                            className="relative"
+                        >
+                            {isSubmitting && (
+                                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            {isSubmitting ? 'Retrying...' : 'Retry Submission'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
             {/* Show overlay when submitting */}
-            {isSubmitting && (
+            {(isSubmitting || isAutoSubmitting) && (
                 <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
                     <div className="flex flex-col items-center gap-2">
                         <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-                        <p className="text-sm text-muted-foreground">Submitting your quiz...</p>
+                        <p className="text-sm text-muted-foreground">
+                            {isAutoSubmitting 
+                                ? `Automatically submitting your quiz... ${retryAttempts > 0 ? `(Attempt ${retryAttempts + 1}/${maxRetryAttempts + 1})` : ''}`
+                                : "Submitting your quiz..."}
+                        </p>
+                        {submissionError && (
+                            <p className="text-sm text-red-500 mt-2">{submissionError}</p>
+                        )}
                     </div>
                 </div>
             )}

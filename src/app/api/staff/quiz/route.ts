@@ -203,13 +203,20 @@ export async function GET(req: Request) {
 
             const quizzes = await prisma.quiz.findMany({
                 where: {
-                    courses:{
-                        some: {
-                            staff: {
-                                id: staff.id
+                    OR: [
+                        {
+                            courses:{
+                                some: {
+                                    staff: {
+                                        id: staff.id
+                                    }
+                                }
                             }
+                        },
+                        {
+                            createdbyId: staff.id
                         }
-                    }
+                    ]
                 },
                 include: {
                     courses: {

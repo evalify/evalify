@@ -38,8 +38,8 @@ export async function GET(req: Request) {
                     student: { id: id }
                 }
             }),
-            redis.get(`QUIZ_${quizId}`),
-            redis.get(`QUIZ_${quizId}_${id}_questions`)
+            redis.get(`QUIZ:${quizId}`),
+            redis.get(`QUIZ:${quizId}:${id}:questions`)
         ]);
 
         if (studentQuiz?.isSubmitted) {
@@ -128,24 +128,38 @@ export async function GET(req: Request) {
 
             // Cache the original questions
             await redis.set(
-                `QUIZ_${quizId}`, 
+                `QUIZ:${quizId}`, 
                 JSON.stringify(questions), 
                 'EX', 
                 5 * 60 * 60
             );
         }
-
-        // Shuffle if needed and cache user-specific order
+        // Create a deep copy of questions to modify
+        let userQuestions = JSON.parse(JSON.stringify(questions));
+        
+        // Shuffle questions if needed
         if (quiz.settings?.shuffle) {
-            const shuffledQuestions = [...questions].sort(() => Math.random() - 0.5);
-            await redis.set(
-                `QUIZ_${quizId}_${id}_questions`,
-                JSON.stringify(shuffledQuestions),
-                'EX',
-                quiz.duration * 60 * 2// Cache for quiz duration
-            );
-            questions = shuffledQuestions;
+            userQuestions = userQuestions.sort(() => Math.random() - 0.5);
         }
+        
+        // Shuffle options if needed
+        if (quiz.settings?.shuffle_options) {
+            userQuestions.forEach((question: any) => {
+            if (question.options) {
+                question.options = [...question.options].sort(() => Math.random() - 0.5);
+            }
+            });
+        }
+        
+        await redis.set(
+        `QUIZ:${quizId}:${id}:questions`,
+        JSON.stringify(userQuestions),
+        'EX',
+        quiz.duration * 60 * 4
+        );
+        
+        questions = userQuestions;
+
 
         return NextResponse.json({
             quiz,
