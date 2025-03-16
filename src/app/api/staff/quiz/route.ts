@@ -5,7 +5,7 @@ import { redis } from "@/lib/db/redis";
 
 
 async function resetQuizCache(classId: string) {
-    await redis.del(`QUIZ_${classId}`);
+    await redis.del(`QUIZ"${classId}`);
 }
 
 export async function POST(req: Request) {
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
                 where: { id },
                 select: { classId: true }
             })
-            await redis.del(`QUIZ_${classId?.classId}`);
+            await redis.del(`QUIZ:${classId?.classId}`);
         })
 
 
@@ -258,7 +258,9 @@ export async function PUT(request: NextRequest) {
                 calculator: body.settings.calculator,
                 shuffle: body.settings.shuffle,
                 autoSubmit: body.settings.autoSubmit,
-                showResult: body.settings.showResult
+                showResult: body.settings.showResult,
+                linear_quiz: body.settings.linear_quiz,
+                shuffle_options: body.settings.shuffle_options,
             }
         });
 
@@ -287,7 +289,7 @@ export async function PUT(request: NextRequest) {
                 where: { id },
                 select: { classId: true }
             })
-            await redis.del(`QUIZ_${classId?.classId}`);
+            await redis.del(`QUIZ:${classId?.classId}`);
         })
 
         return NextResponse.json(
