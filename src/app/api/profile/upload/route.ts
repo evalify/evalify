@@ -1,8 +1,49 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadFile, deleteFile } from '@/lib/db/minio';
 import { prisma } from '@/lib/db/prismadb';
 
+/**
+ * @swagger
+ * /api/profile/upload:
+ *   post:
+ *     summary: Upload user profile picture
+ *     description: Handles profile picture upload, deletes old picture if exists, and updates user profile
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *               - email
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Profile image file to upload
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *     responses:
+ *       200:
+ *         description: Successfully uploaded profile picture
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *                   description: URL of the uploaded image
+ *       400:
+ *         description: Missing file or email
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error during upload
+ */
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();

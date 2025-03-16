@@ -1,3 +1,107 @@
+/**
+ * @swagger
+ * /api/admin/students:
+ *   get:
+ *     summary: Get list of students
+ *     description: Retrieves a paginated list of students with optional search functionality
+ *     tags:
+ *       - Admin
+ *       - Students
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term for filtering students by name, email or roll number
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: dashboard
+ *         schema:
+ *           type: boolean
+ *         description: If true, returns only total count of students
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved students list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 students:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id: 
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       rollNo:
+ *                         type: string
+ *                       Student:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                 total:
+ *                   type: integer
+ *                 pages:
+ *                   type: integer
+ *       500:
+ *         description: Server error while fetching students
+ *
+ *   put:
+ *     summary: Update students' class assignment
+ *     description: Updates the class assignment for multiple students
+ *     tags:
+ *       - Admin
+ *       - Students
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - studentIds
+ *               - classId
+ *             properties:
+ *               studentIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of student IDs to update
+ *               classId:
+ *                 type: string
+ *                 description: ID of the class to assign students to
+ *     responses:
+ *       200:
+ *         description: Students updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Server error while updating students
+ */
+
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
 

@@ -2,8 +2,30 @@ import minioClient, { sanitizeBucketName } from "@/lib/db/minio";
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
 
-
-// GET all classes
+/**
+ * @swagger
+ * /api/admin/classes:
+ *   get:
+ *     summary: Retrieve all classes
+ *     description: Returns a list of all classes with their basic information
+ *     responses:
+ *       200:
+ *         description: List of classes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id: { type: string }
+ *                   name: { type: string }
+ *                   department: { type: string }
+ *                   semester: { type: integer }
+ *                   batch: { type: string }
+ *       500:
+ *         description: Server error while fetching classes
+ */
 export async function GET() {
     try {
         const classes = await prisma.class.findMany({
@@ -27,6 +49,34 @@ export async function GET() {
     }
 }
 
+/**
+ * @swagger
+ * /api/admin/classes:
+ *   post:
+ *     summary: Create a new class
+ *     description: Creates a new class and its associated storage bucket
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - department
+ *               - semester
+ *               - batch
+ *             properties:
+ *               name: { type: string }
+ *               department: { type: string }
+ *               semester: { type: integer }
+ *               batch: { type: string }
+ *     responses:
+ *       201:
+ *         description: Class created successfully
+ *       500:
+ *         description: Server error while creating class
+ */
 export async function POST(req: Request) {
     try {
         const body = await req.json();
@@ -54,7 +104,32 @@ export async function POST(req: Request) {
     }
 }
 
-// PUT to update a class
+/**
+ * @swagger
+ * /api/admin/classes:
+ *   put:
+ *     summary: Update an existing class
+ *     description: Updates the details of an existing class
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *             properties:
+ *               id: { type: string }
+ *               name: { type: string }
+ *               department: { type: string }
+ *               semester: { type: integer }
+ *               batch: { type: string }
+ *     responses:
+ *       200:
+ *         description: Class updated successfully
+ *       500:
+ *         description: Server error while updating class
+ */
 export async function PUT(req: Request) {
     try {
         const body = await req.json();
@@ -73,7 +148,27 @@ export async function PUT(req: Request) {
     }
 }
 
-// DELETE a class
+/**
+ * @swagger
+ * /api/admin/classes:
+ *   delete:
+ *     summary: Delete a class
+ *     description: Deletes a class by its ID
+ *     parameters:
+ *       - in: query
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the class to delete
+ *     responses:
+ *       200:
+ *         description: Class deleted successfully
+ *       400:
+ *         description: ID parameter is missing
+ *       500:
+ *         description: Server error while deleting class
+ */
 export async function DELETE(req: Request) {
     try {
         const url = new URL(req.url);

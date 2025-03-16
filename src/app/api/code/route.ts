@@ -1,8 +1,46 @@
 import { NextResponse } from "next/server";
 import { languages } from "@/lib/utils";
 
-
-
+/**
+ * @swagger
+ * /api/code:
+ *   post:
+ *     summary: Submit code for execution
+ *     description: Submits source code in a specified programming language for execution
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - source_code
+ *               - language
+ *             properties:
+ *               source_code:
+ *                 type: string
+ *                 description: The source code to be executed
+ *               language:
+ *                 type: string
+ *                 description: The programming language identifier
+ *     responses:
+ *       200:
+ *         description: Successful execution
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stdout:
+ *                   type: string
+ *                   description: Standard output from the code execution
+ *                 stderr:
+ *                   type: string
+ *                   description: Standard error output
+ *                 status:
+ *                   type: object
+ *                   description: Execution status details
+ */
 export async function POST(request: Request) {
     const JUDGE = `${process.env.JUDGE_API}`;
 

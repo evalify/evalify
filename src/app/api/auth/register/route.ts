@@ -3,6 +3,76 @@ import { hash } from 'bcryptjs';
 import { prisma } from '@/lib/db/prismadb';
 import { uploadFile } from '@/lib/db/minio';
 
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     description: Creates a new user account with optional profile image upload
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - email
+ *               - password
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Full name of the user
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: User's password
+ *               role:
+ *                 type: string
+ *                 enum: [STUDENT, ADMIN, STAFF, MANAGER]
+ *                 default: STUDENT
+ *               phoneNo:
+ *                 type: string
+ *                 description: User's phone number
+ *               rollNo:
+ *                 type: string
+ *                 description: Student's roll number
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: User's profile picture
+ *     responses:
+ *       201:
+ *         description: User successfully registered
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User registered successfully.
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id: 
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *       400:
+ *         description: Missing required fields
+ *       409:
+ *         description: Email already exists
+ *       500:
+ *         description: Internal server error
+ */
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();

@@ -1,10 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-
 import { hash } from "bcryptjs";
-
 import { auth } from "@/lib/auth/auth";
 import { prisma } from "@/lib/db/prismadb";
 
+/**
+ * @swagger
+ * /api/admin/managers/reset-password:
+ *   post:
+ *     summary: Reset manager's password
+ *     description: Resets a manager's password to their default password (rollNo@123)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid request data
+ *       401:
+ *         description: Unauthorized access
+ *       500:
+ *         description: Server error while resetting password
+ */
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();

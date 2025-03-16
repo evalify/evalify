@@ -1,6 +1,35 @@
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
 
+/**
+ * @swagger
+ * /api/admin/managers/assign-classes:
+ *   post:
+ *     summary: Assign classes to a manager
+ *     description: Assigns multiple classes to a specific manager
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               managerId:
+ *                 type: string
+ *               classIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Classes assigned successfully
+ *       400:
+ *         description: Invalid request data
+ *       404:
+ *         description: Manager not found
+ *       500:
+ *         description: Server error while assigning classes
+ */
 export async function POST(request: Request) {
     try {
         const body = await request.json();
@@ -62,7 +91,44 @@ export async function POST(request: Request) {
     }
 }
 
-// Optional: Add GET method to fetch current assignments
+/**
+ * @swagger
+ * /api/admin/managers/assign-classes:
+ *   get:
+ *     summary: Get manager's class assignments
+ *     description: Retrieves all classes assigned to a specific manager
+ *     parameters:
+ *       - in: query
+ *         name: managerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the manager
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved assignments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 assignments:
+ *                   type: object
+ *                   properties:
+ *                     class:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *       400:
+ *         description: Manager ID is missing
+ *       500:
+ *         description: Server error while fetching assignments
+ */
 export async function GET(request: Request) {
     try {
         const { searchParams } = new URL(request.url);

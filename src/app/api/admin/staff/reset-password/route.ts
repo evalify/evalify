@@ -5,6 +5,47 @@ import { hash } from "bcryptjs";
 import { auth } from "@/lib/auth/auth";
 import { prisma } from "@/lib/db/prismadb";
 
+/**
+ * @swagger
+ * /api/admin/staff/reset-password:
+ *   post:
+ *     summary: Reset staff member's password
+ *     description: Resets a staff member's password to their default password format (rollNo@123)
+ *     tags:
+ *       - Admin
+ *       - Staff Management
+ *     security:
+ *       - sessionAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Staff member's email address
+ *             required:
+ *               - email
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Unauthorized - Admin access required
+ *       500:
+ *         description: Internal server error
+ */
 export async function POST(req: NextRequest) {
     try {
         const session = await auth();
