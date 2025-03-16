@@ -1,3 +1,57 @@
+/**
+ * @swagger
+ * /api/signup:
+ *   post:
+ *     summary: Register a new user
+ *     description: Creates a new student account with the provided email, password, and name
+ *     tags:
+ *       - Authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - name
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: User's email address
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: User's password
+ *               name:
+ *                 type: string
+ *                 description: User's full name
+ *     responses:
+ *       200:
+ *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *       400:
+ *         description: Missing required fields or email already exists
+ *       500:
+ *         description: Server error while creating user
+ */
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prismadb";
