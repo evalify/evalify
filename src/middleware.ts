@@ -3,6 +3,17 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const publicPaths = ['/ide', "/", "/forum"];
 
+const allowedIPs = [
+    "172.17.191.",	"172.17.71.",
+    "172.17.192.",	"172.17.72.",
+    "172.17.193.",  "172.17.73.",
+    "172.17.194.",	"172.17.74.",
+    "172.17.195.",	"172.17.75.",
+    "172.17.196.",	"172.17.76.",
+    "172.17.77.",   "172.17.78."
+]
+
+
 export async function middleware(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
     const { pathname, origin } = req.nextUrl;
@@ -18,6 +29,29 @@ export async function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
+    let ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0] || 
+    req.headers.get("cf-connecting-ip") || 
+    req.headers.get("x-real-ip") || 
+    req.headers.get("fastly-client-ip") || 
+    req.headers.get("true-client-ip") || 
+    req.headers.get("x-client-ip") ||
+    req.headers.get("x-cluster-client-ip") ||
+    req.headers.get("x-forward") ||
+    req.headers.get("forwarded")?.split(";")[0].split("=")[1] || 
+    req.socket?.remoteAddress ||
+    "Unknown IP";
+    ip = ip.replace(/^::ffff:/, '');
+
+
+    let canStudentAcess = true;
+
+    if (process.env.RESTRICT_MODE === "TRUE"){
+        // set canStudentAcess to false if the IP doesnot starts with IPs in allowedIPs list
+        canStudentAcess = allowedIPs.some((allowedIP) => ip.startsWith(allowedIP));
+    }
+
+
     // Handle role-based routes
     const roleRoutes = {
         '/student': 'STUDENT',
@@ -32,7 +66,10 @@ export async function middleware(req: NextRequest) {
         if (!(token?.user)) {
             return NextResponse.next();
         }
-        if (token.user.role === "STUDENT") {
+        if (token.user.role === "STUDENT" && !canStudentAcess) {
+            return NextResponse.redirect(absolute("/error/unauthorizedStudentAccess"));
+        }
+        if (token.user.role === "STUDENT" && canStudentAcess) {
             return NextResponse.redirect(absolute("/student"));
         }
         if (token.user.role === "STAFF") {

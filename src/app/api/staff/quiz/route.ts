@@ -5,7 +5,7 @@ import { redis } from "@/lib/db/redis";
 
 
 async function resetQuizCache(classId: string) {
-    await redis.del(`QUIZ"${classId}`);
+    await redis.del(`QUIZ:${classId}`);
 }
 
 export async function POST(req: Request) {
