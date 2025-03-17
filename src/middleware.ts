@@ -51,6 +51,7 @@ export async function middleware(req: NextRequest) {
         canStudentAcess = allowedIPs.some((allowedIP) => ip.startsWith(allowedIP));
     }
 
+    
 
     // Handle role-based routes
     const roleRoutes = {
@@ -66,10 +67,7 @@ export async function middleware(req: NextRequest) {
         if (!(token?.user)) {
             return NextResponse.next();
         }
-        if (token.user.role === "STUDENT" && !canStudentAcess) {
-            return NextResponse.redirect(absolute("/error/unauthorizedStudentAccess"));
-        }
-        if (token.user.role === "STUDENT" && canStudentAcess) {
+        if (token.user.role === "STUDENT") {
             return NextResponse.redirect(absolute("/student"));
         }
         if (token.user.role === "STAFF") {
@@ -100,6 +98,10 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(absolute("/auth/login"));
     }
 
+    // Check for unauthorized student access
+    if (pathname.startsWith('/student') && token.user.role === 'STUDENT' && !canStudentAcess) {
+        return NextResponse.redirect(absolute("/error/unauthorizedStudentAccess"));
+    }
 
     for (const [route, role] of Object.entries(roleRoutes)) {
         if (pathname.startsWith(route) && token.user.role === role) {

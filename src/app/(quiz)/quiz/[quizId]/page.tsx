@@ -58,8 +58,9 @@ interface Quiz {
         fullscreen: boolean;
         calculator: boolean;
         shuffle_options: boolean;
+        linear_quiz: boolean;
     };
-    duration: number
+    duration: number;
 }
 
 interface Violation {
@@ -169,7 +170,7 @@ const QuizPage = () => {
     const isFullscreenRequired = quiz?.settings?.fullscreen ?? false;
     const isAutoSubmitEnabled = quiz?.settings?.autoSubmit ?? false;
     const isCalculatorEnabled = quiz?.settings.calculator ?? false;
-    const isLinearQuizEnabled = quiz?.settings?.shuffle_options ?? false;
+    const isLinearQuizEnabled = quiz?.settings?.linear_quiz?? false;
 
     const [questions, setQuestions] = useState<Question[]>([]);
     // Initialize with questionParam if available
