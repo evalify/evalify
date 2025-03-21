@@ -82,54 +82,60 @@ async function generateEnhancedPDF(quiz: any, questions: any[], showAnswers: boo
             await page.setDefaultTimeout(60000);
             await page.setJavaScriptEnabled(true);
 
-            // Pre-load KaTeX scripts
-            await page.goto('about:blank');
-            await page.addScriptTag({
-                url: 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js'
-            });
-            await page.addScriptTag({
-                url: 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js'
-            });
-
-            // Generate and set HTML content with optimized waiting strategy
+            // Generate HTML content first
             const htmlContent = generateQuizHTML(quiz, questions, showAnswers);
-            await page.setContent(htmlContent, {
-                waitUntil: 'networkidle0',
-                timeout: 60000
-            });
+            
+            // Load KaTeX CSS and scripts properly with explicit loading checks
+            await page.setContent(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+                    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+                    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+                </head>
+                <body>${htmlContent}</body>
+                </html>
+            `, { waitUntil: 'networkidle0', timeout: 60000 });
 
-            // Wait for KaTeX rendering with a more reliable approach
+            // Wait for KaTeX with a more robust approach
             await page.evaluate(() => {
                 return new Promise<void>((resolve) => {
-                    if (typeof renderMathInElement === 'undefined') {
-                        resolve(); // If KaTeX is not needed, continue
-                        return;
+                    // Define a safety check function
+                    function isKatexLoaded() {
+                        return typeof window !== 'undefined' && 
+                               typeof (window as any).katex !== 'undefined' && 
+                               typeof (window as any).renderMathInElement !== 'undefined';
                     }
-
-                    const maxAttempts = 10;
-                    let attempts = 0;
-
-                    const tryRender = () => {
-                        try {
-                            renderMathInElement(document.body, {
-                                delimiters: [
-                                    {left: "$$", right: "$$", display: true},
-                                    {left: "$", right: "$", display: false}
-                                ],
-                                throwOnError: false
-                            });
-                            resolve();
-                        } catch (e) {
-                            attempts++;
-                            if (attempts < maxAttempts) {
-                                setTimeout(tryRender, 500);
-                            } else {
-                                resolve(); // Continue even if KaTeX fails
+                    
+                    const checkInterval = setInterval(() => {
+                        if (isKatexLoaded()) {
+                            clearInterval(checkInterval);
+                            try {
+                                // Use a try-catch block for the actual rendering
+                                (window as any).renderMathInElement(document.body, {
+                                    delimiters: [
+                                        {left: "$$", right: "$$", display: true},
+                                        {left: "$", right: "$", display: false}
+                                    ],
+                                    throwOnError: false,
+                                    strict: false // Ignore errors in the LaTeX
+                                });
+                            } catch (e) {
+                                console.warn('KaTeX rendering encountered an error:', e);
+                                // Continue even if there's an error
                             }
+                            // Short timeout to ensure rendering completes
+                            setTimeout(resolve, 500);
                         }
-                    };
-
-                    tryRender();
+                    }, 200);
+                    
+                    // Set a timeout to avoid hanging forever
+                    setTimeout(() => {
+                        clearInterval(checkInterval);
+                        resolve(); // Resolve anyway after timeout
+                    }, 5000);
                 });
             });
 
@@ -147,11 +153,12 @@ async function generateEnhancedPDF(quiz: any, questions: any[], showAnswers: boo
             const response = new NextResponse(pdfBuffer);
             response.headers.set('Content-Type', 'application/pdf');
             response.headers.set('Content-Disposition',
-                `attachment; filename="quiz-${quiz._id}${showAnswers ? '-with-answers' : ''}.pdf"`
+                `attachment; filename="quiz-${quiz.title || quiz._id}${showAnswers ? '-with-answers' : ''}.pdf"`
             );
             resolve(response);
         } catch (error) {
             if (browser) await browser.close();
+            console.error("PDF generation error:", error);
             reject(error);
         }
     });
@@ -225,26 +232,14 @@ async function generateDetailedExcel(quiz: any, questions: any[]) {
 /**
  * Mock implementation of renderMathInElement for server-side compatibility
  * This function is normally provided by KaTeX's auto-render extension in the browser
- * Since we're using it in a Puppeteer context, this mock will be overridden by the actual KaTeX implementation
  */
 function renderMathInElement(element: HTMLElement, options: { 
     delimiters: { left: string; right: string; display: boolean; }[]; 
     throwOnError: boolean; 
+    strict?: boolean;
 }): void {
-    // This is just a stub implementation that will be replaced by KaTeX's actual renderMathInElement
-    // In Puppeteer context, the actual KaTeX implementation will be loaded from the CDN
-    
-    // If we're in a browser-like environment with KaTeX available
-    if (typeof window !== 'undefined' && 'katex' in window) {
-        // @ts-ignore - KaTeX global object would normally handle this in browser
-        const katexRender = window.renderMathInElement || window.katex?.renderMathInElement;
-        if (typeof katexRender === 'function') {
-            katexRender(element, options);
-            return;
-        }
-    }
-    
-    // If KaTeX is not available, this function becomes a no-op
-    console.warn('KaTeX rendering was attempted but KaTeX is not available');
+    // This is a server-side stub that will be replaced in the browser
+    // We include it to satisfy TypeScript, but it won't actually run
+    console.warn('Server-side KaTeX rendering was skipped (expected behavior)');
 }
 
