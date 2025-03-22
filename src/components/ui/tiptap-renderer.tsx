@@ -40,7 +40,7 @@ const TiptapRenderer = ({ content }: TiptapRendererProps) => {
         // Add null check for content
         if (!content) return null;
 
-        const parts = content.split(/(\$\$.*?\$\$|\$.*?\$)/g);
+        const parts = content.split(/(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g);
 
         return (
             <div className="prose dark:prose-invert max-w-none">
@@ -74,7 +74,8 @@ const TiptapRenderer = ({ content }: TiptapRendererProps) => {
     return (
         <div className="prose dark:prose-invert max-w-none">
             {content ? renderContent() : <div>No content</div>}
-            <style jsx global>{`
+            <style jsx global>
+                {`
                 img {
                     max-width: 100%;
                     height: auto;
@@ -84,9 +85,19 @@ const TiptapRenderer = ({ content }: TiptapRendererProps) => {
                     margin: 1em 0;
                 }
                 .inline-latex {
-                    display: inline;
+                    display: inline-block;
+                    vertical-align: middle;
+                    line-height: normal;
                 }
-            `}</style>
+                span.katex {
+                    display: inline;
+                    white-space: normal;
+                }
+                span.katex-display {
+                    margin: 1em 0;
+                }
+                `}
+            </style>
         </div>
     );
 };
