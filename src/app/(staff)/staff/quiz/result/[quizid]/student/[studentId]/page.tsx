@@ -191,7 +191,10 @@ export default function StudentResultPage() {
                         <div className="bg-slate-100 rounded-lg p-4 dark:bg-slate-900">
                             <div className="font-medium mb-2">Student's Answer:</div>
                             <div className="whitespace-pre-wrap">
-                                <TiptapRenderer content={studentResponse.student_answer[0] || studentResponse[0] || "No response"} />
+                                <div className='text-wrap'>
+                                    {studentResponse.student_answer[0]|| "No response"}
+                                </div>
+                                {/* <TiptapRenderer content={studentResponse.student_answer[0] || studentResponse[0] || "No response"} /> */}
                             </div>
                         </div>
 
@@ -240,14 +243,14 @@ export default function StudentResultPage() {
                             <>
                                 {studentResponse.remarks && (
                                     <div className="bg-blue-50 rounded-lg p-4 dark:bg-blue-900/20">
-                                        <div className="font-medium mb-2">Remarks:</div>
+                                        <div className="font-medium mb-2 text-wrap">Remarks:</div>
                                         <div>{studentResponse.remarks || "No Remarks / Not evaluated"}</div>
                                     </div>
                                 )}
                                 {studentResponse.breakdown && (
                                     <div className="bg-green-50 rounded-lg p-4 dark:bg-green-900/20">
                                         <div className="font-medium mb-2">Mark Breakdown:</div>
-                                        <div className="prose dark:prose-invert prose-sm max-w-none">
+                                        <div className="prose dark:prose-invert prose-sm max-w-none text-wrap">
                                             <ReactMarkdown>{studentResponse.breakdown || "No Breakdown / Not Evaluated"}</ReactMarkdown>
                                         </div>
                                     </div>
