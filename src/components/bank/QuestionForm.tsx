@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { useToast } from "@/components/hooks/use-toast";
 import { Code, FileText, ListChecks, ToggleLeft, Type, Plus, X, AlertTriangle, Check, Sparkles, ImageIcon, Upload, RotateCcw, Loader2, Trash2, Download } from 'lucide-react';
 import { Textarea } from "@/components/ui/textarea";
-import { Question, QuestionType, DifficultyLevel, MCQQuestion, CodingQuestion } from "@/types/questions";
+import { Question, QuestionType, DifficultyLevel, MCQQuestion, CodingQuestion, TrueFalseQuestion } from "@/types/questions";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -169,7 +169,7 @@ export default function EnhancedQuestionForm(props: QuestionFormProps) {
     const [prevGuidelines, setPrevGuidelines] = useState("");
     const [editorKey, setEditorKey] = useState(0);
 
-    const [bloomsLevel, setBloomsLevel] = useState<BloomsTaxonomyLevel>("REMEMBERING");
+    const [bloomsLevel, setBloomsLevel] = useState<BloomsTaxonomyLevel>((editingQuestion as any)?.bloomsLevel || "REMEMBERING");
 
     const initializeOptions = () => {
         if (editingQuestion && (editingQuestion as MCQQuestion).options) {
@@ -194,11 +194,20 @@ export default function EnhancedQuestionForm(props: QuestionFormProps) {
 
     const initializeCorrectOptions = () => {
         if (editingQuestion && (editingQuestion as MCQQuestion).answer) {
-            const mcqQuestion = editingQuestion as MCQQuestion;
-            const optionIds = mcqQuestion.options?.map(opt => opt.optionId) || [];
-            return mcqQuestion.answer.map(answerId =>
-                optionIds.findIndex((id: string) => id === answerId)
-            ).filter((index: number) => index !== -1);
+            const answer = (editingQuestion as MCQQuestion).answer;
+            
+            // Handle both array and string answer formats
+            if (Array.isArray(answer)) {
+                const optionIds = (editingQuestion as MCQQuestion).options?.map(opt => opt.optionId) || [];
+                return answer.map(answerId =>
+                    optionIds.findIndex((id: string) => id === answerId)
+                ).filter((index: number) => index !== -1);
+            } else if (typeof answer === 'string') {
+                // Handle string answer for TRUE_FALSE
+                const optionIds = (editingQuestion as TrueFalseQuestion).options?.map(opt => opt.optionId) || [];
+                const index = optionIds.findIndex(id => id === answer);
+                return index !== -1 ? [index] : [];
+            }
         }
         return [];
     };

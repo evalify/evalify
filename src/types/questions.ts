@@ -35,7 +35,7 @@ export interface MCQQuestion extends BaseQuestion {
 export interface TrueFalseQuestion extends BaseQuestion {
     type: "TRUE_FALSE";
     options: MCQOption[];
-    answer: string;
+    answer: string[] | string; // Updated to support both array and string formats
 }
 
 export interface DescriptiveQuestion extends BaseQuestion {
