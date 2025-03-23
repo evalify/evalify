@@ -9,24 +9,24 @@ export async function GET(
     try {
         const { id } = await params;
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
-        const staff = await prisma.staff.findFirst({
-            where: {
-                id: session.user.id
-            }
-        });
+        // const staff = await prisma.staff.findFirst({
+        //     where: {
+        //         id: session.user.id
+        //     }
+        // });
 
         const bank = await prisma.bank.findFirst({
             where: {
-                id: await id,
-                bankOwners: {
-                    some: {
-                        id: staff?.id
-                    }
-                }
+                id: id,
+                // bankOwners: {
+                //     some: {
+                //         id: staff?.id
+                //     }
+                // }
             },
             include: {
                 staffs: {

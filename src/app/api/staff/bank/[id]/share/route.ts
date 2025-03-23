@@ -6,28 +6,15 @@ import { clearBankCache } from '@/lib/db/redis'
 export async function POST(req: Request, { params }: { params: { id: string } }) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
-        const staff = await prisma.staff.findFirst({
-            where: {
-                id: session.user.id
-            }
-        });
 
-        if (!staff) {
-            return NextResponse.json({ message: "Staff not found" }, { status: 404 })
-        }
         const { id } = await params;
         const bank = await prisma.bank.findFirst({
             where: {
                 id: id,
-                bankOwners: {
-                    some: {
-                        id: staff.id
-                    }
-                }
             }
         })
 
@@ -48,7 +35,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         // Clear cache for both owner and new staff member
         await Promise.all([
-            clearBankCache(staff.id),
             clearBankCache(staffId)
         ])
 
@@ -65,7 +51,7 @@ export async function DELETE(
 ) {
     try {
         const session = await auth();
-        if (session?.user?.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
@@ -74,11 +60,6 @@ export async function DELETE(
         const bank = await prisma.bank.findFirst({
             where: {
                 id: id,
-                bankOwners: {
-                    some: {
-                        id: session.user.staffId
-                    }
-                }
             }
         })
 
@@ -97,7 +78,6 @@ export async function DELETE(
 
         // Clear cache for both owner and removed staff member
         await Promise.all([
-            clearBankCache(staff.id),
             clearBankCache(staffId)
         ])
 

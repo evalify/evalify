@@ -9,22 +9,13 @@ export async function POST(
 ) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
         }
 
-        const staff = await prisma.staff.findFirst({
-            where: { id: session.user.id }
-        });
-
         const bank = await prisma.bank.findFirst({
             where: {
-                id: params.id,
-                bankOwners: {
-                    some: {
-                        id: staff.id,
-                    }
-                }
+                id: params.id
             }
         })
 
@@ -45,7 +36,6 @@ export async function POST(
 
         // Clear cache for both current owner and new owner
         await Promise.all([
-            clearBankCache(staff.id),
             clearBankCache(staffId)
         ])
 
@@ -68,20 +58,13 @@ export async function DELETE(
 ) {
     try {
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 })
-        }
-
-        const staff = await prisma.staff.findFirst({
-            where: { id: session.user.id }
-        });
+        }   
 
         const bank = await prisma.bank.findFirst({
             where: {
                 id: params.id,
-                bankOwners: {
-                    some: { id: staff.id }
-                }
             },
             include: {
                 bankOwners: true
@@ -102,7 +85,7 @@ export async function DELETE(
         }
 
         // Prevent self-demotion
-        if (staffId === staff.id) {
+        if (staffId === session.user.id) {
             return NextResponse.json({
                 message: "Cannot demote yourself"
             }, { status: 400 })
@@ -122,7 +105,6 @@ export async function DELETE(
 
         // Clear cache for both current owner and demoted staff
         await Promise.all([
-            clearBankCache(staff.id),
             clearBankCache(staffId)
         ])
 
