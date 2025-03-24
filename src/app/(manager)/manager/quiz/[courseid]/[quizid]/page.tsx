@@ -185,7 +185,7 @@ const PublishQuizDialog = ({ quizId, onPublish, questions, quizDetails }: {
                                             }}
                                         />
                                         <Label htmlFor={course.id}>
-                                            {course.code} - {course.class.name}
+                                            {course.code} - {course.name} - {course.class.name}
                                         </Label>
                                     </div>
                                 ))}
