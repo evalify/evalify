@@ -1,5 +1,7 @@
 import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
+// import logger from './lib/logger/loki';
+import "server-only";
 
 const publicPaths = ['/ide', "/", "/forum"];
 
@@ -43,6 +45,12 @@ export async function middleware(req: NextRequest) {
     "Unknown IP";
     ip = ip.replace(/^::ffff:/, '');
 
+    // await logger.debug( {
+    //     user: token?.user,
+    //     ip: ip,
+    //     pathname: pathname,
+    //     method: req.method,
+    // })
 
     let canStudentAcess = true;
 
@@ -50,8 +58,6 @@ export async function middleware(req: NextRequest) {
         // set canStudentAcess to false if the IP doesnot starts with IPs in allowedIPs list
         canStudentAcess = allowedIPs.some((allowedIP) => ip.startsWith(allowedIP));
     }
-
-    
 
     // Handle role-based routes
     const roleRoutes = {

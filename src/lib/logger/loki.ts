@@ -8,12 +8,12 @@ let logger;
 
 if (loki_url) {
   logger = createLogger({
-    level: "info",
+    level: "debug",
     format: format.json(),
     transports: [
       new LokiTransport({
         host: loki_url,
-        labels: { app: "nextjs" },
+        labels: { app: "evalify" },
         json: true,
         batching: true,
       }),

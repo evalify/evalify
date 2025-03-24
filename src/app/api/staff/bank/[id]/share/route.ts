@@ -78,7 +78,7 @@ export async function DELETE(
 
         // Clear cache for both owner and removed staff member
         await Promise.all([
-            clearBankCache(staffId)
+w            clearBankCache(staffId)
         ])
 
         return NextResponse.json({ message: "Access removed successfully" })
