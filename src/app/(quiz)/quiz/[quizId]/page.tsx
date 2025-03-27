@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { LatexPreview } from '@/components/latex-preview'
 import CodeEditor from '@/components/codeEditor/CodeEditor'
 import { nanoid } from 'nanoid'
+import { useSession } from 'next-auth/react'
 
 interface CodeFile {
     id: string
@@ -87,9 +88,9 @@ function useQuizTimer(
 
         if (now >= endTime) {
             setTimeLeft(0);
-            if (autoSubmit) {
-                onTimeUp();
-            }
+            // if (autoSubmit) {
+            //     onTimeUp();
+            // }
             return;
         }
 
@@ -109,9 +110,9 @@ function useQuizTimer(
 
             if (remaining <= 0) {
                 clearInterval(interval);
-                if (autoSubmit) {
-                    onTimeUp();
-                }
+                // if (autoSubmit) {
+                //     onTimeUp();
+                // }
             }
         }, 1000);
 
@@ -159,6 +160,9 @@ const QuizPage = () => {
     const searchParams = useSearchParams();
     const quizId = params.quizId;
     const router = useRouter();
+    const session = useSession();
+    const { data: sessionData } = session;
+
 
     // Extract question parameter from URL
     const questionParam = searchParams.get('question');
@@ -253,6 +257,18 @@ const QuizPage = () => {
         setSubmissionError(null);
         
         try {
+            await fetch ('/api/log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: "Quiz submit request",
+                    quizId,
+                    studentId: sessionData?.user.rollNo,
+                })
+            })
+
             const res = await fetch('/api/quiz/save', {
                 method: 'POST',
                 headers: {

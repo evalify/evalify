@@ -8,7 +8,7 @@ let logger;
 
 if (loki_url) {
   logger = createLogger({
-    level: "debug",
+    level: "info",
     format: format.json(),
     transports: [
       new LokiTransport({

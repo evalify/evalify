@@ -57,7 +57,7 @@ export async function GET(req: Request) {
             return NextResponse.json(courses);
         }
     } catch (error) {
-        console.error(error);
+        console.log(error);
         return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
     }
 }

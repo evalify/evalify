@@ -8,6 +8,7 @@ class RedisClient {
     private static instance: RedisType;
     private static maxRetries = 10;
     private static retryCount = 0;
+    private static connectionFailed = false;
 
     private constructor() { }
 
@@ -35,13 +36,14 @@ class RedisClient {
             RedisClient.instance.on('connect', () => {
                 console.log('Redis connected');
                 RedisClient.retryCount = 0;
+                RedisClient.connectionFailed = false;
             });
 
             RedisClient.instance.on('reconnecting', () => {
                 RedisClient.retryCount++;
                 if (RedisClient.retryCount > RedisClient.maxRetries) {
-                    console.log('Max Redis reconnection attempts reached');
-                    process.exit(1);
+                    console.log('Max Redis reconnection attempts reached - connection unstable');
+                    RedisClient.connectionFailed = true;
                 }
                 console.log(`Redis reconnecting... Attempt ${RedisClient.retryCount}`);
             });
@@ -51,6 +53,9 @@ class RedisClient {
 
     public static async getCachedQuestions(key: string): Promise<Question[] | null> {
         try {
+            if (RedisClient.connectionFailed) {
+                return null;
+            }
             const cached = await RedisClient.instance.get(key);
             return cached ? JSON.parse(cached) : null;
         } catch (error) {
@@ -61,6 +66,9 @@ class RedisClient {
 
     public static async setCachedQuestions(key: string, questions: Question[], expiryInSeconds: number = 3600): Promise<void> {
         try {
+            if (RedisClient.connectionFailed) {
+                return;
+            }
             await RedisClient.instance.setex(key, expiryInSeconds, JSON.stringify(questions));
         } catch (error) {
             console.log('Redis cache error:', error);
