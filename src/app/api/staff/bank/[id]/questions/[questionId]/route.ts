@@ -10,7 +10,7 @@ export async function DELETE(
     try {
         const { id, questionId } = await params;
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
@@ -48,7 +48,7 @@ export async function PATCH(
     try {
         const { id, questionId } = await params;
         const session = await auth();
-        if (!session?.user?.role || session.user.role !== "STAFF") {
+        if (!session?.user?.role || (session.user.role !== "STAFF" && session.user.role !== "MANAGER")) {
             return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
         }
 
