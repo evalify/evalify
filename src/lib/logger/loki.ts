@@ -6,7 +6,7 @@ const loki_url = process.env.LOKI_URL;
 
 let logger;
 
-if (loki_url) {
+if (loki_url && process.env.NODE_ENV !== "production") {
   logger = createLogger({
     level: "info",
     format: format.json(),
