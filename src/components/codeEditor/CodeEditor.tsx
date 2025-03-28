@@ -94,6 +94,7 @@ interface CodeEditorProps {
     onFileChange: (files: CodeFile[]) => void;
     onActiveFileChange: (fileId: string) => void;
     driverCode?: string;
+    boilerplateCode?: string;
     showConsole?: boolean;
 }
 
@@ -128,6 +129,7 @@ export default function CodeEditor({
     activeFileId,
     onFileChange,
     onActiveFileChange,
+    boilerplateCode = '',
     driverCode = '',
     showConsole = false
 }: CodeEditorProps) {
@@ -262,6 +264,13 @@ export default function CodeEditor({
     }
 
     const handleClear = () => {
+        if (driverCode){
+            onFileChange(files.map(file =>
+                file.id === activeFileId ? { ...file, content: boilerplateCode } : file
+            ));
+            setOutput("");
+            return;
+        }
         onFileChange(files.map(file =>
             file.id === activeFileId ? { ...file, content: '' } : file
         ))
