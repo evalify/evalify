@@ -20,6 +20,7 @@ interface EditorToolbarProps {
     isVertical: boolean
     onToggleOrientation: () => void
     language: string
+    isReset?: boolean
     onLanguageChange: (language: string) => void
 }
 
@@ -30,6 +31,7 @@ export function EditorToolbar({
     isVertical,
     onToggleOrientation,
     language,
+    isReset = false,
     onLanguageChange,
 }: EditorToolbarProps) {
     return (
@@ -63,7 +65,7 @@ export function EditorToolbar({
                     )}
                 </Button>
                 <Button variant="ghost" onClick={onClear}>
-                    Clear
+                    {isReset ? "Reset" : "Clear"}
                 </Button>
             </div>
         </div>

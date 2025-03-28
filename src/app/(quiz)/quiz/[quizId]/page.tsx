@@ -817,6 +817,7 @@ const QuizPage = () => {
                                         onActiveFileChange={(fileId) => {
                                             // No need to change answer, just update active file
                                         }}
+                                        boilerplateCode={question.boilerplateCode || ''}
                                         driverCode={question.driverCode || ''}
                                     />
                                 </div>

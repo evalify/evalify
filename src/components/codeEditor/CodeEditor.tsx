@@ -337,7 +337,8 @@ export default function CodeEditor({
                     onToggleOrientation={toggleOrientation}
                     language={activeFile.language}
                     onLanguageChange={handleLanguageChange}
-                                    />
+                    isReset={boilerplateCode.length > 0}
+                />
                 <EditorTabs
                     tabs={files}
                     activeTab={activeFileId}
