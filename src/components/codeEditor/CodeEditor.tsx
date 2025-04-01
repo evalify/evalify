@@ -238,7 +238,7 @@ export default function CodeEditor({
                 })
             })
             const data = await response.json()
-            setOutput(data.stdout || data.stderr || data.error)
+            setOutput(data.stdout || data.stderr || data.compile_output || data.error)
             setShowOutput(true)
         } catch (error) {
             setOutput('Error executing code')
