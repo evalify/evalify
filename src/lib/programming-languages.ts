@@ -1,4 +1,4 @@
-export type Language = "python" | "octave";
+export type Language = "python" | "octave" | "java";
 
 export interface LanguageConfig {
     name: string;
@@ -36,6 +36,19 @@ export const LANGUAGE_CONFIGS: Record<Language, LanguageConfig> = {
         testFramework: {
             name: "MOxUnit",
             imports: ""
+        }
+    },
+    java:{
+        name: "Java",
+        fileExtension: ".java",
+        types: [
+            "int", "float", "String", 
+            "List<Integer>", "List<Float>", "List<String>"
+        ],
+        testFramework: {
+            name: "JUnit",
+            imports: "import org.junit.Test;\nimport static org.junit.Assert.*;\nimport java.util.List;\n",
+            setup: ""
         }
     }
 };
