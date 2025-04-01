@@ -1,5 +1,7 @@
 version: '3.8'
 
+# mkdir -p ./data/postgres ./data/pgadmin ./data/redis ./data/mongo ./data/minio
+
 services:
 
   postgres:
@@ -62,3 +64,19 @@ services:
       ME_CONFIG_MONGODB_SERVER: mongo
     depends_on:
       - mongo
+
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # MinIO API
+      - "9001:9001" # MinIO Console
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - ./data/minio:/data
+    restart: unless-stopped
+
