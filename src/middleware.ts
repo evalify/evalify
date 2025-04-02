@@ -174,6 +174,5 @@ export const config = {
         "/student/:path*",
         "/api/:path*",
         "/quiz/:path*",
-        "/error/:path*",
     ],
 };
