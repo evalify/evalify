@@ -96,6 +96,7 @@ interface CodeEditorProps {
     driverCode?: string;
     boilerplateCode?: string;
     showConsole?: boolean;
+    readOnly?: boolean;
 }
 
 class EditorErrorBoundary extends React.Component<
@@ -131,6 +132,7 @@ export default function CodeEditor({
     onActiveFileChange,
     boilerplateCode = '',
     driverCode = '',
+    readOnly = false,
     showConsole = false
 }: CodeEditorProps) {
     const functions = [
@@ -364,6 +366,7 @@ export default function CodeEditor({
                                 }}
                                 theme={getMonacoTheme()}
                                 options={{
+                                    readOnly: readOnly,
                                     fontSize: 16,
                                     fontFamily: 'JetBrains Mono',
                                     minimap: { enabled: false },

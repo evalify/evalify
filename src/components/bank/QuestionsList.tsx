@@ -421,6 +421,7 @@ export default function QuestionsList({
                                             activeFileId="solution"
                                             onFileChange={() => { }}
                                             onActiveFileChange={() => { }}
+                                            readOnly={true}
                                         />
                                     </CardContent>
                                 </Card>
