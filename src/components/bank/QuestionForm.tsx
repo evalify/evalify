@@ -931,7 +931,7 @@ export default function EnhancedQuestionForm(props: QuestionFormProps) {
                     <div className="pt-2 text-sm text-muted-foreground">
                         <p>Tips:</p>
                         <ul className="list-disc list-inside space-y-1 mt-1">
-                            <li>For exact matches, enter all accepted variations separated by | (e.g. "4 | four")</li>
+                            <li>For exact matches, enter all accepted variations separated by | (e.g. 4 | four)</li>
                         </ul>
                     </div>
                 </CardContent>
