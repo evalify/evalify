@@ -12,12 +12,6 @@ export async function GET(req: Request, { params }: { params: { studentId: strin
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // // Try to get from cache
-        // const cached = await redis.get(CACHE_KEYS.studentResult(param.studentId));
-        // if (cached) {
-        //     return NextResponse.json(JSON.parse(cached));
-        // }
-
         const result = await prisma.quizResult.findUnique({
             where: { id: param.studentId },
             include: {
@@ -44,13 +38,6 @@ export async function GET(req: Request, { params }: { params: { studentId: strin
 
         const response = { result, questions };
 
-        // Cache the response
-        // await redis.setex(
-        //     CACHE_KEYS.studentResult(param.studentId),
-        //     3600, // 1 hour
-        //     JSON.stringify(response)
-        // );
-
         return NextResponse.json(response);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -62,7 +49,7 @@ export async function PUT(req: Request, { params }: { params: { studentId: strin
         const session = await auth();
         const param = await params;
 
-        if (!session?.user?.role || session?.user?.role !== 'STAFF') {
+        if (!session?.user?.role || (session?.user?.role !== 'STAFF' && session?.user?.role !== 'MANAGER')) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -103,8 +90,6 @@ export async function PUT(req: Request, { params }: { params: { studentId: strin
             }
         });
 
-        // Clear cache
-        await clearStudentResultCache(param.studentId, updatedResult.quizId);
 
         return NextResponse.json({ result: updatedResult });
     } catch (error: any) {
