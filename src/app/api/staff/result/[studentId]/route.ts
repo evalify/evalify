@@ -2,7 +2,6 @@ import { auth } from "@/lib/auth/auth";
 import clientPromise from "@/lib/db/mongo";
 import { prisma } from "@/lib/db/prismadb";
 import { NextResponse } from "next/server";
-import { redis, CACHE_KEYS, clearStudentResultCache } from "@/lib/db/redis";
 
 export async function GET(req: Request, { params }: { params: { studentId: string } }) {
     try {

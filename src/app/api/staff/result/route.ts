@@ -7,9 +7,6 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
     try {
         const session = await auth();
-
-        
-        
         if (!session?.user?.role || (session?.user?.role !== 'STAFF' && session?.user?.role !== 'MANAGER')) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -17,12 +14,6 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const quizid = searchParams.get('quizid');
 
-
-        // // Try to get from cache first
-        // const cached = await redis.get(CACHE_KEYS.quizResults(quizid));
-        // if (cached) {
-        //     return NextResponse.json(JSON.parse(cached));
-        // }
 
         if (!quizid) {
             return NextResponse.json({ error: "QuizID not found" }, { status: 404 });
@@ -66,13 +57,6 @@ export async function GET(req: Request) {
         })
 
         const response = { quiz, quizResults, questions };
-
-        // // Cache the response
-        // await redis.setex(
-        //     CACHE_KEYS.quizResults(quizid),
-        //     3600, // 1 hour
-        //     JSON.stringify(response)
-        // );
 
         return NextResponse.json(response);
 
