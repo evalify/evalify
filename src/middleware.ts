@@ -69,24 +69,24 @@ export async function middleware(req: NextRequest) {
         status: token?.user ? "Authenticated" : "Unauthenticated",
     };
 
-    try {
-        // Use absolute URL instead of relative path
-        const response = await fetch(`${req.nextUrl.origin}/api/log`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                ...(token?.accessToken ? { "Authorization": `Bearer ${token.accessToken}` } : {})
-            },
-            body: JSON.stringify({ logData }),
-        });
+    // try {
+    //     // Use absolute URL instead of relative path
+    //     const response = await fetch(`${req.nextUrl.origin}/api/log`, {
+    //         method: "POST",
+    //         headers: {
+    //             "Content-Type": "application/json",
+    //             ...(token?.accessToken ? { "Authorization": `Bearer ${token.accessToken}` } : {})
+    //         },
+    //         body: JSON.stringify({ logData }),
+    //     });
         
-        if (!response.ok) {
-            console.error('Failed to log request:', response.status);
-        }
-    } catch (error) {
-        // Silent fail to prevent middleware from breaking
-        console.error('Error logging request:', error);
-    }
+    //     if (!response.ok) {
+    //         console.error('Failed to log request:', response.status);
+    //     }
+    // } catch (error) {
+    //     // Silent fail to prevent middleware from breaking
+    //     console.error('Error logging request:', error);
+    // }
 
     if (pathname.startsWith("/api")) {
         return NextResponse.next();
@@ -172,7 +172,7 @@ export const config = {
         "/admin/:path*",
         "/manager/:path*",
         "/student/:path*",
-        "/api/:path*",
+        // "/api/:path*",
         "/quiz/:path*",
     ],
 };

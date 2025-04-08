@@ -1,4 +1,4 @@
-import { redis } from "@/lib/db/redis";
+
 import logger from "@/lib/logger/loki";
 import { NextResponse } from "next/server";
 
@@ -8,11 +8,10 @@ export async function POST(req: Request) {
         const { logData } = body;
 
         try {
-            await redis.lpush("requestLogs", JSON.stringify(logData));
             await logger.info("Request log", {
                 ...logData
             })
-                
+
             return NextResponse.json({ success: true, status: 200 });
         } catch (error) {
             console.error("Failed to log request:", error);
