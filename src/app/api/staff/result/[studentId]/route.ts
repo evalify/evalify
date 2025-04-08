@@ -12,11 +12,11 @@ export async function GET(req: Request, { params }: { params: { studentId: strin
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Try to get from cache
-        const cached = await redis.get(CACHE_KEYS.studentResult(param.studentId));
-        if (cached) {
-            return NextResponse.json(JSON.parse(cached));
-        }
+        // // Try to get from cache
+        // const cached = await redis.get(CACHE_KEYS.studentResult(param.studentId));
+        // if (cached) {
+        //     return NextResponse.json(JSON.parse(cached));
+        // }
 
         const result = await prisma.quizResult.findUnique({
             where: { id: param.studentId },
@@ -45,11 +45,11 @@ export async function GET(req: Request, { params }: { params: { studentId: strin
         const response = { result, questions };
 
         // Cache the response
-        await redis.setex(
-            CACHE_KEYS.studentResult(param.studentId),
-            3600, // 1 hour
-            JSON.stringify(response)
-        );
+        // await redis.setex(
+        //     CACHE_KEYS.studentResult(param.studentId),
+        //     3600, // 1 hour
+        //     JSON.stringify(response)
+        // );
 
         return NextResponse.json(response);
     } catch (error: any) {
