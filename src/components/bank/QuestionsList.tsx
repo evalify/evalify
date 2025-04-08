@@ -400,8 +400,7 @@ export default function QuestionsList({
                                         variant="outline"
                                         size="sm"
                                         onClick={() => {
-                                            setUserCode((question as CodingQuestion).boilerplateCode);
-                                            setPracticeDialog({ isOpen: true, questionId: question._id || question.id || '' });
+                                            setUserCode((question as CodingQuestion).boilerplateCode + "\n\n\n" +(question as CodingQuestion).driverCode);                                     setPracticeDialog({ isOpen: true, questionId: question._id || question.id || '' });
                                         }}
                                     >
                                         Try it yourself
