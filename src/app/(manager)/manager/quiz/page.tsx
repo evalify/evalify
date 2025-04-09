@@ -184,8 +184,8 @@ function CourseContent() {
           payload = {
             class_id: classId,
             exclude_dates: true,
-            best_avg_count: 2,
-            normalization_mark: 20,
+            best_avg_count: 4,
+            normalization_mark: 30,
             specific_dates: [
               "2025-03-17",
               "2025-03-18",
@@ -207,8 +207,8 @@ function CourseContent() {
           payload = {
             class_id: classId,
             exclude_dates: false,
-            best_avg_count: 4,
-            normalization_mark: 30,
+            best_avg_count: 2,
+            normalization_mark: 20,
             specific_dates: [
               "2025-03-17",
               "2025-03-18",
