@@ -24,14 +24,18 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid request: missing quizId or responses" }, { status: 400 });
         }
 
-        await redis.set(
-            `response:${quizId}:${id}`,
-            JSON.stringify(responses),
-            'EX',
-            6000000
-        );
-
-        return NextResponse.json({ success: true });
+        // if the response is a empty json
+        if (Object.keys(responses).length !== 0) {
+            await redis.set(
+                `response:${quizId}:${id}`,
+                JSON.stringify(responses),
+                'EX',
+                6000000
+            );
+            return NextResponse.json({ success: true });
+        }
+        
+        return NextResponse.json({ success: false });
 
     } catch (error) {
         console.error('Error updating response:', error);
