@@ -612,6 +612,7 @@ const QuizPage = () => {
                     onLoadingComplete={() => handleImageLoad(src)}
                     onError={() => handleImageError(src)}
                     {...props}
+                    priority
                 />
             </div>
         )
