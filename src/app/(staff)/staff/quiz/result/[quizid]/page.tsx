@@ -268,6 +268,10 @@ export default function QuizPage() {
         try {
             const response = await fetch(
                 `http://172.17.9.74:4040/workers/jobs/stop/${quizid}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                }
             );
 
             const data = await response.json();
@@ -391,6 +395,10 @@ export default function QuizPage() {
         try {
             const response = await fetch(
                 `http://172.17.9.74:4040/evaluation/regenerate-quiz-report/${quizid}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                },
             );
 
             const data = await response.json();

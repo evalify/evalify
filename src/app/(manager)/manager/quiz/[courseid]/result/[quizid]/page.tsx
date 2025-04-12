@@ -709,7 +709,7 @@ export default function QuizPage() {
     const regenerateReport = async () => {
         setIsRegeneratingReport(true);
         try {
-            const response = await fetch(`/api/eval/evaluation/regenerate-quiz-report/${quizid}`, {
+            const response = await fetch(`http://172.17.9.74:4040/api/eval/evaluation/regenerate-quiz-report/${quizid}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             });
