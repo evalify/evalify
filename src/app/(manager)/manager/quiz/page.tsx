@@ -178,7 +178,6 @@ function CourseContent() {
 
       let payload = {};
 
-      // Configure payload based on report type
       switch (reportType) {
         case "Daily":
           payload = {
@@ -186,21 +185,21 @@ function CourseContent() {
             exclude_dates: true,
             best_avg_count: 4,
             normalization_mark: 30,
-            specific_dates: [
-              "2025-03-17",
-              "2025-03-18",
-              "2025-03-24",
-              "2025-03-25",
-              "2025-03-26",
-              "2025-03-27",
-              "2025-03-28",
-              "2025-03-29",
-              "2025-04-01",
-              "2025-04-02",
-              "2025-04-03",
-              "2025-04-04",
-              "2025-04-07",
-            ],
+            // specific_dates: [
+            //   "2025-03-17",
+            //   "2025-03-18",
+            //   "2025-03-24",
+            //   "2025-03-25",
+            //   "2025-03-26",
+            //   "2025-03-27",
+            //   "2025-03-28",
+            //   "2025-03-29",
+            //   "2025-04-01",
+            //   "2025-04-02",
+            //   "2025-04-03",
+            //   "2025-04-04",
+            //   "2025-04-07",
+            // ],
           };
           break;
         case "Major":
@@ -209,21 +208,21 @@ function CourseContent() {
             exclude_dates: false,
             best_avg_count: 2,
             normalization_mark: 20,
-            specific_dates: [
-              "2025-03-17",
-              "2025-03-18",
-              "2025-03-24",
-              "2025-03-25",
-              "2025-03-26",
-              "2025-03-27",
-              "2025-03-28",
-              "2025-03-29",
-              "2025-04-01",
-              "2025-04-02",
-              "2025-04-03",
-              "2025-04-04",
-              "2025-04-07",
-            ],
+            // specific_dates: [
+            //   "2025-03-17",
+            //   "2025-03-18",
+            //   "2025-03-24",
+            //   "2025-03-25",
+            //   "2025-03-26",
+            //   "2025-03-27",
+            //   "2025-03-28",
+            //   "2025-03-29",
+            //   "2025-04-01",
+            //   "2025-04-02",
+            //   "2025-04-03",
+            //   "2025-04-04",
+            //   "2025-04-07",
+            // ],
           };
           break;
         case "Full":
@@ -237,8 +236,10 @@ function CourseContent() {
       // Show loading toast
       const toastId = toast.loading(`Generating ${reportType} report...`);
 
+      const URL = (reportType === "Full") ? "http://172.17.9.74:4040/misc/class-report" : "http://172.17.9.74:4040/misc/class-report-filtered";
+      
       // Make the API request
-      const response = await fetch("http://172.17.9.74:4040/misc/class-report", {
+      const response = await fetch(URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
