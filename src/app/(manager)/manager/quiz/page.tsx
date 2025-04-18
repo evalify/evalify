@@ -510,6 +510,11 @@ function CourseContent() {
           <BookOpen className="h-8 w-8 text-indigo-600" />
           <h1 className="text-4xl font-bold">Courses</h1>
         </div>
+        <div className="flex items-center gap-4">
+
+        <Button onClick={() => router.push("/manager/quiz/details")} variant="outline">
+          View All Quizzes
+        </Button>
         <Tabs value={viewMode} onValueChange={handleViewModeChange}>
           <TabsList>
             <TabsTrigger value="table">
@@ -522,6 +527,7 @@ function CourseContent() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+        </div>
       </header>
 
       {renderFilterControls()}
