@@ -5,19 +5,19 @@ import { batchesTable } from "../batch/batch";
 import { timestamps } from "../utils";
 
 export const courseBatchesTable = pgTable(
-  "course_batches",
-  {
-    courseId: integer("course_id")
-      .notNull()
-      .references(() => coursesTable.id, { onDelete: "cascade" }),
-    batchId: integer("batch_id")
-      .notNull()
-      .references(() => batchesTable.id, { onDelete: "cascade" }),
-    ...timestamps,
-  },
-  (table) => [
-    primaryKey({ columns: [table.courseId, table.batchId] }),
-    index("idx_course_batches_course_id").on(table.courseId),
-    index("idx_course_batches_batch_id").on(table.batchId),
-  ]
+    "course_batches",
+    {
+        courseId: integer("course_id")
+            .notNull()
+            .references(() => coursesTable.id, { onDelete: "cascade" }),
+        batchId: integer("batch_id")
+            .notNull()
+            .references(() => batchesTable.id, { onDelete: "cascade" }),
+        ...timestamps,
+    },
+    (table) => [
+        primaryKey({ columns: [table.courseId, table.batchId] }),
+        index("idx_course_batches_course_id").on(table.courseId),
+        index("idx_course_batches_batch_id").on(table.batchId),
+    ]
 );
