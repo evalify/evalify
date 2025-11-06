@@ -8,44 +8,44 @@ import { UserType, hasAccess } from "@/lib/auth/utils";
 import AccessDenied from "./access-denied";
 
 interface AuthGuardProps {
-  children: React.ReactNode;
-  requiredRoles?: UserType[];
-  requiredGroups?: string[];
-  fallbackComponent?: React.ReactNode;
+    children: React.ReactNode;
+    requiredRoles?: UserType[];
+    requiredGroups?: string[];
+    fallbackComponent?: React.ReactNode;
 }
 
 export default function AuthGuard({
-  children,
-  requiredRoles = [],
-  requiredGroups = [],
-  fallbackComponent = <AccessDenied />,
+    children,
+    requiredRoles = [],
+    requiredGroups = [],
+    fallbackComponent = <AccessDenied />,
 }: AuthGuardProps) {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+    const { data: session, status } = useSession();
+    const router = useRouter();
 
-  useEffect(() => {
-    if (status === "loading") return;
+    useEffect(() => {
+        if (status === "loading") return;
+
+        if (!session?.user) {
+            router.push("/auth/login");
+        }
+    }, [session, status, router]);
+
+    if (status === "loading") {
+        return <Loading />;
+    }
 
     if (!session?.user) {
-      router.push("/auth/login");
+        return null;
     }
-  }, [session, status, router]);
 
-  if (status === "loading") {
-    return <Loading />;
-  }
+    // Check if user has required access
+    const userRoles = session.user.roles;
+    const userGroups = session.user.groups;
 
-  if (!session?.user) {
-    return null;
-  }
+    if (!hasAccess(userRoles, userGroups, requiredRoles, requiredGroups)) {
+        return <>{fallbackComponent}</>;
+    }
 
-  // Check if user has required access
-  const userRoles = session.user.roles;
-  const userGroups = session.user.groups;
-
-  if (!hasAccess(userRoles, userGroups, requiredRoles, requiredGroups)) {
-    return <>{fallbackComponent}</>;
-  }
-
-  return <>{children}</>;
+    return <>{children}</>;
 }

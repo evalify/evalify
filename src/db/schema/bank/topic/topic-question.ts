@@ -5,22 +5,22 @@ import { questionsTable } from "../../question/question";
 
 // Junction table for Topic-Question many-to-many relationship
 export const topicQuestionsTable = pgTable(
-  "topic_questions",
-  {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    "topic_questions",
+    {
+        id: integer().primaryKey().generatedAlwaysAsIdentity(),
 
-    topicId: uuid("topic_id")
-      .notNull()
-      .references(() => topicsTable.id, { onDelete: "cascade" }),
+        topicId: uuid("topic_id")
+            .notNull()
+            .references(() => topicsTable.id, { onDelete: "cascade" }),
 
-    questionId: uuid("question_id")
-      .notNull()
-      .references(() => questionsTable.id, { onDelete: "cascade" }),
+        questionId: uuid("question_id")
+            .notNull()
+            .references(() => questionsTable.id, { onDelete: "cascade" }),
 
-    ...timestamps,
-  },
-  (table) => [
-    index("idx_topic_questions_topic_id").on(table.topicId),
-    index("idx_topic_questions_question_id").on(table.questionId),
-  ]
+        ...timestamps,
+    },
+    (table) => [
+        index("idx_topic_questions_topic_id").on(table.topicId),
+        index("idx_topic_questions_question_id").on(table.questionId),
+    ]
 );
