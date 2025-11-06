@@ -1,16 +1,22 @@
 import { createTRPCRouter } from "./trpc";
-import { authRouter } from "./routers/auth";
 import { userRouter } from "./routers/user";
 import { courseRouter } from "./routers/course";
+import { departmentRouter } from "./routers/department";
+import { batchRouter } from "./routers/batch";
+import { labRouter } from "./routers/lab";
+import { semesterRouter } from "./routers/semester";
 
 /**
  * Root tRPC router
  * Combines all routers into a single API
  */
 export const appRouter = createTRPCRouter({
-    auth: authRouter,
     user: userRouter,
     course: courseRouter,
+    department: departmentRouter,
+    batch: batchRouter,
+    lab: labRouter,
+    semester: semesterRouter,
 });
 
 // Export type definition of API
