@@ -6,11 +6,11 @@ import { useSidebar } from "@/components/ui/sidebar";
 
 export default function Layout({
     admin,
-    staff,
+    faculty,
     student,
 }: {
     admin: ReactNode;
-    staff: ReactNode;
+    faculty: ReactNode;
     student: ReactNode;
 }) {
     const { open, toggleSidebar } = useSidebar();
@@ -24,7 +24,7 @@ export default function Layout({
     return (
         <div>
             <AuthGuard requiredGroups={[UserType.STAFF, UserType.MANAGER]} fallbackComponent={null}>
-                <div>{staff}</div>
+                <div>{faculty}</div>
             </AuthGuard>
 
             <AuthGuard requiredGroups={[UserType.ADMIN]} fallbackComponent={null}>

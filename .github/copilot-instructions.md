@@ -25,3 +25,6 @@
 - Use `src/hooks/use-analytics.ts` for tracking analytics events. do this in all important user interactions.
 - Use `src/hooks/use-toast.tsx` for showing toast notifications. handle success and error messages appropriately.
 - Handle errors gracefully and provide meaningful feedback to users.
+- properly document complex functions and components with comments.
+- properly give informative messages in the UI for better user experience. you can add tooltips where necessary.
+-

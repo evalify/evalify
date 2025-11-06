@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Evalify
 
-## Getting Started
+A comprehensive student evaluation platform built with modern web technologies.
 
-First, run the development server:
+## Tech Stack
+
+- **Next.js** - React framework
+- **tRPC** - End-to-end typesafe APIs
+- **Drizzle ORM** - Database toolkit
+- **MinIO** - Object storage
+- **Redis** - Caching layer
+- **shadcn/ui** - UI components
+- **PostHog** - Analytics
+
+## Prerequisites
+
+- Node.js 18+
+- pnpm
+- Docker & Docker Compose
+
+## Setup
+
+### 1. Environment Configuration
+
+Copy the example environment file and configure your variables:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Start Dependencies
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Launch required services using Docker:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+docker compose up -d
+```
 
-## Learn More
+### 3. Install Dependencies
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+pnpm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Database Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**For Development:**
 
-## Deploy on Vercel
+```bash
+pnpm db:push
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**For Production:**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm db:generate
+pnpm db:migrate
+```
+
+**To run Drizzle Studio**
+
+```bash
+pnpm db:studio
+```
+
+### 5. Run the Application
+
+**Development:**
+
+```bash
+pnpm dev
+```
+
+**Production:**
+
+```bash
+pnpm build
+pnpm start
+```
+
+The application will be available at `http://localhost:3000`
