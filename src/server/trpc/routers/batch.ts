@@ -139,6 +139,7 @@ export const batchRouter = createTRPCRouter({
     create: adminProcedure
         .input(
             z.object({
+                name: z.string().min(1).max(40),
                 joinYear: z.number().min(2000).max(2100),
                 graduationYear: z.number().min(2000).max(2100),
                 section: z.string().min(1).max(10),
@@ -148,13 +149,10 @@ export const batchRouter = createTRPCRouter({
         )
         .mutation(async ({ input, ctx }) => {
             try {
-                // Generate batch name
-                const name = `${input.joinYear}-${input.graduationYear}`;
-
                 const [batch] = await db
                     .insert(batchesTable)
                     .values({
-                        name,
+                        name: input.name,
                         joinYear: input.joinYear,
                         graduationYear: input.graduationYear,
                         section: input.section,
@@ -164,7 +162,7 @@ export const batchRouter = createTRPCRouter({
                     .returning();
 
                 logger.info(
-                    { batchId: batch.id, name, userId: ctx.session.user.id },
+                    { batchId: batch.id, name: input.name, userId: ctx.session.user.id },
                     "Batch created"
                 );
 

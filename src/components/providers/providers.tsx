@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { type ThemeProviderProps } from "next-themes";
 import { TRPCProvider } from "@/lib/trpc/client";
+import { Toaster } from "sonner";
 
 export interface ProvidersProps {
     children: React.ReactNode;
@@ -19,7 +20,10 @@ export function Providers({ children }: ProvidersProps) {
             disableTransitionOnChange
         >
             <SessionProvider>
-                <TRPCProvider>{children}</TRPCProvider>
+                <TRPCProvider>
+                    {children}
+                    <Toaster position="bottom-right" richColors expand={true} />
+                </TRPCProvider>
             </SessionProvider>
         </NextThemesProvider>
     );

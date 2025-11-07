@@ -12,6 +12,7 @@ import { Modal } from "@/components/admin/shared/modal";
 import { DataTable } from "@/components/admin/shared/data-table";
 import { UserForm } from "./user-form";
 import { useAnalytics } from "@/hooks/use-analytics";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface User {
     id: number;
@@ -38,11 +39,13 @@ export function UserManagement() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
     const { track } = useAnalytics();
-    const { success, error } = useToast();
+    const toast = useToast();
 
-    const limit = 15;
+    const [limit, setLimit] = useState(5);
 
     // Queries with server-side filtering
     const usersResult = trpc.user.list.useQuery({
@@ -68,28 +71,28 @@ export function UserManagement() {
     const createUser = trpc.user.create.useMutation({
         onSuccess: () => {
             utils.user.list.invalidate();
-            success("User created successfully");
+            toast.success("User created successfully");
         },
         onError: (err) => {
-            error(err.message || "Failed to create user");
+            toast.error(err.message || "Failed to create user");
         },
     });
     const updateUser = trpc.user.update.useMutation({
         onSuccess: () => {
             utils.user.list.invalidate();
-            success("User updated successfully");
+            toast.success("User updated successfully");
         },
         onError: (err) => {
-            error(err.message || "Failed to update user");
+            toast.error(err.message || "Failed to update user");
         },
     });
     const deleteUser = trpc.user.delete.useMutation({
         onSuccess: () => {
             utils.user.list.invalidate();
-            success("User deactivated successfully");
+            toast.success("User deactivated successfully");
         },
         onError: (err) => {
-            error(err.message || "Failed to deactivate user");
+            toast.error(err.message || "Failed to deactivate user");
         },
     });
 
@@ -107,6 +110,8 @@ export function UserManagement() {
             setIsCreateModalOpen(false);
             track("user_created", { email: data.email, role: data.role });
         } catch (error) {
+            // Error is already handled by the mutation's onError callback
+            // Keep modal open so user can fix the issue
             console.error("Error creating user:", error);
         }
     };
@@ -131,22 +136,28 @@ export function UserManagement() {
             setSelectedUser(null);
             track("user_updated", { id: selectedUser.id });
         } catch (error) {
+            // Error is already handled by the mutation's onError callback
+            // Keep modal open so user can fix the issue
             console.error("Error updating user:", error);
         }
     };
 
     const handleDelete = async (user: User) => {
-        if (
-            confirm(
-                `Are you sure you want to deactivate "${user.name} (${user.email})"?\n\nThis will set their status to inactive.`
-            )
-        ) {
-            try {
-                await deleteUser.mutateAsync({ id: user.id });
-                track("user_deleted", { id: user.id });
-            } catch (error) {
-                console.error("Error deleting user:", error);
-            }
+        setUserToDelete(user);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!userToDelete) return;
+
+        try {
+            await deleteUser.mutateAsync({ id: userToDelete.id });
+            track("user_deleted", { id: userToDelete.id });
+        } catch (error) {
+            console.error("Error deleting user:", error);
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setUserToDelete(null);
         }
     };
 
@@ -241,32 +252,26 @@ export function UserManagement() {
     ];
 
     return (
-        <div className="space-y-3">
-            {/* Header Card */}
-            <Card className="border-0 shadow-none bg-transparent">
-                <CardHeader className="px-0 pb-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h2 className="text-2xl font-bold tracking-tight text-black dark:text-white">
-                                Users
-                            </h2>
-                            <p className="text-muted-foreground">
-                                Manage users, roles, and permissions
-                            </p>
-                        </div>
-                        <Button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create User
-                        </Button>
-                    </div>
-                </CardHeader>
-            </Card>
+        <div className="space-y-5">
+            {/* Header */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-black dark:text-white">
+                        Users
+                    </h2>
+                    <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+                </div>
+                <Button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-2"
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create User
+                </Button>
+            </div>
 
             {/* Filters Card */}
-            <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+            <Card className="">
                 <CardHeader>
                     <div className="flex items-center gap-2">
                         <Filter className="h-5 w-5" />
@@ -353,16 +358,31 @@ export function UserManagement() {
             </Card>
 
             {/* Data Table Card */}
-            <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-lg font-semibold">Users</h3>
-                            <p className="text-sm text-muted-foreground">
-                                {total} total users
-                                {searchTerm && ` matching "${searchTerm}"`}
-                            </p>
-                        </div>
+            <Card className="">
+                <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                        <h3 className="text-lg font-semibold">Users</h3>
+                        <p className="text-sm text-muted-foreground">
+                            {total} total users
+                            {searchTerm && ` matching "${searchTerm}"`}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground">Show:</label>
+                        <select
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -414,6 +434,8 @@ export function UserManagement() {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 title="Create User"
+                size="lg"
+                Backdrop={true}
             >
                 <UserForm onSubmit={handleCreate} onCancel={() => setIsCreateModalOpen(false)} />
             </Modal>
@@ -426,6 +448,8 @@ export function UserManagement() {
                     setSelectedUser(null);
                 }}
                 title="Edit User"
+                size="lg"
+                Backdrop={true}
             >
                 <UserForm
                     initialData={selectedUser}
@@ -436,6 +460,21 @@ export function UserManagement() {
                     }}
                 />
             </Modal>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isDeleteDialogOpen}
+                onOpenChange={setIsDeleteDialogOpen}
+                title="Deactivate User"
+                message={
+                    userToDelete
+                        ? `Are you sure you want to deactivate "${userToDelete.name}" (${userToDelete.email})? This will set their status to inactive.`
+                        : ""
+                }
+                onAccept={confirmDelete}
+                confirmButtonText="Deactivate"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }
