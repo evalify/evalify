@@ -123,11 +123,45 @@ export const userRouter = createTRPCRouter({
         )
         .mutation(async ({ input, ctx }) => {
             try {
+                // Check if user with same email already exists
+                const existingUserByEmail = await db
+                    .select()
+                    .from(usersTable)
+                    .where(eq(usersTable.email, input.email.toLowerCase()))
+                    .limit(1);
+
+                if (existingUserByEmail.length > 0) {
+                    logger.warn(
+                        { email: input.email },
+                        "Attempt to create user with existing email"
+                    );
+                    throw new Error(
+                        `A user with email "${input.email}" already exists. Please use a different email address.`
+                    );
+                }
+
+                // Check if user with same profile ID already exists
+                const existingUserByProfileId = await db
+                    .select()
+                    .from(usersTable)
+                    .where(eq(usersTable.profileId, input.profileId))
+                    .limit(1);
+
+                if (existingUserByProfileId.length > 0) {
+                    logger.warn(
+                        { profileId: input.profileId },
+                        "Attempt to create user with existing profile ID"
+                    );
+                    throw new Error(
+                        `A user with profile ID "${input.profileId}" already exists. Please use a different profile ID.`
+                    );
+                }
+
                 const [user] = await db
                     .insert(usersTable)
                     .values({
                         name: input.name,
-                        email: input.email,
+                        email: input.email.toLowerCase(),
                         profileId: input.profileId,
                         profileImage: input.profileImage,
                         role: input.role,
@@ -171,9 +205,50 @@ export const userRouter = createTRPCRouter({
         )
         .mutation(async ({ input, ctx }) => {
             try {
+                // Check if email is being updated and if it already exists for another user
+                if (input.email) {
+                    const existingUserByEmail = await db
+                        .select()
+                        .from(usersTable)
+                        .where(eq(usersTable.email, input.email.toLowerCase()))
+                        .limit(1);
+
+                    if (existingUserByEmail.length > 0 && existingUserByEmail[0].id !== input.id) {
+                        logger.warn(
+                            { email: input.email, userId: input.id },
+                            "Attempt to update user with existing email"
+                        );
+                        throw new Error(
+                            `A user with email "${input.email}" already exists. Please use a different email address.`
+                        );
+                    }
+                }
+
+                // Check if profile ID is being updated and if it already exists for another user
+                if (input.profileId) {
+                    const existingUserByProfileId = await db
+                        .select()
+                        .from(usersTable)
+                        .where(eq(usersTable.profileId, input.profileId))
+                        .limit(1);
+
+                    if (
+                        existingUserByProfileId.length > 0 &&
+                        existingUserByProfileId[0].id !== input.id
+                    ) {
+                        logger.warn(
+                            { profileId: input.profileId, userId: input.id },
+                            "Attempt to update user with existing profile ID"
+                        );
+                        throw new Error(
+                            `A user with profile ID "${input.profileId}" already exists. Please use a different profile ID.`
+                        );
+                    }
+                }
+
                 const updateData: Partial<typeof usersTable.$inferInsert> = {};
                 if (input.name !== undefined) updateData.name = input.name;
-                if (input.email !== undefined) updateData.email = input.email;
+                if (input.email !== undefined) updateData.email = input.email.toLowerCase();
                 if (input.profileId !== undefined) updateData.profileId = input.profileId;
                 if (input.profileImage !== undefined) updateData.profileImage = input.profileImage;
                 if (input.role !== undefined) updateData.role = input.role;

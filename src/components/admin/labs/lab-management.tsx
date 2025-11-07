@@ -7,7 +7,7 @@ import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import { Badge } from "../../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
-import { Building2, Plus, Search, Network, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { Building2, Plus, Search, Network, Filter } from "lucide-react";
 import { Modal } from "../shared/modal";
 import { LabForm } from "./lab-form";
 import { DataTable } from "../shared/data-table";
@@ -33,7 +33,7 @@ export function LabManagement() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingLab, setEditingLab] = useState<number | null>(null);
 
-    const limit = 15;
+    const [limit, setLimit] = useState(5);
 
     // Queries
     const labsResult = trpc.lab.list.useQuery({
@@ -60,7 +60,6 @@ export function LabManagement() {
 
     const labs = labsResult?.data?.labs || [];
     const total = labsResult?.data?.total || 0;
-    const _hasMore = labsResult?.data?.hasMore || false;
     const totalPages = Math.ceil(total / limit);
 
     const handleCreateSuccess = () => {
@@ -184,23 +183,24 @@ export function LabManagement() {
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             <label className="text-sm font-medium">Search</label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <Input
+                                <input
+                                    type="text"
                                     placeholder="Search labs..."
                                     value={search}
                                     onChange={(e) => {
                                         setSearch(e.target.value);
                                         setCurrentPage(1);
                                     }}
-                                    className="pl-9"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
                             </div>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             <label className="text-sm font-medium">Status</label>
                             <select
                                 value={statusFilter}
@@ -218,7 +218,7 @@ export function LabManagement() {
                             </select>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                             <label className="text-sm font-medium">Block</label>
                             <select
                                 value={blockFilter}
@@ -248,15 +248,30 @@ export function LabManagement() {
 
             {/* Labs Table */}
             <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Labs</CardTitle>
-                            <CardDescription>
-                                {total} total labs
-                                {search && ` matching "${search}"`}
-                            </CardDescription>
-                        </div>
+                <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                        <CardTitle>Labs</CardTitle>
+                        <CardDescription>
+                            {total} total labs
+                            {search && ` matching "${search}"`}
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground">Show:</label>
+                        <select
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -285,7 +300,7 @@ export function LabManagement() {
                                     onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                                     disabled={currentPage === 1}
                                 >
-                                    <ChevronLeft className="h-4 w-4" />
+                                    Previous
                                 </Button>
                                 <span className="text-sm">
                                     Page {currentPage} of {totalPages}
@@ -298,7 +313,7 @@ export function LabManagement() {
                                     }
                                     disabled={currentPage === totalPages}
                                 >
-                                    <ChevronRight className="h-4 w-4" />
+                                    Next
                                 </Button>
                             </div>
                         </div>
@@ -314,6 +329,7 @@ export function LabManagement() {
                     track("Lab Create Modal Closed", { action: "cancel" });
                 }}
                 title="Create New Lab"
+                Backdrop={true}
             >
                 <LabForm
                     onSuccess={handleCreateSuccess}
@@ -332,6 +348,7 @@ export function LabManagement() {
                     track("Lab Edit Modal Closed", { action: "cancel" });
                 }}
                 title="Edit Lab"
+                Backdrop={true}
             >
                 {editingLab && (
                     <LabForm

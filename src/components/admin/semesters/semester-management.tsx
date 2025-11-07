@@ -12,6 +12,7 @@ import { DataTable } from "@/components/admin/shared/data-table";
 import { SemesterForm } from "./semester-form";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useRouter } from "next/navigation";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface Semester {
     id: number;
@@ -28,13 +29,18 @@ export function SemesterManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
     const [yearFilter, setYearFilter] = useState<string>("ALL");
+    const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [semesterToDelete, setSemesterToDelete] = useState<Semester | null>(null);
 
     const { track } = useAnalytics();
     const { success, error } = useToast();
     const router = useRouter();
+
+    const [limit, setLimit] = useState(5);
 
     const handleViewCourses = (semester: Semester) => {
         router.push(`/admin/semester/${semester.id}/courses`);
@@ -44,9 +50,13 @@ export function SemesterManagement() {
     // Queries
     const semestersData = trpc.semester.list.useQuery({
         searchTerm: searchTerm || undefined,
+        limit,
+        offset: (currentPage - 1) * limit,
     });
 
     const semesters = semestersData?.data?.semesters || [];
+    const total = semestersData?.data?.total || 0;
+    const totalPages = Math.ceil(total / limit);
 
     // Mutations
     const utils = trpc.useUtils();
@@ -192,13 +202,20 @@ export function SemesterManagement() {
     };
 
     const handleDelete = async (semester: Semester) => {
-        if (confirm(`Are you sure you want to delete "${semester.name} (${semester.year})"?`)) {
-            try {
-                await deleteSemester.mutateAsync({ id: semester.id });
-                track("semester_deleted", { id: semester.id });
-            } catch (error) {
-                console.error("Error deleting semester:", error);
-            }
+        setSemesterToDelete(semester);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!semesterToDelete) return;
+
+        try {
+            await deleteSemester.mutateAsync({ id: semesterToDelete.id });
+            track("semester_deleted", { id: semesterToDelete.id });
+            setIsDeleteDialogOpen(false);
+            setSemesterToDelete(null);
+        } catch (error) {
+            console.error("Error deleting semester:", error);
         }
     };
 
@@ -211,6 +228,7 @@ export function SemesterManagement() {
         setSearchTerm("");
         setStatusFilter("ALL");
         setYearFilter("ALL");
+        setCurrentPage(1);
         track("Semester Filters Reset");
     };
 
@@ -279,8 +297,8 @@ export function SemesterManagement() {
     return (
         <div className="space-y-3">
             {/* Header Card */}
-            <Card className="border-0 shadow-none bg-transparent">
-                <CardHeader className="px-0 pb-4">
+            <div className="border-0 shadow-none bg-transparent">
+                <div className="px-0 pb-4">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="text-2xl font-bold tracking-tight text-black dark:text-white">
@@ -290,17 +308,17 @@ export function SemesterManagement() {
                         </div>
                         <Button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="bg-black hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                            className="flex items-center gap-2"
                         >
                             <Plus className="h-4 w-4 mr-2" />
                             Create Semester
                         </Button>
                     </div>
-                </CardHeader>
-            </Card>
+                </div>
+            </div>
 
             {/* Filters Card */}
-            <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+            <Card className="mb-5">
                 <CardHeader>
                     <div className="flex items-center gap-2">
                         <Filter className="h-5 w-5" />
@@ -320,7 +338,10 @@ export function SemesterManagement() {
                                     type="text"
                                     placeholder="Search semesters..."
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
                                     className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
                             </div>
@@ -330,7 +351,10 @@ export function SemesterManagement() {
                             <label className="text-sm font-medium">Year</label>
                             <select
                                 value={yearFilter}
-                                onChange={(e) => setYearFilter(e.target.value)}
+                                onChange={(e) => {
+                                    setYearFilter(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <option value="ALL">All Years</option>
@@ -346,9 +370,12 @@ export function SemesterManagement() {
                             <label className="text-sm font-medium">Status</label>
                             <select
                                 value={statusFilter}
-                                onChange={(e) =>
-                                    setStatusFilter(e.target.value as "ALL" | "ACTIVE" | "INACTIVE")
-                                }
+                                onChange={(e) => {
+                                    setStatusFilter(
+                                        e.target.value as "ALL" | "ACTIVE" | "INACTIVE"
+                                    );
+                                    setCurrentPage(1);
+                                }}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <option value="ALL">All Status</option>
@@ -367,16 +394,31 @@ export function SemesterManagement() {
             </Card>
 
             {/* Data Table Card */}
-            <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="text-lg font-semibold">Semesters</h3>
-                            <p className="text-sm text-muted-foreground">
-                                {filteredSemesters.length} of {semesters.length} semesters
-                                {searchTerm && ` matching "${searchTerm}"`}
-                            </p>
-                        </div>
+            <Card>
+                <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                        <h3 className="text-lg font-semibold">Semesters</h3>
+                        <p className="text-sm text-muted-foreground">
+                            {total} total semesters
+                            {searchTerm && ` matching "${searchTerm}"`}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground">Show:</label>
+                        <select
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -387,6 +429,39 @@ export function SemesterManagement() {
                         onDelete={handleDelete}
                         loading={semestersData.isLoading}
                     />
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between border-t pt-4">
+                            <div className="text-sm text-gray-600">
+                                Showing {(currentPage - 1) * limit + 1} to{" "}
+                                {Math.min(currentPage * limit, total)} of {total} semesters
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="text-sm">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                                    }
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -395,6 +470,7 @@ export function SemesterManagement() {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 title="Create Semester"
+                Backdrop={true}
             >
                 <SemesterForm
                     onSubmit={handleCreate}
@@ -410,6 +486,7 @@ export function SemesterManagement() {
                     setSelectedSemester(null);
                 }}
                 title="Edit Semester"
+                Backdrop={true}
             >
                 <SemesterForm
                     initialData={selectedSemester}
@@ -420,6 +497,19 @@ export function SemesterManagement() {
                     }}
                 />
             </Modal>
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmationDialog
+                isOpen={isDeleteDialogOpen}
+                onOpenChange={setIsDeleteDialogOpen}
+                title="Delete Semester"
+                message={`Are you sure you want to delete the semester 
+                    "${semesterToDelete?.name}"? 
+                    This action cannot be undone.`}
+                onAccept={confirmDelete}
+                confirmButtonText="Delete"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }

@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Filter, Plus, Search, Users, UserCheck } from "lucide-react";
@@ -13,6 +12,7 @@ import { BatchForm } from "./batch-form";
 import { BatchStudentsModal } from "./batch-students-modal";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface Batch {
     id: number;
@@ -32,18 +32,25 @@ export function BatchManagement() {
     const [departmentFilter, setDepartmentFilter] = useState<number | "ALL">("ALL");
     const [yearFilter, setYearFilter] = useState<string>("ALL");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+    const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
     const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [batchToDelete, setBatchToDelete] = useState<Batch | null>(null);
 
     const { track } = useAnalytics();
     const { success, error } = useToast();
     const utils = trpc.useUtils();
 
+    const [limit, setLimit] = useState(5);
+
     // Queries
     const { data: batchesData, isLoading: batchesLoading } = trpc.batch.list.useQuery({
         searchTerm: searchTerm || undefined,
+        limit,
+        offset: (currentPage - 1) * limit,
     });
 
     const { data: departmentsData, isLoading: departmentsLoading } = trpc.department.list.useQuery(
@@ -53,6 +60,8 @@ export function BatchManagement() {
     const batches = useMemo(() => batchesData?.batches || [], [batchesData]);
     const departments = departmentsData?.departments || [];
     const isLoading = batchesLoading || departmentsLoading;
+    const total = batchesData?.total || 0;
+    const totalPages = Math.ceil(total / limit);
 
     // Mutations
     const createBatch = trpc.batch.create.useMutation({
@@ -131,6 +140,7 @@ export function BatchManagement() {
     }, [batches]);
 
     const handleCreate = async (data: {
+        name: string;
         joinYear: number;
         graduationYear: number;
         section: string;
@@ -141,6 +151,7 @@ export function BatchManagement() {
             await createBatch.mutateAsync(data);
             setIsCreateModalOpen(false);
             track("batch_created", {
+                name: data.name,
                 joinYear: data.joinYear,
                 graduationYear: data.graduationYear,
                 section: data.section,
@@ -151,6 +162,7 @@ export function BatchManagement() {
     };
 
     const handleEdit = async (data: {
+        name: string;
         joinYear: number;
         graduationYear: number;
         section: string;
@@ -173,17 +185,20 @@ export function BatchManagement() {
     };
 
     const handleDelete = async (batch: Batch) => {
-        if (
-            confirm(
-                `Are you sure you want to delete "${batch.name} - ${batch.section} (${batch.graduationYear})"?`
-            )
-        ) {
-            try {
-                await deleteBatch.mutateAsync({ id: batch.id });
-                track("batch_deleted", { id: batch.id });
-            } catch (error) {
-                console.error("Error deleting batch:", error);
-            }
+        setBatchToDelete(batch);
+        setIsDeleteDialogOpen(true);
+    };
+    const confirmDelete = async () => {
+        if (!batchToDelete) return;
+
+        try {
+            await deleteBatch.mutateAsync({ id: batchToDelete.id });
+            track("batch_deleted", { id: batchToDelete.id });
+        } catch (error) {
+            console.error("Error deleting batch:", error);
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setBatchToDelete(null);
         }
     };
 
@@ -202,6 +217,7 @@ export function BatchManagement() {
         setDepartmentFilter("ALL");
         setYearFilter("ALL");
         setStatusFilter("ALL");
+        setCurrentPage(1);
         track("Batch Filters Reset");
     };
 
@@ -315,11 +331,15 @@ export function BatchManagement() {
                             <label className="text-sm font-medium">Search</label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <Input
+                                <input
+                                    type="text"
                                     placeholder="Search batches..."
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-9"
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
                             </div>
                         </div>
@@ -328,11 +348,12 @@ export function BatchManagement() {
                             <label className="text-sm font-medium">Department</label>
                             <select
                                 value={departmentFilter}
-                                onChange={(e) =>
+                                onChange={(e) => {
                                     setDepartmentFilter(
                                         e.target.value === "ALL" ? "ALL" : Number(e.target.value)
-                                    )
-                                }
+                                    );
+                                    setCurrentPage(1);
+                                }}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <option value="ALL">All Departments</option>
@@ -348,7 +369,10 @@ export function BatchManagement() {
                             <label className="text-sm font-medium">Year (Join/Graduation)</label>
                             <select
                                 value={yearFilter}
-                                onChange={(e) => setYearFilter(e.target.value)}
+                                onChange={(e) => {
+                                    setYearFilter(e.target.value);
+                                    setCurrentPage(1);
+                                }}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <option value="ALL">All Years</option>
@@ -364,9 +388,12 @@ export function BatchManagement() {
                             <label className="text-sm font-medium">Status</label>
                             <select
                                 value={statusFilter}
-                                onChange={(e) =>
-                                    setStatusFilter(e.target.value as "ALL" | "ACTIVE" | "INACTIVE")
-                                }
+                                onChange={(e) => {
+                                    setStatusFilter(
+                                        e.target.value as "ALL" | "ACTIVE" | "INACTIVE"
+                                    );
+                                    setCurrentPage(1);
+                                }}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
                                 <option value="ALL">All Status</option>
@@ -386,15 +413,30 @@ export function BatchManagement() {
 
             {/* Batches Table */}
             <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Batches</CardTitle>
-                            <CardDescription>
-                                {filteredBatches.length} of {batches.length} batches
-                                {searchTerm && ` matching "${searchTerm}"`}
-                            </CardDescription>
-                        </div>
+                <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                        <CardTitle>Batches</CardTitle>
+                        <CardDescription>
+                            {total} total batches
+                            {searchTerm && ` matching "${searchTerm}"`}
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground">Show:</label>
+                        <select
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -408,6 +450,39 @@ export function BatchManagement() {
                         }}
                         onDelete={(batch) => handleDelete(batch)}
                     />
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between border-t pt-4">
+                            <div className="text-sm text-gray-600">
+                                Showing {(currentPage - 1) * limit + 1} to{" "}
+                                {Math.min(currentPage * limit, total)} of {total} batches
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="text-sm">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                                    }
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -416,6 +491,7 @@ export function BatchManagement() {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 title="Create Batch"
+                Backdrop={true}
             >
                 <BatchForm
                     departments={departments}
@@ -465,6 +541,16 @@ export function BatchManagement() {
                     />
                 )}
             </Modal>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isDeleteDialogOpen}
+                title="Delete Batch"
+                message={`Are you sure you want to delete the batch "${batchToDelete?.name}"? This action cannot be undone.`}
+                onAccept={confirmDelete}
+                confirmButtonText="Delete"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }

@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building, Filter, Plus, Search } from "lucide-react";
@@ -12,6 +11,7 @@ import { DataTable } from "@/components/admin/shared/data-table";
 import { DepartmentForm } from "./department-form";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useToast } from "@/hooks/use-toast";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface Department {
     id: number;
@@ -24,21 +24,30 @@ interface Department {
 export function DepartmentManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+    const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
 
     const { track } = useAnalytics();
     const { success, error } = useToast();
     const utils = trpc.useUtils();
 
+    const [limit, setLimit] = useState(5);
+
     // Queries
     const { data: departmentsData, isLoading } = trpc.department.list.useQuery({
         searchTerm: searchTerm || undefined,
         isActive: statusFilter === "ALL" ? undefined : statusFilter,
+        limit,
+        offset: (currentPage - 1) * limit,
     });
 
     const departments = useMemo(() => departmentsData?.departments || [], [departmentsData]);
+    const total = departmentsData?.total || 0;
+    const totalPages = Math.ceil(total / limit);
 
     // Mutations
     const createDepartment = trpc.department.create.useMutation({
@@ -73,20 +82,9 @@ export function DepartmentManagement() {
 
     // Filter departments based on search and status
     const filteredDepartments = useMemo(() => {
-        let filtered = departments;
-
-        if (searchTerm) {
-            filtered = filtered.filter((dept: Department) =>
-                dept.name.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-
-        if (statusFilter !== "ALL") {
-            filtered = filtered.filter((dept: Department) => dept.isActive === statusFilter);
-        }
-
-        return filtered;
-    }, [departments, searchTerm, statusFilter]);
+        // No client-side filtering needed since it's handled by the server
+        return departments;
+    }, [departments]);
 
     const handleCreate = async (data: { name: string; isActive: "ACTIVE" | "INACTIVE" }) => {
         try {
@@ -115,13 +113,21 @@ export function DepartmentManagement() {
     };
 
     const handleDelete = async (department: Department) => {
-        if (confirm(`Are you sure you want to delete "${department.name}"?`)) {
-            try {
-                await deleteDepartment.mutateAsync({ id: department.id });
-                track("department_deleted", { id: department.id });
-            } catch (error) {
-                console.error("Error deleting department:", error);
-            }
+        setDepartmentToDelete(department);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!departmentToDelete) return;
+
+        try {
+            await deleteDepartment.mutateAsync({ id: departmentToDelete.id });
+            track("department_deleted", { id: departmentToDelete.id });
+        } catch (error) {
+            console.error("Error deleting department:", error);
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setDepartmentToDelete(null);
         }
     };
 
@@ -133,6 +139,7 @@ export function DepartmentManagement() {
     const resetFilters = () => {
         setSearchTerm("");
         setStatusFilter("ALL");
+        setCurrentPage(1);
         track("Department Filters Reset");
     };
 
@@ -212,13 +219,15 @@ export function DepartmentManagement() {
                             <label className="text-sm font-medium">Search</label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <Input
+                                <input
+                                    type="text"
                                     placeholder="Search departments..."
                                     value={searchTerm}
                                     onChange={(e) => {
                                         setSearchTerm(e.target.value);
+                                        setCurrentPage(1);
                                     }}
-                                    className="pl-9"
+                                    className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 />
                             </div>
                         </div>
@@ -231,6 +240,7 @@ export function DepartmentManagement() {
                                     setStatusFilter(
                                         e.target.value as "ALL" | "ACTIVE" | "INACTIVE"
                                     );
+                                    setCurrentPage(1);
                                 }}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             >
@@ -251,15 +261,30 @@ export function DepartmentManagement() {
 
             {/* Departments Table */}
             <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Departments</CardTitle>
-                            <CardDescription>
-                                {filteredDepartments.length} of {departments.length} departments
-                                {searchTerm && ` matching "${searchTerm}"`}
-                            </CardDescription>
-                        </div>
+                <CardHeader className="flex flex-row items-start justify-between">
+                    <div>
+                        <CardTitle>Departments</CardTitle>
+                        <CardDescription>
+                            {total} total departments
+                            {searchTerm && ` matching "${searchTerm}"`}
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm text-muted-foreground">Show:</label>
+                        <select
+                            value={limit}
+                            onChange={(e) => {
+                                setLimit(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        >
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -275,6 +300,39 @@ export function DepartmentManagement() {
                         }}
                         onDelete={(department) => handleDelete(department)}
                     />
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between border-t pt-4">
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                                Showing {(currentPage - 1) * limit + 1} to{" "}
+                                {Math.min(currentPage * limit, total)} of {total} departments
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    Previous
+                                </Button>
+                                <span className="text-sm">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                                    }
+                                    disabled={currentPage === totalPages}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -283,6 +341,7 @@ export function DepartmentManagement() {
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
                 title="Create Department"
+                Backdrop={true}
             >
                 <DepartmentForm
                     onSubmit={handleCreate}
@@ -298,6 +357,7 @@ export function DepartmentManagement() {
                     setSelectedDepartment(null);
                 }}
                 title="Edit Department"
+                Backdrop={true}
             >
                 <DepartmentForm
                     initialData={selectedDepartment}
@@ -308,6 +368,19 @@ export function DepartmentManagement() {
                     }}
                 />
             </Modal>
+
+            {/* Delete Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isDeleteDialogOpen}
+                onOpenChange={setIsDeleteDialogOpen}
+                title="Delete Department"
+                message={`Are you sure you want to delete the department
+                     "${departmentToDelete?.name}"? 
+                     This action cannot be undone.`}
+                onAccept={confirmDelete}
+                confirmButtonText="Delete"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }

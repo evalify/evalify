@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 interface BatchFormData {
+    name: string;
     joinYear: number;
     graduationYear: number;
     section: string;
@@ -39,6 +40,7 @@ interface BatchFormProps {
 
 export function BatchForm({ departments, initialData, onSubmit, onCancel }: BatchFormProps) {
     const [formData, setFormData] = useState<BatchFormData>({
+        name: "",
         joinYear: new Date().getFullYear(),
         graduationYear: new Date().getFullYear() + 4,
         section: "",
@@ -51,6 +53,7 @@ export function BatchForm({ departments, initialData, onSubmit, onCancel }: Batc
     useEffect(() => {
         if (initialData) {
             setFormData({
+                name: initialData.name,
                 joinYear: initialData.joinYear,
                 graduationYear: initialData.graduationYear,
                 section: initialData.section,
@@ -102,6 +105,7 @@ export function BatchForm({ departments, initialData, onSubmit, onCancel }: Batc
         setIsLoading(true);
         try {
             await onSubmit({
+                name: generateBatchName(),
                 joinYear: formData.joinYear,
                 graduationYear: formData.graduationYear,
                 section: formData.section.trim(),

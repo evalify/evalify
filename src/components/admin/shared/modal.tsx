@@ -9,9 +9,17 @@ interface ModalProps {
     title: string;
     children: React.ReactNode;
     size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
+    Backdrop?: boolean;
 }
 
-export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
+export function Modal({
+    isOpen,
+    onClose,
+    title,
+    children,
+    size = "md",
+    Backdrop = false,
+}: ModalProps) {
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
@@ -44,7 +52,10 @@ export function Modal({ isOpen, onClose, title, children, size = "md" }: ModalPr
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Backdrop */}
-            <div className="fixed inset-0 transition-opacity" onClick={onClose} />
+            <div
+                className={`fixed inset-0  transition-opacity ${Backdrop ? " bg-black/50" : ""}`}
+                onClick={onClose}
+            />
 
             {/* Modal */}
             <div
