@@ -37,7 +37,7 @@ interface DashboardStats {
 }
 
 interface DepartmentWithStats {
-    id: number;
+    id: string;
     name: string;
     isActive: "ACTIVE" | "INACTIVE";
     batchCount: number;

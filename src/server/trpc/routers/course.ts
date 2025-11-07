@@ -27,7 +27,7 @@ export const courseRouter = createTRPCRouter({
         .input(
             z.object({
                 searchTerm: z.string().optional(),
-                semesterId: z.number().optional(),
+                semesterId: z.uuid().optional(),
                 type: z.enum(["CORE", "ELECTIVE", "MICRO_CREDENTIAL"]).optional(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).optional(),
                 limit: z.number().min(1).max(100).default(50),
@@ -106,7 +106,7 @@ export const courseRouter = createTRPCRouter({
     get: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -154,7 +154,7 @@ export const courseRouter = createTRPCRouter({
                 code: z.string().min(1, "Course code is required").max(50),
                 image: z.string().max(512).optional(),
                 type: z.enum(["CORE", "ELECTIVE", "MICRO_CREDENTIAL"]),
-                semesterId: z.number().min(1, "Please select a valid semester"),
+                semesterId: z.uuid(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
             })
         )
@@ -233,13 +233,13 @@ export const courseRouter = createTRPCRouter({
     update: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
                 name: z.string().min(1, "Course name is required").max(255).optional(),
                 description: z.string().min(1, "Course description is required").optional(),
                 code: z.string().min(1, "Course code is required").max(50).optional(),
                 image: z.string().max(512).optional(),
                 type: z.enum(["CORE", "ELECTIVE", "MICRO_CREDENTIAL"]).optional(),
-                semesterId: z.number().min(1, "Please select a valid semester").optional(),
+                semesterId: z.uuid().optional(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).optional(),
             })
         )
@@ -318,7 +318,7 @@ export const courseRouter = createTRPCRouter({
     delete: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -371,7 +371,7 @@ export const courseRouter = createTRPCRouter({
     getStudents: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -409,8 +409,8 @@ export const courseRouter = createTRPCRouter({
     addStudent: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
-                studentId: z.number(),
+                courseId: z.uuid(),
+                studentId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -479,8 +479,8 @@ export const courseRouter = createTRPCRouter({
     removeStudent: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
-                studentId: z.number(),
+                courseId: z.uuid(),
+                studentId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -531,7 +531,7 @@ export const courseRouter = createTRPCRouter({
     getInstructors: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -572,8 +572,8 @@ export const courseRouter = createTRPCRouter({
     addInstructor: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
-                instructorId: z.number(),
+                courseId: z.uuid(),
+                instructorId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -644,8 +644,8 @@ export const courseRouter = createTRPCRouter({
     removeInstructor: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
-                instructorId: z.number(),
+                courseId: z.uuid(),
+                instructorId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -696,7 +696,7 @@ export const courseRouter = createTRPCRouter({
     getBatches: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -737,8 +737,8 @@ export const courseRouter = createTRPCRouter({
     addBatch: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
-                batchId: z.number(),
+                courseId: z.uuid(),
+                batchId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -807,8 +807,8 @@ export const courseRouter = createTRPCRouter({
     removeBatch: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
-                batchId: z.number(),
+                courseId: z.uuid(),
+                batchId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -859,7 +859,7 @@ export const courseRouter = createTRPCRouter({
     getAvailableFaculty: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
+                courseId: z.uuid(),
                 searchTerm: z.string().optional(),
             })
         )
@@ -923,7 +923,7 @@ export const courseRouter = createTRPCRouter({
     getAvailableStudents: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
+                courseId: z.uuid(),
                 searchTerm: z.string().optional(),
             })
         )
@@ -987,7 +987,7 @@ export const courseRouter = createTRPCRouter({
     getAvailableBatches: adminProcedure
         .input(
             z.object({
-                courseId: z.number(),
+                courseId: z.uuid(),
                 searchTerm: z.string().optional(),
             })
         )

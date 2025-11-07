@@ -13,12 +13,12 @@ interface CourseFormData {
     code: string;
     image?: string;
     type: "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL";
-    semesterId: number;
+    semesterId: string;
     isActive: "ACTIVE" | "INACTIVE";
 }
 
 interface Semester {
-    id: number;
+    id: string;
     name: string;
     year: number;
     isActive: "ACTIVE" | "INACTIVE";
@@ -26,15 +26,15 @@ interface Semester {
 
 interface CourseFormProps {
     semesters?: Semester[];
-    fixedSemesterId?: number;
+    fixedSemesterId?: string;
     initialData?: {
-        id: number;
+        id: string;
         name: string;
         description: string;
         code: string;
         image?: string;
         type: "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL";
-        semesterId: number;
+        semesterId: string;
         isActive: "ACTIVE" | "INACTIVE";
     } | null;
     onSubmit: (data: CourseFormData) => Promise<void>;
@@ -60,7 +60,7 @@ export function CourseForm({
         code: "",
         image: "",
         type: "CORE",
-        semesterId: fixedSemesterId || semesters?.[0]?.id || 0,
+        semesterId: fixedSemesterId || semesters?.[0]?.id || "",
         isActive: "ACTIVE",
     });
     const [isLoading, setIsLoading] = useState(false);

@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Plus, X, Search, AlertTriangle } from "lucide-react";
 
 interface CourseBatchesModalProps {
-    courseId: number;
+    courseId: string;
     onClose: () => void;
 }
 
@@ -61,7 +61,7 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
         },
     });
 
-    const handleAddBatch = async (batchId: number) => {
+    const handleAddBatch = async (batchId: string) => {
         setIsLoading(true);
         try {
             await addBatch.mutateAsync({ courseId, batchId });
@@ -71,7 +71,7 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
         }
     };
 
-    const handleRemoveBatch = async (batchId: number) => {
+    const handleRemoveBatch = async (batchId: string) => {
         if (confirm("Are you sure you want to remove this batch from the course?")) {
             setIsLoading(true);
             try {

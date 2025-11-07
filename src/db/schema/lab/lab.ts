@@ -1,11 +1,11 @@
-import { index, integer, varchar } from "drizzle-orm/pg-core";
+import { index, uuid, varchar } from "drizzle-orm/pg-core";
 import { pgTable } from "drizzle-orm/pg-core";
 import { statusEnum, timestamps } from "../utils";
 
 export const labsTable = pgTable(
     "labs",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         name: varchar({ length: 255 }).notNull(),
         block: varchar({ length: 100 }).notNull(),
         ipSubnet: varchar("ip_subnet", { length: 50 }).notNull(),

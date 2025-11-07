@@ -17,7 +17,7 @@ export const batchRouter = createTRPCRouter({
         .input(
             z.object({
                 searchTerm: z.string().optional(),
-                departmentId: z.number().optional(),
+                departmentId: z.uuid().optional(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).optional(),
                 year: z.number().optional(),
                 limit: z.number().min(1).max(100).default(50),
@@ -98,7 +98,7 @@ export const batchRouter = createTRPCRouter({
     get: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -143,7 +143,7 @@ export const batchRouter = createTRPCRouter({
                 joinYear: z.number().min(2000).max(2100),
                 graduationYear: z.number().min(2000).max(2100),
                 section: z.string().min(1).max(10),
-                departmentId: z.number(),
+                departmentId: z.uuid(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
             })
         )
@@ -179,11 +179,11 @@ export const batchRouter = createTRPCRouter({
     update: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
                 joinYear: z.number().min(2000).max(2100).optional(),
                 graduationYear: z.number().min(2000).max(2100).optional(),
                 section: z.string().min(1).max(10).optional(),
-                departmentId: z.number().optional(),
+                departmentId: z.uuid().optional(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).optional(),
             })
         )
@@ -237,7 +237,7 @@ export const batchRouter = createTRPCRouter({
     delete: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -266,7 +266,7 @@ export const batchRouter = createTRPCRouter({
     getStudents: adminProcedure
         .input(
             z.object({
-                batchId: z.number(),
+                batchId: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -304,8 +304,8 @@ export const batchRouter = createTRPCRouter({
     addStudents: adminProcedure
         .input(
             z.object({
-                batchId: z.number(),
-                studentIds: z.array(z.number()).min(1),
+                batchId: z.uuid(),
+                studentIds: z.array(z.uuid()).min(1),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -339,8 +339,8 @@ export const batchRouter = createTRPCRouter({
     removeStudents: adminProcedure
         .input(
             z.object({
-                batchId: z.number(),
-                studentIds: z.array(z.number()).min(1),
+                batchId: z.uuid(),
+                studentIds: z.array(z.uuid()).min(1),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -379,7 +379,7 @@ export const batchRouter = createTRPCRouter({
     getAvailableStudents: adminProcedure
         .input(
             z.object({
-                batchId: z.number(),
+                batchId: z.uuid(),
                 searchTerm: z.string().optional(),
             })
         )

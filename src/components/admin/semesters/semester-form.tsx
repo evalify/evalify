@@ -10,16 +10,16 @@ import { Switch } from "@/components/ui/switch";
 interface SemesterFormData {
     name: string;
     year: number;
-    departmentId: number;
+    departmentId: string;
     isActive: "ACTIVE" | "INACTIVE";
 }
 
 interface SemesterFormProps {
     initialData?: {
-        id: number;
+        id: string;
         name: string;
         year: number;
-        departmentId: number;
+        departmentId: string;
         isActive: "ACTIVE" | "INACTIVE";
     } | null;
     onSubmit: (data: SemesterFormData) => Promise<void>;
@@ -30,7 +30,7 @@ export function SemesterForm({ initialData, onSubmit, onCancel }: SemesterFormPr
     const [formData, setFormData] = useState<SemesterFormData>({
         name: "",
         year: new Date().getFullYear(),
-        departmentId: 0,
+        departmentId: "",
         isActive: "ACTIVE",
     });
     const [isLoading, setIsLoading] = useState(false);
@@ -67,7 +67,7 @@ export function SemesterForm({ initialData, onSubmit, onCancel }: SemesterFormPr
             newErrors.year = "Year cannot be too far in the future";
         }
 
-        if (!formData.departmentId || formData.departmentId === 0) {
+        if (!formData.departmentId || formData.departmentId === "") {
             newErrors.departmentId = "Department is required";
         }
 
@@ -163,15 +163,13 @@ export function SemesterForm({ initialData, onSubmit, onCancel }: SemesterFormPr
                     <select
                         id="departmentId"
                         value={formData.departmentId}
-                        onChange={(e) =>
-                            handleInputChange("departmentId", parseInt(e.target.value))
-                        }
+                        onChange={(e) => handleInputChange("departmentId", e.target.value)}
                         className={`w-full px-3 py-2 border rounded-md bg-background text-foreground ${
                             errors.departmentId ? "border-red-500" : "border-input"
                         }`}
                         disabled={isLoading}
                     >
-                        <option value="0">Select a department</option>
+                        <option value="">Select a department</option>
                         {departments
                             .filter((dept) => dept.isActive === "ACTIVE")
                             .map((department) => (
@@ -219,7 +217,7 @@ export function SemesterForm({ initialData, onSubmit, onCancel }: SemesterFormPr
                 </Button>
                 <Button
                     type="submit"
-                    disabled={isLoading || !formData.name.trim() || formData.departmentId === 0}
+                    disabled={isLoading || !formData.name.trim() || formData.departmentId === ""}
                     className="flex-1"
                 >
                     {isLoading ? "Saving..." : initialData ? "Update" : "Create"}

@@ -10,7 +10,7 @@ export const banksTable = pgTable(
         name: varchar({ length: 255 }).notNull(),
         courseCode: varchar("course_code", { length: 50 }),
         semester: integer().notNull(),
-        createdById: integer("created_by_id").references(() => usersTable.id, {
+        createdById: uuid("created_by_id").references(() => usersTable.id, {
             onDelete: "set null",
         }),
         ...timestamps,
@@ -28,12 +28,12 @@ export const bankAccessLevelEnum = pgEnum("bank_access_level", ["READ", "WRITE",
 export const bankUsersTable = pgTable(
     "bank_users",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         accessLevel: bankAccessLevelEnum("access_level").notNull().default("READ"),
         bankId: uuid("bank_id")
             .notNull()
             .references(() => banksTable.id, { onDelete: "cascade" }),
-        userId: integer("user_id")
+        userId: uuid("user_id")
             .notNull()
             .references(() => usersTable.id, { onDelete: "cascade" }),
         ...timestamps,

@@ -15,7 +15,7 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface User {
-    id: number;
+    id: string;
     name: string;
     email: string;
     profileId: string;

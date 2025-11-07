@@ -1,4 +1,4 @@
-import { index, integer, text, varchar } from "drizzle-orm/pg-core";
+import { index, text, uuid, varchar } from "drizzle-orm/pg-core";
 import { pgTable } from "drizzle-orm/pg-core";
 import { courseTypeEnum, statusEnum, timestamps } from "../utils";
 import { semestersTable } from "../semester/semester";
@@ -6,13 +6,13 @@ import { semestersTable } from "../semester/semester";
 export const coursesTable = pgTable(
     "courses",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         name: varchar({ length: 255 }).notNull(),
         description: text().notNull(),
         code: varchar({ length: 50 }).notNull().unique(),
         image: varchar({ length: 512 }),
         type: courseTypeEnum("type").notNull(),
-        semesterId: integer("semester_id")
+        semesterId: uuid("semester_id")
             .notNull()
             .references(() => semestersTable.id, { onDelete: "cascade" }),
         isActive: statusEnum("is_active").notNull().default("ACTIVE"),

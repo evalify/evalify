@@ -83,7 +83,7 @@ export const userRouter = createTRPCRouter({
     get: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -193,7 +193,7 @@ export const userRouter = createTRPCRouter({
     update: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
                 name: z.string().min(1).max(255).optional(),
                 email: z.string().email().optional(),
                 profileId: z.string().min(1).max(255).optional(),
@@ -280,7 +280,7 @@ export const userRouter = createTRPCRouter({
     delete: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -340,7 +340,7 @@ export const userRouter = createTRPCRouter({
         const user = await db
             .select()
             .from(usersTable)
-            .where(eq(usersTable.id, parseInt(ctx.session.user.id)))
+            .where(eq(usersTable.id, ctx.session.user.id))
             .limit(1);
 
         return user[0] || null;
@@ -360,7 +360,7 @@ export const userRouter = createTRPCRouter({
             const updated = await db
                 .update(usersTable)
                 .set(input)
-                .where(eq(usersTable.id, parseInt(ctx.session.user.id)))
+                .where(eq(usersTable.id, ctx.session.user.id))
                 .returning();
 
             return updated[0];

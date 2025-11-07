@@ -43,7 +43,7 @@ export const quizzesTable = pgTable(
         kioskMode: boolean("kiosk_mode").default(false),
 
         ...timestamps,
-        createdById: integer("created_by_id").references(() => usersTable.id, {
+        createdById: uuid("created_by_id").references(() => usersTable.id, {
             onDelete: "set null",
         }),
     },
@@ -77,7 +77,7 @@ export const quizSectionsTable = pgTable(
 export const quizTagsTable = pgTable(
     "quiz_tags",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         name: varchar({ length: 100 }).notNull().unique(),
         ...timestamps,
     },
@@ -88,11 +88,11 @@ export const quizTagsTable = pgTable(
 export const quizQuizTagsTable = pgTable(
     "quiz_quiz_tags",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         quizId: uuid("quiz_id")
             .notNull()
             .references(() => quizzesTable.id, { onDelete: "cascade" }),
-        quizTagId: integer("quiz_tag_id")
+        quizTagId: uuid("quiz_tag_id")
             .notNull()
             .references(() => quizTagsTable.id, { onDelete: "cascade" }),
         ...timestamps,
@@ -107,11 +107,11 @@ export const quizQuizTagsTable = pgTable(
 export const courseQuizzesTable = pgTable(
     "course_quizzes",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         quizId: uuid("quiz_id")
             .notNull()
             .references(() => quizzesTable.id, { onDelete: "cascade" }),
-        courseId: integer("course_id")
+        courseId: uuid("course_id")
             .notNull()
             .references(() => coursesTable.id, { onDelete: "cascade" }),
         ...timestamps,
@@ -126,11 +126,11 @@ export const courseQuizzesTable = pgTable(
 export const studentQuizzesTable = pgTable(
     "student_quizzes",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         quizId: uuid("quiz_id")
             .notNull()
             .references(() => quizzesTable.id, { onDelete: "cascade" }),
-        studentId: integer("student_id")
+        studentId: uuid("student_id")
             .notNull()
             .references(() => usersTable.id, { onDelete: "cascade" }),
         ...timestamps,
@@ -145,11 +145,11 @@ export const studentQuizzesTable = pgTable(
 export const labQuizzesTable = pgTable(
     "lab_quizzes",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         quizId: uuid("quiz_id")
             .notNull()
             .references(() => quizzesTable.id, { onDelete: "cascade" }),
-        labId: integer("lab_id")
+        labId: uuid("lab_id")
             .notNull()
             .references(() => labsTable.id, { onDelete: "cascade" }),
         ...timestamps,
@@ -164,11 +164,11 @@ export const labQuizzesTable = pgTable(
 export const quizBatchesTable = pgTable(
     "quiz_batches",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         quizId: uuid("quiz_id")
             .notNull()
             .references(() => quizzesTable.id, { onDelete: "cascade" }),
-        batchId: integer("batch_id")
+        batchId: uuid("batch_id")
             .notNull()
             .references(() => batchesTable.id, { onDelete: "cascade" }),
         ...timestamps,
@@ -183,11 +183,11 @@ export const quizBatchesTable = pgTable(
 export const quizUsersTable = pgTable(
     "quiz_users",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         quizId: uuid("quiz_id")
             .notNull()
             .references(() => quizzesTable.id, { onDelete: "cascade" }),
-        userId: integer("user_id")
+        userId: uuid("user_id")
             .notNull()
             .references(() => usersTable.id, { onDelete: "cascade" }),
         ...timestamps,

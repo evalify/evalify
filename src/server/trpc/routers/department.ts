@@ -71,7 +71,7 @@ export const departmentRouter = createTRPCRouter({
     get: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -138,7 +138,7 @@ export const departmentRouter = createTRPCRouter({
     update: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
                 name: z.string().min(1).max(255).optional(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).optional(),
             })
@@ -177,7 +177,7 @@ export const departmentRouter = createTRPCRouter({
     delete: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {

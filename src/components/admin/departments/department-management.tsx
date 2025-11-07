@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface Department {
-    id: number;
+    id: string;
     name: string;
     isActive: "ACTIVE" | "INACTIVE";
     createdAt: Date;

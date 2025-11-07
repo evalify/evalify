@@ -22,7 +22,7 @@ interface UserFormData {
 
 interface UserFormProps {
     initialData?: {
-        id: number;
+        id: string;
         name: string;
         email: string;
         profileId: string;
