@@ -16,13 +16,13 @@ import { CourseStudentsModal } from "./course-students-modal";
 import { CourseBatchesModal } from "./course-batches-modal";
 
 interface Course {
-    id: number;
+    id: string;
     name: string;
     description: string;
     code: string;
     image?: string | null;
     type: "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL";
-    semesterId: number;
+    semesterId: string;
     isActive: "ACTIVE" | "INACTIVE";
     createdAt: Date;
     updatedAt: Date | null;
@@ -31,7 +31,7 @@ interface Course {
 }
 
 interface CourseManagementProps {
-    semesterId?: number;
+    semesterId?: string;
 }
 
 export function CourseManagement({ semesterId }: CourseManagementProps) {
@@ -40,7 +40,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
     const [typeFilter, setTypeFilter] = useState<"ALL" | "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL">(
         "ALL"
     );
-    const [selectedSemester, setSelectedSemester] = useState<number | undefined>(semesterId);
+    const [selectedSemester, setSelectedSemester] = useState<string | undefined>(semesterId);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -49,7 +49,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
     const [isInstructorsModalOpen, setIsInstructorsModalOpen] = useState(false);
     const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
     const [isBatchesModalOpen, setIsBatchesModalOpen] = useState(false);
-    const [selectedCourseForModal, setSelectedCourseForModal] = useState<number | null>(null);
+    const [selectedCourseForModal, setSelectedCourseForModal] = useState<string | null>(null);
 
     const { track } = useAnalytics();
     const { success, error } = useToast();
@@ -62,9 +62,17 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
 
     const semestersData = trpc.semester.list.useQuery({});
 
-    const courses = coursesData?.data?.courses || [];
-    const semesters = semestersData?.data?.semesters || [];
-    const activeSemesters = semesters.filter((s) => s.isActive === "ACTIVE");
+    const courses = useMemo(() => coursesData?.data?.courses || [], [coursesData.data?.courses]);
+
+    const semesters = useMemo(
+        () => semestersData?.data?.semesters || [],
+        [semestersData.data?.semesters]
+    );
+
+    const activeSemesters = useMemo(
+        () => semesters.filter((s) => s.isActive === "ACTIVE"),
+        [semesters]
+    );
 
     // Mutations
     const utils = trpc.useUtils();
@@ -176,7 +184,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
         code: string;
         image?: string;
         type: "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL";
-        semesterId: number;
+        semesterId: string;
         isActive: "ACTIVE" | "INACTIVE";
     }) => {
         try {
@@ -199,7 +207,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
         code: string;
         image?: string;
         type: "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL";
-        semesterId: number;
+        semesterId: string;
         isActive: "ACTIVE" | "INACTIVE";
     }) => {
         if (!selectedCourse) return;
@@ -465,9 +473,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
                                 <select
                                     value={selectedSemester || ""}
                                     onChange={(e) =>
-                                        setSelectedSemester(
-                                            e.target.value ? Number(e.target.value) : undefined
-                                        )
+                                        setSelectedSemester(e.target.value || undefined)
                                     }
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >

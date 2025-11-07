@@ -1,4 +1,4 @@
-import { index, integer, uuid, pgTable } from "drizzle-orm/pg-core";
+import { index, uuid, pgTable } from "drizzle-orm/pg-core";
 import { timestamps } from "../../utils";
 import { topicsTable } from "./topic";
 import { questionsTable } from "../../question/question";
@@ -7,7 +7,7 @@ import { questionsTable } from "../../question/question";
 export const topicQuestionsTable = pgTable(
     "topic_questions",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
 
         topicId: uuid("topic_id")
             .notNull()

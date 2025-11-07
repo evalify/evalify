@@ -6,7 +6,7 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import { Users, GraduationCap, BookOpen, X, AlertCircle } from "lucide-react";
 
 interface CourseAssignmentProps {
-    courseId: number;
+    courseId: string;
     courseName: string;
     courseCode: string;
     onClose: () => void;

@@ -17,7 +17,7 @@ interface DataTableProps<T> {
     loading?: boolean;
 }
 
-export function DataTable<T extends { id: number }>({
+export function DataTable<T extends { id: string }>({
     data,
     columns,
     onEdit,

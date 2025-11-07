@@ -17,7 +17,7 @@ export const semesterRouter = createTRPCRouter({
         .input(
             z.object({
                 searchTerm: z.string().optional(),
-                departmentId: z.number().optional(),
+                departmentId: z.uuid().optional(),
                 year: z.number().optional(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).optional(),
                 limit: z.number().min(1).max(100).default(50),
@@ -88,7 +88,7 @@ export const semesterRouter = createTRPCRouter({
     get: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -135,7 +135,7 @@ export const semesterRouter = createTRPCRouter({
                     .number()
                     .min(2000, "Year must be after 2000")
                     .max(2100, "Year must be before 2100"),
-                departmentId: z.number().min(1, "Please select a valid department"),
+                departmentId: z.uuid(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
             })
         )
@@ -199,14 +199,14 @@ export const semesterRouter = createTRPCRouter({
     update: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
                 name: z.string().min(1, "Semester name is required").max(255).optional(),
                 year: z
                     .number()
                     .min(2000, "Year must be after 2000")
                     .max(2100, "Year must be before 2100")
                     .optional(),
-                departmentId: z.number().min(1, "Please select a valid department").optional(),
+                departmentId: z.uuid().optional(),
                 isActive: z.enum(["ACTIVE", "INACTIVE"]).optional(),
             })
         )
@@ -273,7 +273,7 @@ export const semesterRouter = createTRPCRouter({
     delete: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {

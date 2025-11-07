@@ -8,7 +8,7 @@ import { questionsTable } from "./question";
 export const quizQuestionsTable = pgTable(
     "quiz_questions",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         quizId: uuid("quiz_id")
             .notNull()
             .references(() => quizzesTable.id, { onDelete: "cascade" }),

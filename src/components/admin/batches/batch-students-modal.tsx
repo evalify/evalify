@@ -12,14 +12,14 @@ import { useAnalytics } from "@/hooks/use-analytics";
 import { useToast } from "@/hooks/use-toast";
 
 interface BatchStudentsModalProps {
-    batchId: number;
+    batchId: string;
     batchName: string;
     onClose: () => void;
 }
 
 export function BatchStudentsModal({ batchId, batchName, onClose }: BatchStudentsModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedStudents, setSelectedStudents] = useState<Set<number>>(new Set());
+    const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
     const [isAddingStudents, setIsAddingStudents] = useState(false);
 
     const { track } = useAnalytics();
@@ -62,7 +62,7 @@ export function BatchStudentsModal({ batchId, batchName, onClose }: BatchStudent
     // Available students already filtered by backend
     const availableStudents = availableStudentsData;
 
-    const handleSelectStudent = (studentId: number) => {
+    const handleSelectStudent = (studentId: string) => {
         const newSelected = new Set(selectedStudents);
         if (newSelected.has(studentId)) {
             newSelected.delete(studentId);
@@ -94,7 +94,7 @@ export function BatchStudentsModal({ batchId, batchName, onClose }: BatchStudent
         }
     };
 
-    const handleRemoveStudent = async (studentId: number) => {
+    const handleRemoveStudent = async (studentId: string) => {
         try {
             await removeStudentsFromBatch.mutateAsync({ batchId, studentIds: [studentId] });
             track("batch_student_removed", { batchId, studentId });

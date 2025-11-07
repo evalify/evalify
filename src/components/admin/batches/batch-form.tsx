@@ -11,12 +11,12 @@ interface BatchFormData {
     joinYear: number;
     graduationYear: number;
     section: string;
-    departmentId: number;
+    departmentId: string;
     isActive: "ACTIVE" | "INACTIVE";
 }
 
 interface Department {
-    id: number;
+    id: string;
     name: string;
     isActive: "ACTIVE" | "INACTIVE";
     createdAt: Date;
@@ -26,12 +26,12 @@ interface Department {
 interface BatchFormProps {
     departments: Department[];
     initialData?: {
-        id: number;
+        id: string;
         name: string;
         joinYear: number;
         graduationYear: number;
         section: string;
-        departmentId: number;
+        departmentId: string;
         isActive: "ACTIVE" | "INACTIVE";
     } | null;
     onSubmit: (data: BatchFormData) => Promise<void>;
@@ -44,7 +44,7 @@ export function BatchForm({ departments, initialData, onSubmit, onCancel }: Batc
         joinYear: new Date().getFullYear(),
         graduationYear: new Date().getFullYear() + 4,
         section: "",
-        departmentId: departments[0]?.id || 0,
+        departmentId: departments[0]?.id || "",
         isActive: "ACTIVE",
     });
     const [isLoading, setIsLoading] = useState(false);
@@ -222,9 +222,7 @@ export function BatchForm({ departments, initialData, onSubmit, onCancel }: Batc
                     <select
                         id="departmentId"
                         value={formData.departmentId}
-                        onChange={(e) =>
-                            handleInputChange("departmentId", parseInt(e.target.value))
-                        }
+                        onChange={(e) => handleInputChange("departmentId", e.target.value)}
                         className={`w-full px-3 py-2 border rounded-md bg-background text-foreground ${
                             errors.departmentId ? "border-red-500" : "border-input"
                         }`}

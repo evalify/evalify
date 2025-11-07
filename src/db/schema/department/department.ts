@@ -1,11 +1,11 @@
-import { index, integer, varchar } from "drizzle-orm/pg-core";
+import { index, uuid, varchar } from "drizzle-orm/pg-core";
 import { pgTable } from "drizzle-orm/pg-core";
 import { statusEnum, timestamps } from "../utils";
 
 export const departmentsTable = pgTable(
     "departments",
     {
-        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        id: uuid("id").primaryKey().defaultRandom(),
         name: varchar({ length: 255 }).notNull().unique(),
         isActive: statusEnum("is_active").notNull().default("ACTIVE"),
         ...timestamps,

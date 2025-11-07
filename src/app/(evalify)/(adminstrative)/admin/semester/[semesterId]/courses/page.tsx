@@ -15,7 +15,7 @@ export default function Page(props: Props) {
 
     return (
         <div className="p-6">
-            <CourseManagement semesterId={parseInt(semesterId)} />
+            <CourseManagement semesterId={semesterId} />
         </div>
     );
 }

@@ -1,4 +1,4 @@
-import { index, integer, primaryKey } from "drizzle-orm/pg-core";
+import { index, uuid, primaryKey } from "drizzle-orm/pg-core";
 import { pgTable } from "drizzle-orm/pg-core";
 import { batchesTable } from "./batch";
 import { usersTable } from "../user/user";
@@ -7,10 +7,10 @@ import { timestamps } from "../utils";
 export const batchStudentsTable = pgTable(
     "batch_students",
     {
-        batchId: integer("batch_id")
+        batchId: uuid("batch_id")
             .notNull()
             .references(() => batchesTable.id, { onDelete: "cascade" }),
-        studentId: integer("student_id")
+        studentId: uuid("student_id")
             .notNull()
             .references(() => usersTable.id, { onDelete: "cascade" }),
         ...timestamps,

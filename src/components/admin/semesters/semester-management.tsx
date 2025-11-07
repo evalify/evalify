@@ -15,10 +15,10 @@ import { useRouter } from "next/navigation";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface Semester {
-    id: number;
+    id: string;
     name: string;
     year: number;
-    departmentId: number;
+    departmentId: string;
     isActive: "ACTIVE" | "INACTIVE";
     createdAt: Date;
     updatedAt: Date | null;
@@ -54,7 +54,10 @@ export function SemesterManagement() {
         offset: (currentPage - 1) * limit,
     });
 
-    const semesters = semestersData?.data?.semesters || [];
+    const semesters = useMemo(
+        () => semestersData?.data?.semesters || [],
+        [semestersData.data?.semesters]
+    );
     const total = semestersData?.data?.total || 0;
     const totalPages = Math.ceil(total / limit);
 
@@ -168,7 +171,7 @@ export function SemesterManagement() {
     const handleCreate = async (data: {
         name: string;
         year: number;
-        departmentId: number;
+        departmentId: string;
         isActive: "ACTIVE" | "INACTIVE";
     }) => {
         try {
@@ -183,7 +186,7 @@ export function SemesterManagement() {
     const handleEdit = async (data: {
         name: string;
         year: number;
-        departmentId: number;
+        departmentId: string;
         isActive: "ACTIVE" | "INACTIVE";
     }) => {
         if (!selectedSemester) return;
