@@ -6,12 +6,13 @@ import {
     managerProcedure,
     studentProcedure,
     createCustomProcedure,
-} from "../trpc";
+} from "../../trpc";
 import { UserType } from "@/lib/auth/utils";
 import { db } from "@/db";
 import { usersTable } from "@/db/schema/user/user";
 import { eq, or, ilike, and, desc, count } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { keycloakAdmin } from "@/lib/keycloak/admin";
 
 /**
  * User management router - demonstrates different RBAC levels
@@ -406,5 +407,142 @@ export const userRouter = createTRPCRouter({
                 grade: input.grade,
                 gradedBy: ctx.session.user.id,
             };
+        }),
+
+    /**
+     * ADMIN ONLY - Get Keycloak sync statistics
+     */
+    getSyncStats: adminProcedure.query(async () => {
+        try {
+            // Fetch users from Keycloak
+            const keycloakUsers = await keycloakAdmin.getAllUsers();
+
+            // Fetch all users from database
+            const dbUsers = await db.select().from(usersTable);
+
+            // Create maps for comparison
+            const dbUserEmailMap = new Map(dbUsers.map((user) => [user.email.toLowerCase(), user]));
+
+            // Find unsynced users (in Keycloak but not in DB)
+            const unsyncedUsers = keycloakUsers.filter(
+                (kcUser) => kcUser.email && !dbUserEmailMap.has(kcUser.email.toLowerCase())
+            );
+
+            logger.info(
+                {
+                    keycloakCount: keycloakUsers.length,
+                    dbCount: dbUsers.length,
+                    unsyncedCount: unsyncedUsers.length,
+                },
+                "Keycloak sync stats retrieved"
+            );
+
+            return {
+                keycloakUserCount: keycloakUsers.length,
+                dbUserCount: dbUsers.length,
+                unsyncedUserCount: unsyncedUsers.length,
+                unsyncedUsers: unsyncedUsers.map((user) => ({
+                    id: user.id,
+                    email: user.email || "",
+                    firstName: user.firstName || "",
+                    lastName: user.lastName || "",
+                    username: user.username,
+                    enabled: user.enabled,
+                    roles: user.realmRoles || [],
+                    groups: user.groups || [],
+                    profileId: user.attributes?.profileId?.[0] || "",
+                    phoneNumber: user.attributes?.phoneNumber?.[0] || "",
+                })),
+            };
+        } catch (error) {
+            logger.error({ error }, "Error getting sync stats");
+            throw error;
+        }
+    }),
+
+    /**
+     * ADMIN ONLY - Sync users from Keycloak to database
+     */
+    syncFromKeycloak: adminProcedure
+        .input(
+            z.object({
+                userIds: z.array(z.string()).optional(), // If provided, sync only these users
+            })
+        )
+        .mutation(async ({ ctx, input }) => {
+            try {
+                // Fetch users from Keycloak
+                const keycloakUsers = await keycloakAdmin.getAllUsers();
+
+                // Filter by userIds if provided
+                const usersToSync = input.userIds
+                    ? keycloakUsers.filter((user) => input.userIds!.includes(user.id))
+                    : keycloakUsers;
+
+                // Fetch existing users from database
+                const dbUsers = await db.select().from(usersTable);
+                const dbUserEmailMap = new Map(
+                    dbUsers.map((user) => [user.email.toLowerCase(), user])
+                );
+
+                // Find users that need to be synced (not in DB)
+                const newUsers = usersToSync.filter(
+                    (kcUser) => kcUser.email && !dbUserEmailMap.has(kcUser.email.toLowerCase())
+                );
+
+                if (newUsers.length === 0) {
+                    return {
+                        success: true,
+                        syncedCount: 0,
+                        message: "No new users to sync",
+                    };
+                }
+
+                // Map Keycloak roles to application roles
+                const mapKeycloakRole = (
+                    realmRoles: string[]
+                ): "ADMIN" | "FACULTY" | "STUDENT" | "MANAGER" => {
+                    if (realmRoles.includes("/admin")) return "ADMIN";
+                    if (realmRoles.includes("/manager")) return "MANAGER";
+                    if (realmRoles.includes("/faculty")) return "FACULTY";
+                    if (realmRoles.includes("/student")) return "STUDENT";
+                    return "STUDENT"; // Default role
+                };
+
+                // Insert new users into database
+                const usersToInsert = newUsers.map((kcUser) => {
+                    const fullName =
+                        [kcUser.firstName, kcUser.lastName].filter(Boolean).join(" ").trim() ||
+                        kcUser.username;
+
+                    return {
+                        name: fullName,
+                        email: kcUser.email!.toLowerCase(),
+                        profileId: kcUser.attributes?.profileId?.[0] || kcUser.username,
+                        role: mapKeycloakRole(kcUser.groups || []),
+                        phoneNumber: kcUser.attributes?.phoneNumber?.[0] || null,
+                        status: (kcUser.enabled ? "ACTIVE" : "INACTIVE") as "ACTIVE" | "INACTIVE",
+                    };
+                });
+
+                const insertedUsers = await db.insert(usersTable).values(usersToInsert).returning();
+
+                logger.info(
+                    {
+                        syncedCount: insertedUsers.length,
+                        syncedBy: ctx.session.user.id,
+                    },
+                    "Users synced from Keycloak"
+                );
+
+                return {
+                    success: true,
+                    syncedCount: insertedUsers.length,
+                    message: `Successfully synced ${insertedUsers.length} users from Keycloak`,
+                };
+            } catch (error) {
+                logger.error({ error }, "Error syncing users from Keycloak");
+                throw error;
+            }
         }),
 });

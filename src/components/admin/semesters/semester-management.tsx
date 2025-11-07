@@ -7,12 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Calendar, Filter, Plus, Search, BookOpen } from "lucide-react";
-import { Modal } from "@/components/admin/shared/modal";
 import { DataTable } from "@/components/admin/shared/data-table";
 import { SemesterForm } from "./semester-form";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useRouter } from "next/navigation";
-import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Semester {
     id: string;
@@ -469,50 +478,57 @@ export function SemesterManagement() {
             </Card>
 
             {/* Create Modal */}
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Create Semester"
-                Backdrop={true}
-            >
-                <SemesterForm
-                    onSubmit={handleCreate}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </Modal>
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Create Semester</DialogTitle>
+                    </DialogHeader>
+                    <SemesterForm
+                        onSubmit={handleCreate}
+                        onCancel={() => setIsCreateModalOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Edit Modal */}
-            <Modal
-                isOpen={isEditModalOpen}
-                onClose={() => {
-                    setIsEditModalOpen(false);
-                    setSelectedSemester(null);
+            <Dialog
+                open={isEditModalOpen}
+                onOpenChange={(open) => {
+                    setIsEditModalOpen(open);
+                    if (!open) setSelectedSemester(null);
                 }}
-                title="Edit Semester"
-                Backdrop={true}
             >
-                <SemesterForm
-                    initialData={selectedSemester}
-                    onSubmit={handleEdit}
-                    onCancel={() => {
-                        setIsEditModalOpen(false);
-                        setSelectedSemester(null);
-                    }}
-                />
-            </Modal>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Semester</DialogTitle>
+                    </DialogHeader>
+                    <SemesterForm
+                        initialData={selectedSemester}
+                        onSubmit={handleEdit}
+                        onCancel={() => {
+                            setIsEditModalOpen(false);
+                            setSelectedSemester(null);
+                        }}
+                    />
+                </DialogContent>
+            </Dialog>
 
-            {/* Delete Confirmation Modal */}
-            <ConfirmationDialog
-                isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
-                title="Delete Semester"
-                message={`Are you sure you want to delete the semester 
-                    "${semesterToDelete?.name}"? 
-                    This action cannot be undone.`}
-                onAccept={confirmDelete}
-                confirmButtonText="Delete"
-                cancelButtonText="Cancel"
-            />
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Semester</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete the semester &quot;
+                            {semesterToDelete?.name}&quot;? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

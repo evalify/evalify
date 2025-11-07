@@ -67,7 +67,7 @@ export const protectedProcedure = t.procedure.use(isAuthenticated);
  * @param requiredRoles - Array of roles that have access
  * @param requiredGroups - Array of groups that have access (optional)
  */
-export function createRBACMiddleware(requiredRoles: UserType[], requiredGroups: string[] = []) {
+export function createRBACMiddleware(requiredGroups: UserType[], requiredRoles: string[] = []) {
     return t.middleware(async ({ ctx, next }) => {
         const session = getSessionFromContext(ctx);
 
@@ -80,10 +80,10 @@ export function createRBACMiddleware(requiredRoles: UserType[], requiredGroups: 
         }
 
         const userHasAccess = hasAccess(
-            session.user.roles,
             session.user.groups,
-            requiredRoles,
-            requiredGroups
+            session.user.roles,
+            requiredGroups,
+            requiredRoles
         );
 
         if (!userHasAccess) {
@@ -139,6 +139,14 @@ export const facultyProcedure = protectedProcedure.use(createRBACMiddleware([Use
  * Users with 'manager' role can call these endpoints
  */
 export const managerProcedure = protectedProcedure.use(createRBACMiddleware([UserType.MANAGER]));
+
+/**
+ * Faculty and Manager procedure
+ * Users with 'faculty' or 'manager' roles can call these endpoints
+ */
+export const facultyAndManagerProcedure = protectedProcedure.use(
+    createRBACMiddleware([UserType.STAFF, UserType.MANAGER])
+);
 
 /**
  * Student procedure

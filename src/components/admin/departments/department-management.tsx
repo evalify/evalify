@@ -6,12 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building, Filter, Plus, Search } from "lucide-react";
-import { Modal } from "@/components/admin/shared/modal";
 import { DataTable } from "@/components/admin/shared/data-table";
 import { DepartmentForm } from "./department-form";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useToast } from "@/hooks/use-toast";
-import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Department {
     id: string;
@@ -337,50 +346,57 @@ export function DepartmentManagement() {
             </Card>
 
             {/* Create Modal */}
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Create Department"
-                Backdrop={true}
-            >
-                <DepartmentForm
-                    onSubmit={handleCreate}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </Modal>
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Create Department</DialogTitle>
+                    </DialogHeader>
+                    <DepartmentForm
+                        onSubmit={handleCreate}
+                        onCancel={() => setIsCreateModalOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Edit Modal */}
-            <Modal
-                isOpen={isEditModalOpen}
-                onClose={() => {
-                    setIsEditModalOpen(false);
-                    setSelectedDepartment(null);
+            <Dialog
+                open={isEditModalOpen}
+                onOpenChange={(open) => {
+                    setIsEditModalOpen(open);
+                    if (!open) setSelectedDepartment(null);
                 }}
-                title="Edit Department"
-                Backdrop={true}
             >
-                <DepartmentForm
-                    initialData={selectedDepartment}
-                    onSubmit={handleEdit}
-                    onCancel={() => {
-                        setIsEditModalOpen(false);
-                        setSelectedDepartment(null);
-                    }}
-                />
-            </Modal>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Department</DialogTitle>
+                    </DialogHeader>
+                    <DepartmentForm
+                        initialData={selectedDepartment}
+                        onSubmit={handleEdit}
+                        onCancel={() => {
+                            setIsEditModalOpen(false);
+                            setSelectedDepartment(null);
+                        }}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Delete Confirmation Dialog */}
-            <ConfirmationDialog
-                isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
-                title="Delete Department"
-                message={`Are you sure you want to delete the department
-                     "${departmentToDelete?.name}"? 
-                     This action cannot be undone.`}
-                onAccept={confirmDelete}
-                confirmButtonText="Delete"
-                cancelButtonText="Cancel"
-            />
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Department</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete the department &quot;
+                            {departmentToDelete?.name}&quot;? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

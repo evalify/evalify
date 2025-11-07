@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, UserPlus, UserMinus, Users, X, CheckCircle, Loader2 } from "lucide-react";
+import { Search, UserPlus, UserMinus, Users, CheckCircle, Loader2 } from "lucide-react";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,7 +17,7 @@ interface BatchStudentsModalProps {
     onClose: () => void;
 }
 
-export function BatchStudentsModal({ batchId, batchName, onClose }: BatchStudentsModalProps) {
+export function BatchStudentsModal({ batchId, batchName }: BatchStudentsModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
     const [isAddingStudents, setIsAddingStudents] = useState(false);
@@ -126,18 +126,14 @@ export function BatchStudentsModal({ batchId, batchName, onClose }: BatchStudent
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-xl font-semibold">Manage Students</h2>
                     <p className="text-gray-600 dark:text-gray-400">
                         {batchName} • {batchStudents.length} students enrolled
                     </p>
                 </div>
-                <Button variant="outline" onClick={onClose}>
-                    <X className="h-4 w-4 mr-2" />
-                    Close
-                </Button>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
+                \n
                 {/* Add Students Section */}
                 <Card>
                     <CardHeader>
@@ -239,7 +235,6 @@ export function BatchStudentsModal({ batchId, batchName, onClose }: BatchStudent
                         </div>
                     </CardContent>
                 </Card>
-
                 {/* Current Students Section */}
                 <Card>
                     <CardHeader>

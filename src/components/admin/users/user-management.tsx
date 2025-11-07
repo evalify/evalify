@@ -6,13 +6,23 @@ import { trpc } from "@/lib/trpc/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { User, Plus, Search, Filter } from "lucide-react";
-import { Modal } from "@/components/admin/shared/modal";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { User, Plus, Search, Filter, RefreshCw } from "lucide-react";
 import { DataTable } from "@/components/admin/shared/data-table";
 import { UserForm } from "./user-form";
 import { useAnalytics } from "@/hooks/use-analytics";
-import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { KeycloakSyncDialog } from "./keycloak-sync-dialog";
 
 interface User {
     id: string;
@@ -41,6 +51,7 @@ export function UserManagement() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
 
     const { track } = useAnalytics();
     const toast = useToast();
@@ -261,25 +272,33 @@ export function UserManagement() {
                     </h2>
                     <p className="text-muted-foreground">Manage users, roles, and permissions</p>
                 </div>
-                <Button
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="flex items-center gap-2"
-                >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create User
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        onClick={() => setIsSyncDialogOpen(true)}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                    >
+                        <RefreshCw className="h-4 w-4" />
+                        Sync from Keycloak
+                    </Button>
+                    <Button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center gap-2"
+                    >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create User
+                    </Button>
+                </div>
             </div>
 
             {/* Filters Card */}
-            <Card className="">
+            <Card>
                 <CardHeader>
-                    <div className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
                         <Filter className="h-5 w-5" />
-                        <h3 className="text-lg font-semibold">Filters</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                        Filter users by name, email, role, or status
-                    </p>
+                        Filters
+                    </CardTitle>
+                    <CardDescription>Filter users by name, email, role, or status</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -358,14 +377,14 @@ export function UserManagement() {
             </Card>
 
             {/* Data Table Card */}
-            <Card className="">
+            <Card>
                 <CardHeader className="flex flex-row items-start justify-between">
                     <div>
-                        <h3 className="text-lg font-semibold">Users</h3>
-                        <p className="text-sm text-muted-foreground">
+                        <CardTitle>Users</CardTitle>
+                        <CardDescription>
                             {total} total users
                             {searchTerm && ` matching "${searchTerm}"`}
-                        </p>
+                        </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
                         <label className="text-sm text-muted-foreground">Show:</label>
@@ -430,50 +449,67 @@ export function UserManagement() {
             </Card>
 
             {/* Create Modal */}
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Create User"
-                size="lg"
-                Backdrop={true}
-            >
-                <UserForm onSubmit={handleCreate} onCancel={() => setIsCreateModalOpen(false)} />
-            </Modal>
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Create User</DialogTitle>
+                    </DialogHeader>
+                    <UserForm
+                        onSubmit={handleCreate}
+                        onCancel={() => setIsCreateModalOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Edit Modal */}
-            <Modal
-                isOpen={isEditModalOpen}
-                onClose={() => {
-                    setIsEditModalOpen(false);
-                    setSelectedUser(null);
+            <Dialog
+                open={isEditModalOpen}
+                onOpenChange={(open) => {
+                    setIsEditModalOpen(open);
+                    if (!open) setSelectedUser(null);
                 }}
-                title="Edit User"
-                size="lg"
-                Backdrop={true}
             >
-                <UserForm
-                    initialData={selectedUser}
-                    onSubmit={handleEdit}
-                    onCancel={() => {
-                        setIsEditModalOpen(false);
-                        setSelectedUser(null);
-                    }}
-                />
-            </Modal>
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Edit User</DialogTitle>
+                    </DialogHeader>
+                    <UserForm
+                        initialData={selectedUser}
+                        onSubmit={handleEdit}
+                        onCancel={() => {
+                            setIsEditModalOpen(false);
+                            setSelectedUser(null);
+                        }}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Delete Confirmation Dialog */}
-            <ConfirmationDialog
-                isOpen={isDeleteDialogOpen}
-                onOpenChange={setIsDeleteDialogOpen}
-                title="Deactivate User"
-                message={
-                    userToDelete
-                        ? `Are you sure you want to deactivate "${userToDelete.name}" (${userToDelete.email})? This will set their status to inactive.`
-                        : ""
-                }
-                onAccept={confirmDelete}
-                confirmButtonText="Deactivate"
-                cancelButtonText="Cancel"
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {userToDelete
+                                ? `Are you sure you want to deactivate "${userToDelete.name}" (${userToDelete.email})? This will set their status to inactive.`
+                                : ""}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete}>Deactivate</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Keycloak Sync Dialog */}
+            <KeycloakSyncDialog
+                isOpen={isSyncDialogOpen}
+                onClose={() => setIsSyncDialogOpen(false)}
+                onSyncComplete={() => {
+                    // Refetch users list after sync
+                    usersResult.refetch();
+                }}
             />
         </div>
     );

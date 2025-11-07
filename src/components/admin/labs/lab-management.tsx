@@ -7,10 +7,10 @@ import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { Building2, Plus, Search, Network, Filter } from "lucide-react";
-import { Modal } from "../shared/modal";
 import { LabForm } from "./lab-form";
 import { DataTable } from "../shared/data-table";
 import { useAnalytics } from "../../../hooks/use-analytics";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Lab {
     id: string;
@@ -321,45 +321,53 @@ export function LabManagement() {
             </Card>
 
             {/* Create Lab Modal */}
-            <Modal
-                isOpen={showCreateModal}
-                onClose={() => {
-                    setShowCreateModal(false);
-                    track("Lab Create Modal Closed", { action: "cancel" });
+            <Dialog
+                open={showCreateModal}
+                onOpenChange={(open) => {
+                    setShowCreateModal(open);
+                    if (!open) track("Lab Create Modal Closed", { action: "cancel" });
                 }}
-                title="Create New Lab"
-                Backdrop={true}
             >
-                <LabForm
-                    onSuccess={handleCreateSuccess}
-                    onCancel={() => {
-                        setShowCreateModal(false);
-                        track("Lab Create Modal Closed", { action: "cancel" });
-                    }}
-                />
-            </Modal>
-
-            {/* Edit Lab Modal */}
-            <Modal
-                isOpen={!!editingLab}
-                onClose={() => {
-                    setEditingLab(null);
-                    track("Lab Edit Modal Closed", { action: "cancel" });
-                }}
-                title="Edit Lab"
-                Backdrop={true}
-            >
-                {editingLab && (
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Create New Lab</DialogTitle>
+                    </DialogHeader>
                     <LabForm
-                        labId={editingLab}
-                        onSuccess={handleEditSuccess}
+                        onSuccess={handleCreateSuccess}
                         onCancel={() => {
-                            setEditingLab(null);
-                            track("Lab Edit Modal Closed", { action: "cancel" });
+                            setShowCreateModal(false);
+                            track("Lab Create Modal Closed", { action: "cancel" });
                         }}
                     />
-                )}
-            </Modal>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Lab Modal */}
+            <Dialog
+                open={!!editingLab}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setEditingLab(null);
+                        track("Lab Edit Modal Closed", { action: "cancel" });
+                    }
+                }}
+            >
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Lab</DialogTitle>
+                    </DialogHeader>
+                    {editingLab && (
+                        <LabForm
+                            labId={editingLab}
+                            onSuccess={handleEditSuccess}
+                            onCancel={() => {
+                                setEditingLab(null);
+                                track("Lab Edit Modal Closed", { action: "cancel" });
+                            }}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
