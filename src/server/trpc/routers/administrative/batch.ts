@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, adminProcedure } from "../trpc";
+import { createTRPCRouter, adminProcedure } from "../../trpc";
 import { db } from "@/db";
 import { batchesTable, batchStudentsTable, usersTable, departmentsTable } from "@/db/schema";
 import { eq, and, or, ilike, desc, count, inArray } from "drizzle-orm";
