@@ -98,7 +98,7 @@ export const labRouter = createTRPCRouter({
     get: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .query(async ({ input }) => {
@@ -169,7 +169,7 @@ export const labRouter = createTRPCRouter({
     update: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
                 name: z.string().min(1).max(255).optional(),
                 block: z.string().min(1).max(100).optional(),
                 ipSubnet: z
@@ -216,7 +216,7 @@ export const labRouter = createTRPCRouter({
     delete: adminProcedure
         .input(
             z.object({
-                id: z.number(),
+                id: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {

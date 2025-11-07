@@ -15,13 +15,13 @@ import { useToast } from "@/hooks/use-toast";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface Batch {
-    id: number;
+    id: string;
     createdAt: Date;
     name: string;
     joinYear: number;
     graduationYear: number;
     section: string;
-    departmentId: number;
+    departmentId: string;
     isActive: "ACTIVE" | "INACTIVE";
     updatedAt: Date | null;
     departmentName?: string | null;
@@ -29,7 +29,7 @@ interface Batch {
 
 export function BatchManagement() {
     const [searchTerm, setSearchTerm] = useState("");
-    const [departmentFilter, setDepartmentFilter] = useState<number | "ALL">("ALL");
+    const [departmentFilter, setDepartmentFilter] = useState<string | "ALL">("ALL");
     const [yearFilter, setYearFilter] = useState<string>("ALL");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
     const [currentPage, setCurrentPage] = useState(1);
@@ -112,7 +112,7 @@ export function BatchManagement() {
         }
 
         if (departmentFilter !== "ALL") {
-            filtered = filtered.filter((batch) => batch.departmentId === Number(departmentFilter));
+            filtered = filtered.filter((batch) => batch.departmentId === departmentFilter);
         }
 
         if (yearFilter !== "ALL") {
@@ -144,7 +144,7 @@ export function BatchManagement() {
         joinYear: number;
         graduationYear: number;
         section: string;
-        departmentId: number;
+        departmentId: string;
         isActive: "ACTIVE" | "INACTIVE";
     }) => {
         try {
@@ -166,7 +166,7 @@ export function BatchManagement() {
         joinYear: number;
         graduationYear: number;
         section: string;
-        departmentId: number;
+        departmentId: string;
         isActive: "ACTIVE" | "INACTIVE";
     }) => {
         if (!selectedBatch) return;
@@ -349,9 +349,7 @@ export function BatchManagement() {
                             <select
                                 value={departmentFilter}
                                 onChange={(e) => {
-                                    setDepartmentFilter(
-                                        e.target.value === "ALL" ? "ALL" : Number(e.target.value)
-                                    );
+                                    setDepartmentFilter(e.target.value);
                                     setCurrentPage(1);
                                 }}
                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

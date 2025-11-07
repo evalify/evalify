@@ -13,7 +13,7 @@ import { useAnalytics } from "../../../hooks/use-analytics";
 import { useToast } from "@/hooks/use-toast";
 
 interface LabFormProps {
-    labId?: number;
+    labId?: string;
     onSuccess: () => void;
     onCancel: () => void;
 }

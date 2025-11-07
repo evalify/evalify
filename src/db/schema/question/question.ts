@@ -1,4 +1,4 @@
-import { index, integer, varchar, uuid, jsonb, real } from "drizzle-orm/pg-core";
+import { index, varchar, uuid, jsonb, real } from "drizzle-orm/pg-core";
 import { pgTable, pgEnum } from "drizzle-orm/pg-core";
 import { timestamps } from "../utils";
 import { usersTable } from "../user/user";
@@ -68,7 +68,7 @@ export const questionsTable = pgTable(
         solution: jsonb("solution").notNull(),
 
         // Audit fields
-        createdById: integer("created_by_id")
+        createdById: uuid("created_by_id")
             .notNull()
             .references(() => usersTable.id, { onDelete: "cascade" }),
         ...timestamps,

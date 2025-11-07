@@ -4,7 +4,6 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../../ui/button";
-import { Input } from "../../ui/input";
 import { Badge } from "../../ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../ui/card";
 import { Building2, Plus, Search, Network, Filter } from "lucide-react";
@@ -14,7 +13,7 @@ import { DataTable } from "../shared/data-table";
 import { useAnalytics } from "../../../hooks/use-analytics";
 
 interface Lab {
-    id: number;
+    id: string;
     name: string;
     block: string;
     ipSubnet: string;
@@ -31,7 +30,7 @@ export function LabManagement() {
     const [blockFilter, setBlockFilter] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [editingLab, setEditingLab] = useState<number | null>(null);
+    const [editingLab, setEditingLab] = useState<string | null>(null);
 
     const [limit, setLimit] = useState(5);
 
@@ -72,7 +71,7 @@ export function LabManagement() {
         track("Lab Edit Modal Closed", { action: "success" });
     };
 
-    const handleDelete = async (labId: number) => {
+    const handleDelete = async (labId: string) => {
         if (!confirm("Are you sure you want to delete this lab?")) return;
 
         try {

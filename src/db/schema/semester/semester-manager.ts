@@ -1,4 +1,4 @@
-import { index, integer, primaryKey } from "drizzle-orm/pg-core";
+import { index, uuid, primaryKey } from "drizzle-orm/pg-core";
 import { pgTable } from "drizzle-orm/pg-core";
 import { semestersTable } from "./semester";
 import { usersTable } from "../user/user";
@@ -7,10 +7,10 @@ import { timestamps } from "../utils";
 export const semesterManagersTable = pgTable(
     "semester_managers",
     {
-        semesterId: integer("semester_id")
+        semesterId: uuid("semester_id")
             .notNull()
             .references(() => semestersTable.id, { onDelete: "cascade" }),
-        managerId: integer("manager_id")
+        managerId: uuid("manager_id")
             .notNull()
             .references(() => usersTable.id, { onDelete: "cascade" }),
         ...timestamps,

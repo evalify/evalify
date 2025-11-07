@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserCheck, Plus, X, Search, AlertTriangle } from "lucide-react";
 
 interface CourseInstructorsModalProps {
-    courseId: number;
+    courseId: string;
     onClose: () => void;
 }
 
@@ -61,7 +61,7 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
         },
     });
 
-    const handleAddInstructor = async (instructorId: number) => {
+    const handleAddInstructor = async (instructorId: string) => {
         setIsLoading(true);
         try {
             await addInstructor.mutateAsync({ courseId, instructorId });
@@ -71,7 +71,7 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
         }
     };
 
-    const handleRemoveInstructor = async (instructorId: number) => {
+    const handleRemoveInstructor = async (instructorId: string) => {
         if (confirm("Are you sure you want to remove this instructor from the course?")) {
             setIsLoading(true);
             try {

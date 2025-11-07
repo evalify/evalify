@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Save, X } from "lucide-react";
 
 interface Department {
-    id: number;
+    id: string;
     name: string;
     isActive: "ACTIVE" | "INACTIVE";
     createdAt: Date;
