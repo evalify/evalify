@@ -177,7 +177,7 @@ export function LabForm({ labId, onSuccess, onCancel }: LabFormProps) {
                 </Alert>
             )}
 
-            <div className="flex flex-col">
+            <div className="flex gap-4 flex-col">
                 {/* Basic Information */}
                 <Card>
                     <CardHeader>
