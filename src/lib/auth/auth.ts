@@ -12,6 +12,7 @@ interface KeycloakToken {
     id_token?: string;
     error?: string;
     id?: string;
+    sub?: string;
     [key: string]: unknown;
 }
 
