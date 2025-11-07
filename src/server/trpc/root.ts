@@ -7,6 +7,7 @@ import { labRouter } from "./routers/administrative/lab";
 import { semesterRouter } from "./routers/administrative/semester";
 import { facultyCourseRouter } from "./routers/academic/faculty/course";
 import { studentCourseRouter } from "./routers/academic/student/course";
+import { bankRouter } from "./routers/academic/faculty/bank";
 
 /**
  * Root tRPC router
@@ -21,6 +22,7 @@ export const appRouter = createTRPCRouter({
     semester: semesterRouter,
     facultyCourse: facultyCourseRouter,
     studentCourse: studentCourseRouter,
+    bank: bankRouter,
 });
 
 // Export type definition of API
