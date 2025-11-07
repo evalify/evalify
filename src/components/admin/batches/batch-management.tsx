@@ -6,13 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Filter, Plus, Search, Users, UserCheck } from "lucide-react";
-import { Modal } from "@/components/admin/shared/modal";
 import { DataTable } from "@/components/admin/shared/data-table";
 import { BatchForm } from "./batch-form";
 import { BatchStudentsModal } from "./batch-students-modal";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useToast } from "@/hooks/use-toast";
-import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Batch {
     id: string;
@@ -485,70 +494,84 @@ export function BatchManagement() {
             </Card>
 
             {/* Create Modal */}
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Create Batch"
-                Backdrop={true}
-            >
-                <BatchForm
-                    departments={departments}
-                    onSubmit={handleCreate}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </Modal>
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Create Batch</DialogTitle>
+                    </DialogHeader>
+                    <BatchForm
+                        departments={departments}
+                        onSubmit={handleCreate}
+                        onCancel={() => setIsCreateModalOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Edit Modal */}
-            <Modal
-                isOpen={isEditModalOpen}
-                onClose={() => {
-                    setIsEditModalOpen(false);
-                    setSelectedBatch(null);
+            <Dialog
+                open={isEditModalOpen}
+                onOpenChange={(open) => {
+                    setIsEditModalOpen(open);
+                    if (!open) setSelectedBatch(null);
                 }}
-                title="Edit Batch"
             >
-                <BatchForm
-                    departments={departments}
-                    initialData={selectedBatch}
-                    onSubmit={handleEdit}
-                    onCancel={() => {
-                        setIsEditModalOpen(false);
-                        setSelectedBatch(null);
-                    }}
-                />
-            </Modal>
-
-            {/* Students Modal */}
-            <Modal
-                isOpen={isStudentsModalOpen}
-                onClose={() => {
-                    setIsStudentsModalOpen(false);
-                    setSelectedBatch(null);
-                }}
-                title={`Manage Students - ${selectedBatch?.name}`}
-                size="xl"
-            >
-                {selectedBatch && (
-                    <BatchStudentsModal
-                        batchId={selectedBatch.id}
-                        batchName={selectedBatch.name}
-                        onClose={() => {
-                            setIsStudentsModalOpen(false);
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Batch</DialogTitle>
+                    </DialogHeader>
+                    <BatchForm
+                        departments={departments}
+                        initialData={selectedBatch}
+                        onSubmit={handleEdit}
+                        onCancel={() => {
+                            setIsEditModalOpen(false);
                             setSelectedBatch(null);
                         }}
                     />
-                )}
-            </Modal>
+                </DialogContent>
+            </Dialog>
+
+            {/* Students Modal */}
+            <Dialog
+                open={isStudentsModalOpen}
+                onOpenChange={(open) => {
+                    setIsStudentsModalOpen(open);
+                    if (!open) setSelectedBatch(null);
+                }}
+            >
+                <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Manage Students - {selectedBatch?.name}</DialogTitle>
+                    </DialogHeader>
+                    {selectedBatch && (
+                        <BatchStudentsModal
+                            batchId={selectedBatch.id}
+                            batchName={selectedBatch.name}
+                            onClose={() => {
+                                setIsStudentsModalOpen(false);
+                                setSelectedBatch(null);
+                            }}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* Delete Confirmation Dialog */}
-            <ConfirmationDialog
-                isOpen={isDeleteDialogOpen}
-                title="Delete Batch"
-                message={`Are you sure you want to delete the batch "${batchToDelete?.name}"? This action cannot be undone.`}
-                onAccept={confirmDelete}
-                confirmButtonText="Delete"
-                cancelButtonText="Cancel"
-            />
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Batch</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete the batch &quot;{batchToDelete?.name}
+                            &quot;? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

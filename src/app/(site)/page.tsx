@@ -4,10 +4,19 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import ThemeToggle from "@/components/ui/theme-toggle";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
 
 // Main landing page component
 function HomeContent() {
     const router = useRouter();
+
+    const session = useSession();
+    useEffect(() => {
+        if (session.data?.user) {
+            router.push("/dashboard");
+        }
+    }, [router, session.data?.user]);
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden transition-all duration-500 bg-gradient-to-br from-slate-50 via-white to-gray-100 dark:from-gray-900 dark:via-slate-900 dark:to-black">

@@ -8,12 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { BookOpen, Filter, Plus, Search, Users, GraduationCap, UserCheck } from "lucide-react";
-import { Modal } from "@/components/admin/shared/modal";
 import { DataTable } from "@/components/admin/shared/data-table";
 import { CourseForm } from "./course-form";
 import { CourseInstructorsModal } from "./course-instructors-modal";
 import { CourseStudentsModal } from "./course-students-modal";
 import { CourseBatchesModal } from "./course-batches-modal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Course {
     id: string;
@@ -550,110 +550,122 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
             </Card>
 
             {/* Create Modal */}
-            <Modal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                title="Create Course"
-                size="lg"
-            >
-                <CourseForm
-                    semesters={activeSemesters}
-                    fixedSemesterId={semesterId}
-                    onSubmit={handleCreate}
-                    onCancel={() => setIsCreateModalOpen(false)}
-                />
-            </Modal>
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Create Course</DialogTitle>
+                    </DialogHeader>
+                    <CourseForm
+                        semesters={activeSemesters}
+                        fixedSemesterId={semesterId}
+                        onSubmit={handleCreate}
+                        onCancel={() => setIsCreateModalOpen(false)}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Edit Modal */}
-            <Modal
-                isOpen={isEditModalOpen}
-                onClose={() => {
-                    setIsEditModalOpen(false);
-                    setSelectedCourse(null);
+            <Dialog
+                open={isEditModalOpen}
+                onOpenChange={(open) => {
+                    setIsEditModalOpen(open);
+                    if (!open) setSelectedCourse(null);
                 }}
-                title="Edit Course"
-                size="lg"
             >
-                <CourseForm
-                    semesters={activeSemesters}
-                    fixedSemesterId={semesterId}
-                    initialData={
-                        selectedCourse
-                            ? {
-                                  ...selectedCourse,
-                                  image: selectedCourse.image || undefined,
-                              }
-                            : null
-                    }
-                    onSubmit={handleEdit}
-                    onCancel={() => {
-                        setIsEditModalOpen(false);
-                        setSelectedCourse(null);
-                    }}
-                />
-            </Modal>
+                <DialogContent className="sm:max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Edit Course</DialogTitle>
+                    </DialogHeader>
+                    <CourseForm
+                        semesters={activeSemesters}
+                        fixedSemesterId={semesterId}
+                        initialData={
+                            selectedCourse
+                                ? {
+                                      ...selectedCourse,
+                                      image: selectedCourse.image || undefined,
+                                  }
+                                : null
+                        }
+                        onSubmit={handleEdit}
+                        onCancel={() => {
+                            setIsEditModalOpen(false);
+                            setSelectedCourse(null);
+                        }}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Instructors Modal */}
             {selectedCourseForModal && (
-                <Modal
-                    isOpen={isInstructorsModalOpen}
-                    onClose={() => {
-                        setIsInstructorsModalOpen(false);
-                        setSelectedCourseForModal(null);
+                <Dialog
+                    open={isInstructorsModalOpen}
+                    onOpenChange={(open) => {
+                        setIsInstructorsModalOpen(open);
+                        if (!open) setSelectedCourseForModal(null);
                     }}
-                    title="Manage Course Instructors"
-                    size="2xl"
                 >
-                    <CourseInstructorsModal
-                        courseId={selectedCourseForModal}
-                        onClose={() => {
-                            setIsInstructorsModalOpen(false);
-                            setSelectedCourseForModal(null);
-                        }}
-                    />
-                </Modal>
+                    <DialogContent className="sm:max-w-6xl">
+                        <DialogHeader>
+                            <DialogTitle>Manage Course Instructors</DialogTitle>
+                        </DialogHeader>
+                        <CourseInstructorsModal
+                            courseId={selectedCourseForModal}
+                            onClose={() => {
+                                setIsInstructorsModalOpen(false);
+                                setSelectedCourseForModal(null);
+                            }}
+                        />
+                    </DialogContent>
+                </Dialog>
             )}
 
             {/* Students Modal */}
             {selectedCourseForModal && (
-                <Modal
-                    isOpen={isStudentsModalOpen}
-                    onClose={() => {
-                        setIsStudentsModalOpen(false);
-                        setSelectedCourseForModal(null);
+                <Dialog
+                    open={isStudentsModalOpen}
+                    onOpenChange={(open) => {
+                        setIsStudentsModalOpen(open);
+                        if (!open) setSelectedCourseForModal(null);
                     }}
-                    title="Manage Course Students"
-                    size="2xl"
                 >
-                    <CourseStudentsModal
-                        courseId={selectedCourseForModal}
-                        onClose={() => {
-                            setIsStudentsModalOpen(false);
-                            setSelectedCourseForModal(null);
-                        }}
-                    />
-                </Modal>
+                    <DialogContent className="sm:max-w-6xl">
+                        <DialogHeader>
+                            <DialogTitle>Manage Course Students</DialogTitle>
+                        </DialogHeader>
+                        <CourseStudentsModal
+                            courseId={selectedCourseForModal}
+                            onClose={() => {
+                                setIsStudentsModalOpen(false);
+                                setSelectedCourseForModal(null);
+                            }}
+                        />
+                    </DialogContent>
+                </Dialog>
             )}
 
             {/* Batches Modal */}
             {selectedCourseForModal && (
-                <Modal
-                    isOpen={isBatchesModalOpen}
-                    onClose={() => {
-                        setIsBatchesModalOpen(false);
-                        setSelectedCourseForModal(null);
+                <Dialog
+                    open={isBatchesModalOpen}
+                    onOpenChange={(open) => {
+                        setIsBatchesModalOpen(open);
+                        if (!open) setSelectedCourseForModal(null);
                     }}
-                    title="Manage Course Batches"
-                    size="2xl"
                 >
-                    <CourseBatchesModal
-                        courseId={selectedCourseForModal}
-                        onClose={() => {
-                            setIsBatchesModalOpen(false);
-                            setSelectedCourseForModal(null);
-                        }}
-                    />
-                </Modal>
+                    <DialogContent className="sm:max-w-6xl">
+                        <DialogHeader>
+                            <DialogTitle>Manage Course Batches</DialogTitle>
+                        </DialogHeader>
+                        <CourseBatchesModal
+                            courseId={selectedCourseForModal}
+                            onClose={() => {
+                                setIsBatchesModalOpen(false);
+                                setSelectedCourseForModal(null);
+                            }}
+                        />
+                    </DialogContent>
+                </Dialog>
             )}
         </div>
     );

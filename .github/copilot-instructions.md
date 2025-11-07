@@ -27,4 +27,4 @@
 - Handle errors gracefully and provide meaningful feedback to users.
 - properly document complex functions and components with comments.
 - properly give informative messages in the UI for better user experience. you can add tooltips where necessary.
--
+- Always Use shadCNUI components for building the UI. follow the design system.

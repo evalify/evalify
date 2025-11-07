@@ -1,10 +1,12 @@
 import { createTRPCRouter } from "./trpc";
-import { userRouter } from "./routers/user";
-import { courseRouter } from "./routers/course";
-import { departmentRouter } from "./routers/department";
-import { batchRouter } from "./routers/batch";
-import { labRouter } from "./routers/lab";
-import { semesterRouter } from "./routers/semester";
+import { userRouter } from "./routers/administrative/user";
+import { courseRouter } from "./routers/administrative/course";
+import { departmentRouter } from "./routers/administrative/department";
+import { batchRouter } from "./routers/administrative/batch";
+import { labRouter } from "./routers/administrative/lab";
+import { semesterRouter } from "./routers/administrative/semester";
+import { facultyCourseRouter } from "./routers/academic/faculty/course";
+import { studentCourseRouter } from "./routers/academic/student/course";
 
 /**
  * Root tRPC router
@@ -17,6 +19,8 @@ export const appRouter = createTRPCRouter({
     batch: batchRouter,
     lab: labRouter,
     semester: semesterRouter,
+    facultyCourse: facultyCourseRouter,
+    studentCourse: studentCourseRouter,
 });
 
 // Export type definition of API
