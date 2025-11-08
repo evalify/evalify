@@ -125,6 +125,25 @@ export default function EditQuestionPage({ params }: Props) {
                 topicIds: (question.topics || []).map((t) => t.topicId),
                 descriptiveConfig: descQuestion.descriptiveConfig,
             });
+        } else if (question.type === "MATCHING") {
+            const matchQuestion = question as Question & {
+                options: import("@/types/questions").MatchOptions[];
+            };
+
+            updateMutation.mutate({
+                questionId: params.questionId,
+                bankId: params.bankId,
+                type: question.type,
+                question: question.question,
+                explanation: question.explanation,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                options: matchQuestion.options,
+            });
         }
     };
 

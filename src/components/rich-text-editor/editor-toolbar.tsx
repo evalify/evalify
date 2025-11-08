@@ -127,11 +127,11 @@ export function EditorToolbar() {
                     <DropdownMenuItem onSelect={() => editor?.chain().focus().setHardBreak().run()}>
                         Line Break
                     </DropdownMenuItem>
-                    <DropdownMenuItem
+                    {/* <DropdownMenuItem
                         onSelect={() => editor?.chain().focus().insertImagePlaceholder().run()}
                     >
                         Insert Image
-                    </DropdownMenuItem>
+                    </DropdownMenuItem> */}
                 </DropdownMenuGroup>
             </DropdownMenuContent>
         </DropdownMenu>

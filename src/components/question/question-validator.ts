@@ -6,6 +6,7 @@ import {
     FillInBlanksQuestion,
     TrueFalseQuestion,
     DescriptiveQuestion,
+    MatchTheFollowingQuestion,
 } from "@/types/questions";
 
 export interface ValidationError {
@@ -174,6 +175,51 @@ export function validateQuestion(question: Question | null): ValidationResult {
                     message: "Descriptive configuration is required",
                 });
             }
+            break;
+
+        case QuestionType.MATCHING:
+            const matchQuestion = question as MatchTheFollowingQuestion;
+            const leftOptions = (matchQuestion.options || []).filter((opt) => opt.isLeft);
+            const rightOptions = (matchQuestion.options || []).filter((opt) => !opt.isLeft);
+
+            if (leftOptions.length === 0) {
+                errors.push({
+                    field: "leftOptions",
+                    message: "At least one left item is required",
+                });
+            }
+
+            if (rightOptions.length === 0) {
+                errors.push({
+                    field: "rightOptions",
+                    message: "At least one right item is required",
+                });
+            }
+
+            leftOptions.forEach((leftOpt, index) => {
+                if (!leftOpt.text || leftOpt.text.trim() === "" || leftOpt.text === "<p></p>") {
+                    errors.push({
+                        field: `leftOption[${index}]`,
+                        message: `Left item ${index + 1} text cannot be empty`,
+                    });
+                }
+
+                if (!leftOpt.matchPairIds || leftOpt.matchPairIds.length === 0) {
+                    errors.push({
+                        field: `leftOption[${index}]`,
+                        message: `Left item ${index + 1} must have at least one match`,
+                    });
+                }
+            });
+
+            rightOptions.forEach((rightOpt, index) => {
+                if (!rightOpt.text || rightOpt.text.trim() === "" || rightOpt.text === "<p></p>") {
+                    errors.push({
+                        field: `rightOption[${index}]`,
+                        message: `Right item ${index + 1} text cannot be empty`,
+                    });
+                }
+            });
             break;
     }
 
