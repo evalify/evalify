@@ -33,7 +33,7 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+        <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
             <div className="container mx-auto px-6 py-8">
                 {/* Header */}
                 <div className="mb-8">
@@ -54,7 +54,7 @@ export default function SettingsPage() {
                                     <div className="relative inline-block">
                                         <Avatar className="h-28 w-28 mx-auto ring-4 ring-primary/20">
                                             <AvatarImage src={session?.user?.image || ""} />
-                                            <AvatarFallback className="text-3xl font-semibold bg-gradient-to-br from-primary to-primary/80 text-white dark:text-slate-900">
+                                            <AvatarFallback className="text-3xl font-semibold bg-linear-to-br from-primary to-primary/80 text-white dark:text-slate-900">
                                                 {session?.user?.name?.slice(0, 2).toUpperCase() ||
                                                     "US"}
                                             </AvatarFallback>
