@@ -15,7 +15,7 @@ const ImagePlaceholderToolbar = React.forwardRef<HTMLButtonElement, ButtonProps>
         const { editor } = useToolbar();
         return (
             <Tooltip>
-                <TooltipTrigger asChild>
+                {/* <TooltipTrigger asChild>
                     <Button
                         variant="ghost"
                         size="icon"
@@ -37,7 +37,7 @@ const ImagePlaceholderToolbar = React.forwardRef<HTMLButtonElement, ButtonProps>
                             </span>
                         )}
                     </Button>
-                </TooltipTrigger>
+                </TooltipTrigger> */}
                 <TooltipContent>
                     <span>Image</span>
                 </TooltipContent>

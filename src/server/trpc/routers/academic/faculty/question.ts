@@ -105,6 +105,14 @@ const descriptiveConfigSchema = z.object({
     maxWords: z.number().optional(),
 });
 
+const matchOptionsSchema = z.object({
+    id: z.string(),
+    isLeft: z.boolean(),
+    text: z.string(),
+    orderIndex: z.number(),
+    matchPairIds: z.array(z.string()).optional(),
+});
+
 export const questionRouter = createTRPCRouter({
     listByBank: managerOrFacultyProcedure
         .input(
@@ -296,6 +304,11 @@ export const questionRouter = createTRPCRouter({
                         descriptiveConfig: descriptiveConfigSchema,
                         explanation: z.string().optional(),
                     }),
+                    z.object({
+                        type: z.literal("MATCHING"),
+                        options: z.array(matchOptionsSchema),
+                        explanation: z.string().optional(),
+                    }),
                 ])
             )
         )
@@ -347,6 +360,9 @@ export const questionRouter = createTRPCRouter({
                     solution = {};
                 } else if (input.type === "DESCRIPTIVE") {
                     questionData = input.descriptiveConfig;
+                    solution = {};
+                } else if (input.type === "MATCHING") {
+                    questionData = { options: input.options };
                     solution = {};
                 }
 
@@ -437,6 +453,11 @@ export const questionRouter = createTRPCRouter({
                                 descriptiveConfig: descriptiveConfigSchema.optional(),
                                 explanation: z.string().optional(),
                             }),
+                            z.object({
+                                type: z.literal("MATCHING"),
+                                options: z.array(matchOptionsSchema).optional(),
+                                explanation: z.string().optional(),
+                            }),
                         ])
                     )
                 )
@@ -517,6 +538,10 @@ export const questionRouter = createTRPCRouter({
                 } else if (input.type === "DESCRIPTIVE") {
                     if ("descriptiveConfig" in input && input.descriptiveConfig !== undefined) {
                         updateData.questionData = input.descriptiveConfig;
+                    }
+                } else if (input.type === "MATCHING") {
+                    if ("options" in input && input.options !== undefined) {
+                        updateData.questionData = { options: input.options };
                     }
                 }
 
