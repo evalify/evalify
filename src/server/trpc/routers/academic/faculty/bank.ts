@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, facultyAndManagerProcedure, protectedProcedure } from "../../../trpc";
 import { db } from "@/db";
-import { banksTable, bankUsersTable, usersTable } from "@/db/schema";
+import { banksTable, bankUsersTable, usersTable, topicsTable } from "@/db/schema";
 import { eq, and, or, ilike, desc, count, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
@@ -208,6 +208,13 @@ export const bankRouter = createTRPCRouter({
                                   .limit(1)
                           )[0]?.accessLevel || "READ";
 
+                // Get bank topics
+                const topics = await db
+                    .select({ name: topicsTable.name })
+                    .from(topicsTable)
+                    .where(eq(topicsTable.bankId, bank.id))
+                    .orderBy(topicsTable.name);
+
                 logger.info({ bankId: input.id, userId }, "Bank retrieved");
 
                 return {
@@ -225,6 +232,7 @@ export const bankRouter = createTRPCRouter({
                           }
                         : null,
                     accessLevel,
+                    topics: topics.map((t) => t.name),
                 };
             } catch (error) {
                 logger.error({ error, bankId: input.id }, "Error getting bank");

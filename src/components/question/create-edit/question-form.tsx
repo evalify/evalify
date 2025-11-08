@@ -1,0 +1,170 @@
+"use client";
+
+import { useState } from "react";
+import { Question, QuestionType } from "@/types/questions";
+import { useToast } from "@/hooks/use-toast";
+import QuestionTypeSelector from "./question-type-selector";
+import QuestionSettings from "./question-settings";
+import { getQuestionComponent, createDefaultQuestion } from "../question-factory";
+import { validateQuestion } from "../question-validator";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Save, AlertCircle, FileText } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { TiptapEditor } from "@/components/rich-text-editor/editor";
+
+interface QuestionFormProps {
+    initialData?: Question;
+    onSave: (question: Question) => void;
+    onCancel: () => void;
+    isLoading?: boolean;
+    context?: "bank" | "quiz";
+    bankId?: string;
+}
+
+export default function QuestionForm({
+    initialData,
+    onSave,
+    onCancel,
+    isLoading = false,
+    context = "quiz",
+    bankId,
+}: QuestionFormProps) {
+    const [selectedType, setSelectedType] = useState<QuestionType>(
+        initialData?.type || QuestionType.MCQ
+    );
+    const [question, setQuestion] = useState<Question>(
+        initialData || createDefaultQuestion(QuestionType.MCQ)
+    );
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+    const { error } = useToast();
+
+    const handleTypeChange = (newType: QuestionType) => {
+        setSelectedType(newType);
+        const newQuestion = createDefaultQuestion(newType);
+        setQuestion({
+            ...newQuestion,
+            question: question.question,
+            explanation: question.explanation,
+            marks: question.marks,
+            negativeMarks: question.negativeMarks,
+            topics: question.topics,
+            bloomsLevel: question.bloomsLevel,
+            difficulty: question.difficulty,
+            courseOutcome: question.courseOutcome,
+        });
+    };
+
+    const validateQuestionData = (): boolean => {
+        if (!question) {
+            setValidationErrors(["Question data is missing"]);
+            return false;
+        }
+
+        const result = validateQuestion(question);
+        setValidationErrors(result.errors.map((e) => e.message));
+        return result.isValid;
+    };
+
+    const handleSave = () => {
+        if (!validateQuestionData() || !question) {
+            error("Please fix validation errors before saving");
+            return;
+        }
+
+        onSave(question);
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">
+                            {initialData ? "Edit Question" : "Create Question"}
+                        </h1>
+                    </div>
+                </div>
+            </div>
+
+            <QuestionTypeSelector selectedType={selectedType} onSelect={handleTypeChange} />
+
+            {validationErrors.length > 0 && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                        <ul className="list-inside list-disc space-y-1">
+                            {validationErrors.map((err, idx) => (
+                                <li key={idx}>{err}</li>
+                            ))}
+                        </ul>
+                    </AlertDescription>
+                </Alert>
+            )}
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div className="space-y-6 lg:col-span-2">
+                    {question &&
+                        (() => {
+                            const QuestionComponent = getQuestionComponent(selectedType);
+                            return <QuestionComponent value={question} onChange={setQuestion} />;
+                        })()}
+                    {question && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-lg">
+                                    <FileText className="h-5 w-5 text-primary" />
+                                    Explanation (Optional)
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="mb-4 text-xs text-muted-foreground">
+                                    Provide an explanation that will be shown after the question is
+                                    answered
+                                </p>
+                                <TiptapEditor
+                                    initialContent={question.explanation || ""}
+                                    onUpdate={(content) =>
+                                        setQuestion({ ...question, explanation: content })
+                                    }
+                                />
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    <Card className="p-4">
+                        <div className="flex items-center justify-end gap-4">
+                            <Button type="button" variant="outline" onClick={onCancel}>
+                                Cancel
+                            </Button>
+                            <Button type="button" onClick={handleSave} disabled={isLoading}>
+                                <Save className="mr-2 h-4 w-4" />
+                                {isLoading
+                                    ? "Saving..."
+                                    : initialData
+                                      ? "Update Question"
+                                      : "Create Question"}
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
+
+                <div className="lg:col-span-1">
+                    <div className="sticky top-6">
+                        <Card>
+                            <CardContent className="pt-6">
+                                <QuestionSettings
+                                    value={question}
+                                    onChange={setQuestion}
+                                    context={context}
+                                    bankId={bankId}
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
