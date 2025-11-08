@@ -48,3 +48,12 @@ export interface BankListItem {
     accessLevel: "READ" | "WRITE" | "OWNER";
     sharedCount: number;
 }
+
+export interface BankQuestion {
+    id: string;
+    bankId: string;
+    questionId: string;
+    orderIndex: number | null;
+    createdAt: Date;
+    updatedAt?: Date;
+}
