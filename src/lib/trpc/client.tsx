@@ -20,8 +20,12 @@ function getBaseUrl() {
         // Browser should use relative URL
         return "";
     }
-    // SSR should use absolute URL
+    if (process.env.NEXT_REDIRECT) {
+        return process.env.NEXT_REDIRECT;
+    }
+
     if (process.env.VERCEL_URL) {
+        // SSR should use absolute URL
         return `https://${process.env.VERCEL_URL}`;
     }
     // Dev environment
