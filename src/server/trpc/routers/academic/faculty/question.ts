@@ -85,6 +85,19 @@ const mmcqSolutionSchema = z.object({
         .min(1),
 });
 
+const fillTheBlankConfigSchema = z.object({
+    blankCount: z.number(),
+    acceptableAnswers: z.record(
+        z.string(),
+        z.object({
+            answers: z.array(z.string()),
+            type: z.enum(["TEXT", "NUMBER", "UPPERCASE", "LOWERCASE"]),
+        })
+    ),
+    blankWeights: z.record(z.string(), z.number()),
+    evaluationType: z.enum(["NORMAL", "STRICT", "LENIENT"]),
+});
+
 export const questionRouter = createTRPCRouter({
     listByBank: managerOrFacultyProcedure
         .input(
@@ -261,6 +274,16 @@ export const questionRouter = createTRPCRouter({
                         questionData: mmcqDataSchema,
                         solution: mmcqSolutionSchema,
                     }),
+                    z.object({
+                        type: z.literal("TRUE_FALSE"),
+                        trueFalseAnswer: z.boolean(),
+                        explanation: z.string().optional(),
+                    }),
+                    z.object({
+                        type: z.literal("FILL_THE_BLANK"),
+                        blankConfig: fillTheBlankConfigSchema,
+                        explanation: z.string().optional(),
+                    }),
                 ])
             )
         )
@@ -297,6 +320,21 @@ export const questionRouter = createTRPCRouter({
                     throw new Error("You do not have permission to add questions to this bank");
                 }
 
+                // Prepare question data based on type
+                let questionData: unknown;
+                let solution: unknown;
+
+                if (input.type === "MCQ" || input.type === "MMCQ") {
+                    questionData = input.questionData;
+                    solution = input.solution;
+                } else if (input.type === "TRUE_FALSE") {
+                    questionData = {}; // TRUE_FALSE doesn't need questionData
+                    solution = { trueFalseAnswer: input.trueFalseAnswer };
+                } else if (input.type === "FILL_THE_BLANK") {
+                    questionData = input.blankConfig;
+                    solution = {}; // FILL_THE_BLANK stores answer in questionData
+                }
+
                 const [question] = await db
                     .insert(questionsTable)
                     .values({
@@ -307,8 +345,8 @@ export const questionRouter = createTRPCRouter({
                         difficulty: input.difficulty,
                         courseOutcome: input.courseOutcome,
                         bloomTaxonomyLevel: input.bloomTaxonomyLevel,
-                        questionData: input.questionData,
-                        solution: input.solution,
+                        questionData,
+                        solution,
                         createdById: userId,
                     })
                     .returning();
@@ -341,6 +379,10 @@ export const questionRouter = createTRPCRouter({
                 return question;
             } catch (error) {
                 logger.error({ error, input }, "Error creating question");
+                console.error("Full error details:", error);
+                if (error instanceof Error) {
+                    throw error;
+                }
                 throw new Error("Failed to create question. Please try again.");
             }
         }),
@@ -364,6 +406,16 @@ export const questionRouter = createTRPCRouter({
                                 type: z.literal("MMCQ"),
                                 questionData: mmcqDataSchema.optional(),
                                 solution: mmcqSolutionSchema.optional(),
+                            }),
+                            z.object({
+                                type: z.literal("TRUE_FALSE"),
+                                trueFalseAnswer: z.boolean().optional(),
+                                explanation: z.string().optional(),
+                            }),
+                            z.object({
+                                type: z.literal("FILL_THE_BLANK"),
+                                blankConfig: fillTheBlankConfigSchema.optional(),
+                                explanation: z.string().optional(),
                             }),
                         ])
                     )
@@ -426,8 +478,23 @@ export const questionRouter = createTRPCRouter({
                     updateData.courseOutcome = input.courseOutcome;
                 if (input.bloomTaxonomyLevel !== undefined)
                     updateData.bloomTaxonomyLevel = input.bloomTaxonomyLevel;
-                if (input.questionData !== undefined) updateData.questionData = input.questionData;
-                if (input.solution !== undefined) updateData.solution = input.solution;
+
+                if (input.type === "MCQ" || input.type === "MMCQ") {
+                    if ("questionData" in input && input.questionData !== undefined) {
+                        updateData.questionData = input.questionData;
+                    }
+                    if ("solution" in input && input.solution !== undefined) {
+                        updateData.solution = input.solution;
+                    }
+                } else if (input.type === "TRUE_FALSE") {
+                    if ("trueFalseAnswer" in input && input.trueFalseAnswer !== undefined) {
+                        updateData.solution = { trueFalseAnswer: input.trueFalseAnswer };
+                    }
+                } else if (input.type === "FILL_THE_BLANK") {
+                    if ("blankConfig" in input && input.blankConfig !== undefined) {
+                        updateData.questionData = { blankConfig: input.blankConfig };
+                    }
+                }
 
                 const [question] = await db
                     .update(questionsTable)

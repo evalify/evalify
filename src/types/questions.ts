@@ -2,7 +2,7 @@ export enum QuestionType {
     MCQ = "MCQ",
     MMCQ = "MMCQ",
     TRUE_FALSE = "TRUE_FALSE",
-    FILL_THE_BLANKS = "FILL_THE_BLANKS",
+    FILL_THE_BLANK = "FILL_THE_BLANK",
     MATCHING = "MATCHING",
     DESCRIPTIVE = "DESCRIPTIVE",
     CODING = "CODING",
@@ -53,7 +53,7 @@ export enum CourseOutcome {
 export enum FillInBlanksEvaluationType {
     STRICT = "STRICT",
     NORMAL = "NORMAL",
-    HYBRID = "HYBRID",
+    LENIENT = "LENIENT",
 }
 
 export enum FillInBlanksAcceptedType {
@@ -102,7 +102,7 @@ export interface TrueFalseQuestion extends BaseQuestion {
 }
 
 export interface FillInBlanksQuestion extends BaseQuestion {
-    type: QuestionType.FILL_THE_BLANKS;
+    type: QuestionType.FILL_THE_BLANK;
     blankConfig: FillInBlanksConfig;
 }
 
@@ -143,7 +143,6 @@ export interface QuestionOption {
     optionText: string;
     orderIndex: number;
     isCorrect: boolean;
-    marksWeightage?: number;
 }
 
 export interface MatchOptions {
@@ -239,7 +238,7 @@ export type FileUploadData = {
 export type QuestionDataPayload =
     | { type: QuestionType.MCQ; data: MCQData }
     | { type: QuestionType.MMCQ; data: MMCQData }
-    | { type: QuestionType.FILL_THE_BLANKS; data: FillTheBlankData }
+    | { type: QuestionType.FILL_THE_BLANK; data: FillTheBlankData }
     | { type: QuestionType.MATCHING; data: MatchingData }
     | { type: QuestionType.DESCRIPTIVE; data: DescriptiveData }
     | { type: QuestionType.CODING; data: CodingData }
@@ -271,7 +270,7 @@ export type SolutionPayload =
     | { type: QuestionType.MCQ; data: MCQSolution }
     | { type: QuestionType.MMCQ; data: MMCQSolution }
     | { type: QuestionType.TRUE_FALSE; data: TrueFalseSolution }
-    | { type: QuestionType.FILL_THE_BLANKS; data: FillTheBlankSolution }
+    | { type: QuestionType.FILL_THE_BLANK; data: FillTheBlankSolution }
     | { type: QuestionType.MATCHING; data: MatchingSolution }
     | { type: QuestionType.DESCRIPTIVE; data: DescriptiveSolution }
     | { type: QuestionType.CODING; data: CodingSolution };

@@ -19,12 +19,17 @@ const questionTypes: {
     {
         type: QuestionType.MCQ,
         label: "Multiple Choice",
-        description: "Single correct answer",
+        description: "Single or multiple correct answers",
     },
     {
-        type: QuestionType.FILL_THE_BLANKS,
+        type: QuestionType.TRUE_FALSE,
+        label: "True or False",
+        description: "Binary choice question",
+    },
+    {
+        type: QuestionType.FILL_THE_BLANK,
         label: "Fill in the Blanks",
-        description: "Multiple correct answers",
+        description: "Complete the sentence",
     },
 ];
 
@@ -33,26 +38,33 @@ export default function QuestionTypeSelector({
     onSelect,
     disabled,
 }: QuestionTypeSelectorProps) {
+    const isTypeSelected = (type: QuestionType) => {
+        if (type === QuestionType.MCQ) {
+            return selectedType === QuestionType.MCQ || selectedType === QuestionType.MMCQ;
+        }
+        return selectedType === type;
+    };
+
     return (
         <div className="px-4 sm:px-6 py-4 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 border-b">
             <div className="flex flex-wrap items-center gap-2">
                 {questionTypes.map(({ type, label, description }) => (
                     <Button
                         key={type}
-                        variant={selectedType === type ? "default" : "outline"}
+                        variant={isTypeSelected(type) ? "default" : "outline"}
                         size="sm"
                         onClick={() => onSelect(type)}
                         disabled={disabled}
                         className={cn(
                             "whitespace-nowrap flex items-center gap-2 transition-all duration-200 hover:scale-105",
-                            selectedType === type && "shadow-md ring-2 ring-primary/20"
+                            isTypeSelected(type) && "shadow-md ring-2 ring-primary/20"
                         )}
                         title={description}
                     >
                         <span
                             className={cn(
                                 "transition-colors",
-                                selectedType === type
+                                isTypeSelected(type)
                                     ? "text-primary-foreground"
                                     : "text-muted-foreground"
                             )}

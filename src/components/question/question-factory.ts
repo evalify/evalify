@@ -8,6 +8,7 @@ import {
 import type { ComponentType } from "react";
 import MCQComponent from "./create-edit/mcq";
 import FillInBlanksComponent from "./create-edit/fill-in-blanks";
+import TrueFalseComponent from "./create-edit/true-false";
 
 export interface QuestionComponentProps<T extends Question = Question> {
     value: T;
@@ -21,8 +22,10 @@ export function getQuestionComponent(
         case QuestionType.MCQ:
         case QuestionType.MMCQ:
             return MCQComponent as ComponentType<QuestionComponentProps<Question>>;
-        case QuestionType.FILL_THE_BLANKS:
+        case QuestionType.FILL_THE_BLANK:
             return FillInBlanksComponent as ComponentType<QuestionComponentProps<Question>>;
+        case QuestionType.TRUE_FALSE:
+            return TrueFalseComponent as ComponentType<QuestionComponentProps<Question>>;
         default:
             throw new Error(`Unsupported question type: ${questionType}`);
     }
@@ -63,16 +66,22 @@ export function createDefaultQuestion(questionType: QuestionType): Question {
                     correctOptions: [],
                 },
             };
-        case QuestionType.FILL_THE_BLANKS:
+        case QuestionType.FILL_THE_BLANK:
             return {
                 ...baseQuestion,
-                type: QuestionType.FILL_THE_BLANKS,
+                type: QuestionType.FILL_THE_BLANK,
                 blankConfig: {
                     blankCount: 0,
                     acceptableAnswers: {},
                     blankWeights: {},
                     evaluationType: FillInBlanksEvaluationType.NORMAL,
                 },
+            };
+        case QuestionType.TRUE_FALSE:
+            return {
+                ...baseQuestion,
+                type: QuestionType.TRUE_FALSE,
+                trueFalseAnswer: undefined,
             };
         default:
             throw new Error(`Unsupported question type: ${questionType}`);
