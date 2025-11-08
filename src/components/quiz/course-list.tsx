@@ -91,12 +91,12 @@ export default function CourseList({
 
     // Color classes for course cards (light+dark friendly gradients)
     const colorClasses = [
-        "bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white",
-        "bg-gradient-to-br from-violet-500 to-violet-600 dark:from-violet-600 dark:to-violet-700 text-white",
-        "bg-gradient-to-br from-emerald-500 to-emerald-600 dark:from-emerald-600 dark:to-emerald-700 text-white",
-        "bg-gradient-to-br from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 text-white",
-        "bg-gradient-to-br from-rose-500 to-rose-600 dark:from-rose-600 dark:to-rose-700 text-white",
-        "bg-gradient-to-br from-cyan-500 to-cyan-600 dark:from-cyan-600 dark:to-cyan-700 text-white",
+        "bg-linear-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white",
+        "bg-linear-to-br from-violet-500 to-violet-600 dark:from-violet-600 dark:to-violet-700 text-white",
+        "bg-linear-to-br from-emerald-500 to-emerald-600 dark:from-emerald-600 dark:to-emerald-700 text-white",
+        "bg-linear-to-br from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 text-white",
+        "bg-linear-to-br from-rose-500 to-rose-600 dark:from-rose-600 dark:to-rose-700 text-white",
+        "bg-linear-to-br from-cyan-500 to-cyan-600 dark:from-cyan-600 dark:to-cyan-700 text-white",
     ];
 
     if (isLoading) {

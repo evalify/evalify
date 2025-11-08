@@ -133,7 +133,6 @@ export function BatchStudentsModal({ batchId, batchName }: BatchStudentsModalPro
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-                \n
                 {/* Add Students Section */}
                 <Card>
                     <CardHeader>
