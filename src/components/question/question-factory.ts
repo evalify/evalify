@@ -1,6 +1,13 @@
-import { QuestionType, Question, BloomsLevel, Difficulty } from "@/types/questions";
+import {
+    QuestionType,
+    Question,
+    BloomsLevel,
+    Difficulty,
+    FillInBlanksEvaluationType,
+} from "@/types/questions";
 import type { ComponentType } from "react";
 import MCQComponent from "./create-edit/mcq";
+import FillInBlanksComponent from "./create-edit/fill-in-blanks";
 
 export interface QuestionComponentProps<T extends Question = Question> {
     value: T;
@@ -14,7 +21,8 @@ export function getQuestionComponent(
         case QuestionType.MCQ:
         case QuestionType.MMCQ:
             return MCQComponent as ComponentType<QuestionComponentProps<Question>>;
-        // Add other question type components as they are implemented
+        case QuestionType.FILL_THE_BLANKS:
+            return FillInBlanksComponent as ComponentType<QuestionComponentProps<Question>>;
         default:
             throw new Error(`Unsupported question type: ${questionType}`);
     }
@@ -53,6 +61,17 @@ export function createDefaultQuestion(questionType: QuestionType): Question {
                 },
                 solution: {
                     correctOptions: [],
+                },
+            };
+        case QuestionType.FILL_THE_BLANKS:
+            return {
+                ...baseQuestion,
+                type: QuestionType.FILL_THE_BLANKS,
+                blankConfig: {
+                    blankCount: 0,
+                    acceptableAnswers: {},
+                    blankWeights: {},
+                    evaluationType: FillInBlanksEvaluationType.NORMAL,
                 },
             };
         default:
