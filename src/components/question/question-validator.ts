@@ -4,6 +4,7 @@ import {
     MCQQuestion,
     MMCQQuestion,
     FillInBlanksQuestion,
+    TrueFalseQuestion,
 } from "@/types/questions";
 
 export interface ValidationError {
@@ -101,58 +102,66 @@ export function validateQuestion(question: Question | null): ValidationResult {
             }
             break;
 
-        case QuestionType.FILL_THE_BLANKS:
-            if ("blankConfig" in question) {
-                const fibQuestion = question as FillInBlanksQuestion;
-                const blankConfig = fibQuestion.blankConfig;
+        case QuestionType.FILL_THE_BLANK:
+            const fibQuestion = question as FillInBlanksQuestion;
+            const blankConfig = fibQuestion.blankConfig;
 
-                if (!blankConfig || blankConfig.blankCount === 0) {
+            if (!blankConfig || blankConfig.blankCount === 0) {
+                errors.push({
+                    field: "blanks",
+                    message:
+                        "At least one blank is required. Use three or more underscores (___) to create blanks.",
+                });
+                break;
+            }
+
+            const totalWeight = Object.values(blankConfig.blankWeights || {}).reduce(
+                (sum, weight) => sum + (weight || 0),
+                0
+            );
+
+            if (Math.abs(totalWeight - question.marks) > 0.01) {
+                errors.push({
+                    field: "blankWeights",
+                    message: `Total weight (${totalWeight.toFixed(2)}) must equal total marks (${question.marks})`,
+                });
+            }
+
+            for (let i = 0; i < blankConfig.blankCount; i++) {
+                const answerGroup = blankConfig.acceptableAnswers[i];
+                if (!answerGroup) {
                     errors.push({
-                        field: "blanks",
-                        message:
-                            "At least one blank is required. Use three or more underscores (___) to create blanks.",
+                        field: `blank[${i}]`,
+                        message: `Blank ${i + 1} must have answers configured`,
                     });
-                    break;
+                    continue;
                 }
 
-                const totalWeight = Object.values(blankConfig.blankWeights || {}).reduce(
-                    (sum, weight) => sum + (weight || 0),
-                    0
-                );
-
-                if (Math.abs(totalWeight - question.marks) > 0.01) {
+                if (!answerGroup.answers || answerGroup.answers.length === 0) {
                     errors.push({
-                        field: "blankWeights",
-                        message: `Total weight (${totalWeight.toFixed(2)}) must equal total marks (${question.marks})`,
+                        field: `blank[${i}]`,
+                        message: `Blank ${i + 1} must have at least one answer`,
+                    });
+                } else {
+                    answerGroup.answers.forEach((answer, answerIndex) => {
+                        if (!answer || answer.trim() === "") {
+                            errors.push({
+                                field: `blank[${i}].answer[${answerIndex}]`,
+                                message: `Blank ${i + 1} answer ${answerIndex + 1} cannot be empty`,
+                            });
+                        }
                     });
                 }
+            }
+            break;
 
-                for (let i = 0; i < blankConfig.blankCount; i++) {
-                    const answerGroup = blankConfig.acceptableAnswers[i];
-                    if (!answerGroup) {
-                        errors.push({
-                            field: `blank[${i}]`,
-                            message: `Blank ${i + 1} must have answers configured`,
-                        });
-                        continue;
-                    }
-
-                    if (!answerGroup.answers || answerGroup.answers.length === 0) {
-                        errors.push({
-                            field: `blank[${i}]`,
-                            message: `Blank ${i + 1} must have at least one answer`,
-                        });
-                    } else {
-                        answerGroup.answers.forEach((answer, answerIndex) => {
-                            if (!answer || answer.trim() === "") {
-                                errors.push({
-                                    field: `blank[${i}].answer[${answerIndex}]`,
-                                    message: `Blank ${i + 1} answer ${answerIndex + 1} cannot be empty`,
-                                });
-                            }
-                        });
-                    }
-                }
+        case QuestionType.TRUE_FALSE:
+            const tfQuestion = question as TrueFalseQuestion;
+            if (tfQuestion.trueFalseAnswer === undefined || tfQuestion.trueFalseAnswer === null) {
+                errors.push({
+                    field: "trueFalseAnswer",
+                    message: "Please select True or False as the correct answer",
+                });
             }
             break;
     }

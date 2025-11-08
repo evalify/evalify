@@ -41,10 +41,9 @@ export default function QuestionForm({
     const { error } = useToast();
 
     const handleTypeChange = (newType: QuestionType) => {
-        setSelectedType(newType);
         const newQuestion = createDefaultQuestion(newType);
-        setQuestion({
-            ...newQuestion,
+
+        const commonFields = {
             question: question.question,
             explanation: question.explanation,
             marks: question.marks,
@@ -53,7 +52,15 @@ export default function QuestionForm({
             bloomsLevel: question.bloomsLevel,
             difficulty: question.difficulty,
             courseOutcome: question.courseOutcome,
-        });
+        };
+
+        const updatedQuestion = {
+            ...newQuestion,
+            ...commonFields,
+        } as Question;
+
+        setSelectedType(updatedQuestion.type);
+        setQuestion(updatedQuestion);
     };
 
     const validateQuestionData = (): boolean => {
@@ -107,7 +114,7 @@ export default function QuestionForm({
                 <div className="space-y-6 lg:col-span-2">
                     {question &&
                         (() => {
-                            const QuestionComponent = getQuestionComponent(selectedType);
+                            const QuestionComponent = getQuestionComponent(question.type);
                             return <QuestionComponent value={question} onChange={setQuestion} />;
                         })()}
                     {question && (
