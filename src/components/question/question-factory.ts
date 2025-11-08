@@ -9,6 +9,7 @@ import type { ComponentType } from "react";
 import MCQComponent from "./create-edit/mcq";
 import FillInBlanksComponent from "./create-edit/fill-in-blanks";
 import TrueFalseComponent from "./create-edit/true-false";
+import DescriptiveComponent from "./create-edit/descriptive";
 
 export interface QuestionComponentProps<T extends Question = Question> {
     value: T;
@@ -26,6 +27,8 @@ export function getQuestionComponent(
             return FillInBlanksComponent as ComponentType<QuestionComponentProps<Question>>;
         case QuestionType.TRUE_FALSE:
             return TrueFalseComponent as ComponentType<QuestionComponentProps<Question>>;
+        case QuestionType.DESCRIPTIVE:
+            return DescriptiveComponent as ComponentType<QuestionComponentProps<Question>>;
         default:
             throw new Error(`Unsupported question type: ${questionType}`);
     }
@@ -82,6 +85,17 @@ export function createDefaultQuestion(questionType: QuestionType): Question {
                 ...baseQuestion,
                 type: QuestionType.TRUE_FALSE,
                 trueFalseAnswer: undefined,
+            };
+        case QuestionType.DESCRIPTIVE:
+            return {
+                ...baseQuestion,
+                type: QuestionType.DESCRIPTIVE,
+                descriptiveConfig: {
+                    modelAnswer: "",
+                    keywords: [],
+                    minWords: undefined,
+                    maxWords: undefined,
+                },
             };
         default:
             throw new Error(`Unsupported question type: ${questionType}`);

@@ -31,6 +31,11 @@ const questionTypes: {
         label: "Fill in the Blanks",
         description: "Complete the sentence",
     },
+    {
+        type: QuestionType.DESCRIPTIVE,
+        label: "Descriptive",
+        description: "Long form answer",
+    },
 ];
 
 export default function QuestionTypeSelector({
