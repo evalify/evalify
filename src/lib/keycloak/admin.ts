@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 
 // Environment variables
 const KEYCLOAK_ADMIN_URL = process.env.AUTH_KEYCLOAK_ADMIN_URL || "";
-const KEYCLOAK_REALM = "evalify";
+const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "evalify";
 const KEYCLOAK_ADMIN_CLIENT_ID = process.env.AUTH_KEYCLOAK_ADMIN_CLIENT_ID || "";
 const KEYCLOAK_ADMIN_CLIENT_SECRET = process.env.AUTH_KEYCLOAK_ADMIN_CLIENT_SECRET || "";
 
