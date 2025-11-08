@@ -52,6 +52,42 @@ export default function CreateQuestionPage() {
                 questionData: mcqQuestion.questionData,
                 solution: mcqQuestion.solution,
             });
+        } else if (question.type === "TRUE_FALSE") {
+            const tfQuestion = question as Question & {
+                trueFalseAnswer: boolean;
+            };
+
+            createMutation.mutate({
+                bankId,
+                type: question.type,
+                question: question.question,
+                explanation: question.explanation,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                trueFalseAnswer: tfQuestion.trueFalseAnswer,
+            });
+        } else if (question.type === "FILL_THE_BLANK") {
+            const fibQuestion = question as Question & {
+                blankConfig: import("@/types/questions").FillInBlanksConfig;
+            };
+
+            createMutation.mutate({
+                bankId,
+                type: question.type,
+                question: question.question,
+                explanation: question.explanation,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                blankConfig: fibQuestion.blankConfig,
+            });
         }
     };
 

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Save, X, ListChecks, FileText, Edit3, Check } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 
 interface MCQComponentProps {
     value: MCQQuestion | MMCQQuestion;
@@ -19,7 +18,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
     const [isCreatingNewOption, setIsCreatingNewOption] = useState(false);
     const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
     const [editor, setEditor] = useState<string>("");
-    const [marksWeightage, setMarksWeightage] = useState<number>(1);
     const [allowMultipleCorrect, setAllowMultipleCorrect] = useState(
         value.type === QuestionType.MMCQ
     );
@@ -42,7 +40,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
         setIsCreatingNewOption(true);
         setEditingOptionId(null);
         setEditor("");
-        setMarksWeightage(1);
     };
 
     const handleEditOption = (optionId: string) => {
@@ -51,7 +48,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
         const option = options.find((opt) => opt.id === optionId);
         if (option) {
             setEditor(option.optionText);
-            setMarksWeightage(option.marksWeightage || 1);
         }
     };
 
@@ -59,7 +55,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
         setIsCreatingNewOption(false);
         setEditingOptionId(null);
         setEditor("");
-        setMarksWeightage(1);
     };
 
     const handleDeleteOption = (optionId: string) => {
@@ -85,9 +80,8 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
         if (!editor.trim()) return;
 
         if (editingOptionId) {
-            // Update existing option
             const updatedOptions = currentOptions.map((opt) =>
-                opt.id === editingOptionId ? { ...opt, optionText: editor, marksWeightage } : opt
+                opt.id === editingOptionId ? { ...opt, optionText: editor } : opt
             );
 
             onChange({
@@ -98,12 +92,10 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
                 },
             });
         } else {
-            // Add new option
             const newOption: Omit<QuestionOption, "isCorrect"> = {
                 id: crypto.randomUUID(),
                 optionText: editor,
                 orderIndex: currentOptions.length,
-                marksWeightage: allowMultipleCorrect ? marksWeightage : undefined,
             };
 
             onChange({
@@ -118,7 +110,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
         setIsCreatingNewOption(false);
         setEditingOptionId(null);
         setEditor("");
-        setMarksWeightage(1);
     };
 
     const handleSetCorrect = (optionId: string) => {
@@ -159,26 +150,13 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
 
         let updatedCorrectOptions = value.solution.correctOptions;
 
-        // If switching to MCQ and multiple options are selected, keep only the first one
         if (!enabled && value.solution.correctOptions.length > 1) {
             updatedCorrectOptions = [value.solution.correctOptions[0]!];
         }
 
-        // Remove marksWeightage from options when switching to MCQ
-        const updatedOptions = enabled
-            ? currentOptions
-            : currentOptions.map((opt) => {
-                  const { marksWeightage: _marksWeightage, ...rest } = opt;
-                  return rest;
-              });
-
         onChange({
             ...value,
             type: newType,
-            questionData: {
-                ...value.questionData,
-                options: updatedOptions,
-            },
             solution: {
                 ...value.solution,
                 correctOptions: updatedCorrectOptions,
@@ -263,26 +241,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
                                         onUpdate={setEditor}
                                         className="min-h-[100px]"
                                     />
-                                    {allowMultipleCorrect && (
-                                        <div className="flex items-center gap-2">
-                                            <Label htmlFor="weightage" className="text-xs">
-                                                Marks Weightage:
-                                            </Label>
-                                            <Input
-                                                id="weightage"
-                                                type="number"
-                                                min="0"
-                                                step="0.1"
-                                                value={marksWeightage}
-                                                onChange={(e) =>
-                                                    setMarksWeightage(
-                                                        parseFloat(e.target.value) || 1
-                                                    )
-                                                }
-                                                className="w-20 h-8"
-                                            />
-                                        </div>
-                                    )}
                                     <div className="flex gap-2">
                                         <Button
                                             size="sm"
@@ -307,11 +265,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
                                             className="prose prose-sm dark:prose-invert max-w-none"
                                             dangerouslySetInnerHTML={{ __html: option.optionText }}
                                         />
-                                        {allowMultipleCorrect && option.marksWeightage && (
-                                            <div className="text-xs text-muted-foreground mt-1">
-                                                Weightage: {option.marksWeightage}
-                                            </div>
-                                        )}
                                     </div>
                                     <div className="flex gap-2">
                                         <Button
@@ -368,24 +321,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
                                     onUpdate={setEditor}
                                     className="min-h-[100px]"
                                 />
-                                {allowMultipleCorrect && (
-                                    <div className="flex items-center gap-2">
-                                        <Label htmlFor="new-weightage" className="text-xs">
-                                            Marks Weightage:
-                                        </Label>
-                                        <Input
-                                            id="new-weightage"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
-                                            value={marksWeightage}
-                                            onChange={(e) =>
-                                                setMarksWeightage(parseFloat(e.target.value) || 1)
-                                            }
-                                            className="w-20 h-8"
-                                        />
-                                    </div>
-                                )}
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"
