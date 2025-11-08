@@ -36,6 +36,11 @@ const questionTypes: {
         label: "Descriptive",
         description: "Long form answer",
     },
+    {
+        type: QuestionType.MATCHING,
+        label: "Match Following",
+        description: "Connect related items",
+    },
 ];
 
 export default function QuestionTypeSelector({

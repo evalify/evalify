@@ -10,6 +10,7 @@ import MCQComponent from "./create-edit/mcq";
 import FillInBlanksComponent from "./create-edit/fill-in-blanks";
 import TrueFalseComponent from "./create-edit/true-false";
 import DescriptiveComponent from "./create-edit/descriptive";
+import MatchTheFollowingComponent from "./create-edit/match-the-following";
 
 export interface QuestionComponentProps<T extends Question = Question> {
     value: T;
@@ -29,6 +30,8 @@ export function getQuestionComponent(
             return TrueFalseComponent as ComponentType<QuestionComponentProps<Question>>;
         case QuestionType.DESCRIPTIVE:
             return DescriptiveComponent as ComponentType<QuestionComponentProps<Question>>;
+        case QuestionType.MATCHING:
+            return MatchTheFollowingComponent as ComponentType<QuestionComponentProps<Question>>;
         default:
             throw new Error(`Unsupported question type: ${questionType}`);
     }
@@ -96,6 +99,12 @@ export function createDefaultQuestion(questionType: QuestionType): Question {
                     minWords: undefined,
                     maxWords: undefined,
                 },
+            };
+        case QuestionType.MATCHING:
+            return {
+                ...baseQuestion,
+                type: QuestionType.MATCHING,
+                options: [],
             };
         default:
             throw new Error(`Unsupported question type: ${questionType}`);
