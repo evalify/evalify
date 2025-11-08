@@ -249,7 +249,6 @@ export default function QuestionSettings({
                         </p>
                     </div>
 
-                    {/* For Bank: Show dropdown of predefined topics */}
                     {context === "bank" && availableTopics.length > 0 && (
                         <div className="space-y-2">
                             <Select

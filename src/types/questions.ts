@@ -170,7 +170,7 @@ export interface FillInBlanksConfig {
         {
             answers: string[];
             type: FillInBlanksAcceptedType;
-        }[]
+        }
     >;
     blankWeights: Record<number, number>;
     evaluationType: FillInBlanksEvaluationType;

@@ -1,4 +1,10 @@
-import { Question, QuestionType, MCQQuestion, MMCQQuestion } from "@/types/questions";
+import {
+    Question,
+    QuestionType,
+    MCQQuestion,
+    MMCQQuestion,
+    FillInBlanksQuestion,
+} from "@/types/questions";
 
 export interface ValidationError {
     field: string;
@@ -78,7 +84,6 @@ export function validateQuestion(question: Question | null): ValidationResult {
                     });
                 }
 
-                // Check for empty option text
                 if (options) {
                     options.forEach((opt, index) => {
                         if (
@@ -92,6 +97,61 @@ export function validateQuestion(question: Question | null): ValidationResult {
                             });
                         }
                     });
+                }
+            }
+            break;
+
+        case QuestionType.FILL_THE_BLANKS:
+            if ("blankConfig" in question) {
+                const fibQuestion = question as FillInBlanksQuestion;
+                const blankConfig = fibQuestion.blankConfig;
+
+                if (!blankConfig || blankConfig.blankCount === 0) {
+                    errors.push({
+                        field: "blanks",
+                        message:
+                            "At least one blank is required. Use three or more underscores (___) to create blanks.",
+                    });
+                    break;
+                }
+
+                const totalWeight = Object.values(blankConfig.blankWeights || {}).reduce(
+                    (sum, weight) => sum + (weight || 0),
+                    0
+                );
+
+                if (Math.abs(totalWeight - question.marks) > 0.01) {
+                    errors.push({
+                        field: "blankWeights",
+                        message: `Total weight (${totalWeight.toFixed(2)}) must equal total marks (${question.marks})`,
+                    });
+                }
+
+                for (let i = 0; i < blankConfig.blankCount; i++) {
+                    const answerGroup = blankConfig.acceptableAnswers[i];
+                    if (!answerGroup) {
+                        errors.push({
+                            field: `blank[${i}]`,
+                            message: `Blank ${i + 1} must have answers configured`,
+                        });
+                        continue;
+                    }
+
+                    if (!answerGroup.answers || answerGroup.answers.length === 0) {
+                        errors.push({
+                            field: `blank[${i}]`,
+                            message: `Blank ${i + 1} must have at least one answer`,
+                        });
+                    } else {
+                        answerGroup.answers.forEach((answer, answerIndex) => {
+                            if (!answer || answer.trim() === "") {
+                                errors.push({
+                                    field: `blank[${i}].answer[${answerIndex}]`,
+                                    message: `Blank ${i + 1} answer ${answerIndex + 1} cannot be empty`,
+                                });
+                            }
+                        });
+                    }
                 }
             }
             break;

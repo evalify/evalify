@@ -21,6 +21,11 @@ const questionTypes: {
         label: "Multiple Choice",
         description: "Single correct answer",
     },
+    {
+        type: QuestionType.FILL_THE_BLANKS,
+        label: "Fill in the Blanks",
+        description: "Multiple correct answers",
+    },
 ];
 
 export default function QuestionTypeSelector({
