@@ -39,6 +39,17 @@ export enum Difficulty {
     HARD = "HARD",
 }
 
+export enum CourseOutcome {
+    CO1 = "CO1",
+    CO2 = "CO2",
+    CO3 = "CO3",
+    CO4 = "CO4",
+    CO5 = "CO5",
+    CO6 = "CO6",
+    CO7 = "CO7",
+    CO8 = "CO8",
+}
+
 export enum FillInBlanksEvaluationType {
     STRICT = "STRICT",
     NORMAL = "NORMAL",
@@ -64,53 +75,55 @@ export interface BaseQuestion {
     explanation?: string;
     marks: number;
     negativeMarks: number;
-    topics?: string[];
+    topics?: { topicId: string; topicName: string }[];
     bloomsLevel?: BloomsLevel;
     difficulty?: Difficulty;
-    courseOutcome?: number;
+    courseOutcome?: CourseOutcome;
     createdBy?: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
 
 export interface MCQQuestion extends BaseQuestion {
-    questionType: QuestionType.MCQ;
-    options: QuestionOption[];
+    type: QuestionType.MCQ;
+    questionData: MCQData;
+    solution: MCQSolution;
 }
 
 export interface MMCQQuestion extends BaseQuestion {
-    questionType: QuestionType.MMCQ;
-    options: QuestionOption[];
+    type: QuestionType.MMCQ;
+    questionData: MMCQData;
+    solution: MMCQSolution;
 }
 
 export interface TrueFalseQuestion extends BaseQuestion {
-    questionType: QuestionType.TRUE_FALSE;
+    type: QuestionType.TRUE_FALSE;
     trueFalseAnswer?: boolean;
 }
 
 export interface FillInBlanksQuestion extends BaseQuestion {
-    questionType: QuestionType.FILL_THE_BLANKS;
+    type: QuestionType.FILL_THE_BLANKS;
     blankConfig: FillInBlanksConfig;
 }
 
 export interface MatchTheFollowingQuestion extends BaseQuestion {
-    questionType: QuestionType.MATCHING;
+    type: QuestionType.MATCHING;
     options: MatchOptions[];
 }
 
 export interface DescriptiveQuestion extends BaseQuestion {
-    questionType: QuestionType.DESCRIPTIVE;
+    type: QuestionType.DESCRIPTIVE;
     descriptiveConfig: DescriptiveConfig;
 }
 
 export interface CodingQuestion extends BaseQuestion {
-    questionType: QuestionType.CODING;
+    type: QuestionType.CODING;
     codingConfig: CodingConfig;
     testCases: TestCase[];
 }
 
 export interface FileUploadQuestion extends BaseQuestion {
-    questionType: QuestionType.FILE_UPLOAD;
+    type: QuestionType.FILE_UPLOAD;
     attachedFiles: string[];
     fileUploadConfig: FileUploadConfig;
 }
@@ -224,15 +237,14 @@ export type FileUploadData = {
 };
 
 export type QuestionDataPayload =
-    | { questionType: QuestionType.MCQ; data: MCQData }
-    | { questionType: QuestionType.MMCQ; data: MMCQData }
-    | { questionType: QuestionType.FILL_THE_BLANKS; data: FillTheBlankData }
-    | { questionType: QuestionType.MATCHING; data: MatchingData }
-    | { questionType: QuestionType.DESCRIPTIVE; data: DescriptiveData }
-    | { questionType: QuestionType.CODING; data: CodingData }
-    | { questionType: QuestionType.FILE_UPLOAD; data: FileUploadData };
+    | { type: QuestionType.MCQ; data: MCQData }
+    | { type: QuestionType.MMCQ; data: MMCQData }
+    | { type: QuestionType.FILL_THE_BLANKS; data: FillTheBlankData }
+    | { type: QuestionType.MATCHING; data: MatchingData }
+    | { type: QuestionType.DESCRIPTIVE; data: DescriptiveData }
+    | { type: QuestionType.CODING; data: CodingData }
+    | { type: QuestionType.FILE_UPLOAD; data: FileUploadData };
 
-// Solution types
 export type MCQSolution = {
     correctOptions: Pick<QuestionOption, "id" | "isCorrect">[];
 };
@@ -256,13 +268,13 @@ export type CodingSolution = Pick<CodingConfig, "referenceSolution"> & {
 };
 
 export type SolutionPayload =
-    | { questionType: QuestionType.MCQ; data: MCQSolution }
-    | { questionType: QuestionType.MMCQ; data: MMCQSolution }
-    | { questionType: QuestionType.TRUE_FALSE; data: TrueFalseSolution }
-    | { questionType: QuestionType.FILL_THE_BLANKS; data: FillTheBlankSolution }
-    | { questionType: QuestionType.MATCHING; data: MatchingSolution }
-    | { questionType: QuestionType.DESCRIPTIVE; data: DescriptiveSolution }
-    | { questionType: QuestionType.CODING; data: CodingSolution };
+    | { type: QuestionType.MCQ; data: MCQSolution }
+    | { type: QuestionType.MMCQ; data: MMCQSolution }
+    | { type: QuestionType.TRUE_FALSE; data: TrueFalseSolution }
+    | { type: QuestionType.FILL_THE_BLANKS; data: FillTheBlankSolution }
+    | { type: QuestionType.MATCHING; data: MatchingSolution }
+    | { type: QuestionType.DESCRIPTIVE; data: DescriptiveSolution }
+    | { type: QuestionType.CODING; data: CodingSolution };
 
 /* Versioning example:
 const questionData: QuestionDataPayload = {
