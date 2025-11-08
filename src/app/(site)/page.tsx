@@ -19,7 +19,7 @@ function HomeContent() {
     }, [router, session.data?.user]);
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden transition-all duration-500 bg-gradient-to-br from-slate-50 via-white to-gray-100 dark:from-gray-900 dark:via-slate-900 dark:to-black">
+        <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden transition-all duration-500 bg-linear-to-br from-slate-50 via-white to-gray-100 dark:from-gray-900 dark:via-slate-900 dark:to-black">
             {/* Theme Toggle Button */}
             <ThemeToggle />
 
@@ -55,7 +55,7 @@ function HomeContent() {
             <div className="text-center z-10 max-w-4xl mx-auto px-6">
                 {/* Animated Evalify Title */}
                 <div className="relative mb-16">
-                    <h1 className="text-8xl md:text-9xl font-bold mb-6 tracking-tight transition-all duration-1000 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 dark:from-blue-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">
+                    <h1 className="text-8xl md:text-9xl font-bold mb-6 tracking-tight transition-all duration-1000 bg-linear-to-r from-blue-600 via-purple-600 to-cyan-600 dark:from-blue-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">
                         Evalify
                     </h1>
 
@@ -109,7 +109,7 @@ function HomeContent() {
                 <div className="relative inline-block">
                     <Button
                         size="lg"
-                        className="px-12 py-4 text-lg font-semibold rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white group"
+                        className="px-12 py-4 text-lg font-semibold rounded-xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white group"
                         onClick={() => router.push("/auth/login")}
                     >
                         <span className="flex items-center gap-3">

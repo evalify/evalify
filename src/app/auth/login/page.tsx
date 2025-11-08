@@ -31,7 +31,7 @@ export default function SignIn() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center relative overflow-hidden transition-all duration-500 bg-gradient-to-br from-slate-50 via-white to-gray-100 dark:from-gray-900 dark:via-slate-900 dark:to-black">
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden transition-all duration-500 bg-linear-to-br from-slate-50 via-white to-gray-100 dark:from-gray-900 dark:via-slate-900 dark:to-black">
             {/* Theme Toggle Button */}
             <ThemeToggle />
             {/* Back to Home Button */}
@@ -67,7 +67,7 @@ export default function SignIn() {
             <div className="relative z-10 w-full max-w-md mx-4 p-8 rounded-3xl shadow-2xl backdrop-blur-sm border transition-all duration-300 bg-white/80 border-gray-200/50 dark:bg-white/5 dark:border-white/10">
                 {/* Evalify Logo */}
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold mb-3 transition-all duration-1000 bg-gradient-to-r from-blue-600 via-purple-600 to-cyan-600 dark:from-blue-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">
+                    <h1 className="text-4xl font-bold mb-3 transition-all duration-1000 bg-linear-to-r from-blue-600 via-purple-600 to-cyan-600 dark:from-blue-400 dark:via-purple-400 dark:to-cyan-400 bg-clip-text text-transparent">
                         Evalify
                     </h1>
                     <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -80,13 +80,13 @@ export default function SignIn() {
                     {/* Keycloak Sign In Button */}
                     <Button
                         onClick={() => signIn("keycloak")}
-                        className="w-full py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white relative overflow-hidden group"
+                        className="w-full py-3 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white relative overflow-hidden group"
                     >
                         <span className="relative z-10 flex items-center justify-center gap-3">
                             <Shield size={18} />
                             Sign in with Keycloak
                         </span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     </Button>
                     {/* Features */}
                     <div className="grid grid-cols-2 gap-4 mt-6">

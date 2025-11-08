@@ -153,14 +153,14 @@ export function AppSidebar() {
 
     return (
         <Sidebar collapsible="icon" side="left" className="group relative">
-            <SidebarHeader className="border-b border-sidebar-border bg-gradient-to-br from-sidebar/40 via-sidebar/60 to-sidebar/80 dark:from-sidebar/60 dark:via-sidebar/80 dark:to-sidebar backdrop-blur-sm p-0">
+            <SidebarHeader className="border-b border-sidebar-border bg-linear-to-br from-sidebar/40 via-sidebar/60 to-sidebar/80 dark:from-sidebar/60 dark:via-sidebar/80 dark:to-sidebar backdrop-blur-sm p-0">
                 <Link href="/" className="block">
-                    <div className="flex items-center p-2 min-h-[64px] group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-3">
-                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-lg ring-2 ring-primary/20 transition-all duration-200 hover:scale-105 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8">
+                    <div className="flex items-center p-2 min-h-16 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground shadow-lg ring-2 ring-primary/20 transition-all duration-200 hover:scale-105 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8">
                             <BarChart3 className="h-5 w-5 group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4" />
                         </div>
                         <div className="ml-3 flex flex-col min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                            <span className="font-bold text-xl bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent truncate">
+                            <span className="font-bold text-xl bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent truncate">
                                 Evalify
                             </span>
                             <span className="text-xs text-muted-foreground truncate">
@@ -178,7 +178,7 @@ export function AppSidebar() {
                 </SidebarTrigger>
             </div>
 
-            <SidebarContent className="bg-gradient-to-b from-sidebar via-sidebar/50 to-sidebar dark:from-sidebar dark:via-sidebar/80 dark:to-sidebar scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-border/50 hover:scrollbar-thumb-sidebar-border overflow-x-hidden p-0">
+            <SidebarContent className="bg-linear-to-b from-sidebar via-sidebar/50 to-sidebar dark:from-sidebar dark:via-sidebar/80 dark:to-sidebar scrollbar-thin scrollbar-track-transparent scrollbar-thumb-sidebar-border/50 hover:scrollbar-thumb-sidebar-border overflow-x-hidden p-0">
                 <SidebarGroup className="px-2 py-4">
                     <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-2 group-data-[collapsible=icon]:sr-only">
                         Main
@@ -210,7 +210,7 @@ export function AppSidebar() {
                     </SidebarGroupContent>
                 </SidebarGroup>
 
-                <SidebarSeparator className="bg-gradient-to-r from-transparent via-sidebar-border to-transparent mx-2" />
+                <SidebarSeparator className="bg-linear-to-r from-transparent via-sidebar-border to-transparent mx-2" />
 
                 <AuthGuard
                     requiredGroups={[UserType.STAFF, UserType.MANAGER]}
@@ -246,7 +246,7 @@ export function AppSidebar() {
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
-                    <SidebarSeparator className="bg-gradient-to-r from-transparent via-sidebar-border to-transparent mx-2" />
+                    <SidebarSeparator className="bg-linear-to-r from-transparent via-sidebar-border to-transparent mx-2" />
                 </AuthGuard>
 
                 <AuthGuard
@@ -283,7 +283,7 @@ export function AppSidebar() {
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
-                    <SidebarSeparator className="bg-gradient-to-r from-transparent via-sidebar-border to-transparent mx-2" />
+                    <SidebarSeparator className="bg-linear-to-r from-transparent via-sidebar-border to-transparent mx-2" />
                 </AuthGuard>
 
                 <AuthGuard requiredGroups={[UserType.STUDENT]} fallbackComponent={null}>
@@ -317,7 +317,7 @@ export function AppSidebar() {
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
-                    <SidebarSeparator className="bg-gradient-to-r from-transparent via-sidebar-border to-transparent mx-2" />
+                    <SidebarSeparator className="bg-linear-to-r from-transparent via-sidebar-border to-transparent mx-2" />
                 </AuthGuard>
 
                 <SidebarGroup className="px-2 py-4">
@@ -351,19 +351,19 @@ export function AppSidebar() {
                 </SidebarGroup>
             </SidebarContent>
 
-            <SidebarFooter className="border-t border-sidebar-border bg-gradient-to-r from-sidebar via-sidebar/80 to-sidebar backdrop-blur-sm p-2 overflow-hidden">
+            <SidebarFooter className="border-t border-sidebar-border bg-linear-to-r from-sidebar via-sidebar/80 to-sidebar backdrop-blur-sm p-2 overflow-hidden">
                 <SidebarMenu className="overflow-hidden">
                     {mounted && session?.user ? (
                         <SidebarMenuItem>
                             <div className="group relative w-full overflow-hidden">
                                 <div className="flex items-center p-2 rounded-lg hover:bg-sidebar-accent/50 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-3">
-                                    <Avatar className="h-8 w-8 flex-shrink-0 rounded-lg ring-2 ring-primary/20 transition-all duration-200 hover:ring-primary/40 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
+                                    <Avatar className="h-8 w-8 shrink-0 rounded-lg ring-2 ring-primary/20 transition-all duration-200 hover:ring-primary/40 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
                                         <AvatarImage
                                             src={session.user.image || ""}
                                             alt={session.user.name || ""}
                                             className="object-cover"
                                         />
-                                        <AvatarFallback className="rounded-lg bg-gradient-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold group-data-[collapsible=icon]:text-xs">
+                                        <AvatarFallback className="rounded-lg bg-linear-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold group-data-[collapsible=icon]:text-xs">
                                             {session.user.name?.slice(0, 2).toUpperCase() || "U"}
                                         </AvatarFallback>
                                     </Avatar>
@@ -383,7 +383,7 @@ export function AppSidebar() {
                                             confirmButtonText="Yes, Logout"
                                         >
                                             <button
-                                                className="flex-shrink-0 p-1.5 rounded-md text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 transition-all duration-200 hover:scale-105"
+                                                className="shrink-0 p-1.5 rounded-md text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 transition-all duration-200 hover:scale-105"
                                                 title="Sign out"
                                             >
                                                 <LogOut className="h-4 w-4" />
@@ -420,7 +420,7 @@ export function AppSidebar() {
                             <SidebarMenuButton
                                 onClick={() => signIn("keycloak")}
                                 tooltip="Sign in to access all features"
-                                className="w-full justify-center bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70 transition-all duration-200 hover:scale-105 group-data-[collapsible=icon]:p-3"
+                                className="w-full justify-center bg-linear-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70 transition-all duration-200 hover:scale-105 group-data-[collapsible=icon]:p-3"
                             >
                                 <LogIn className="h-4 w-4 text-green-400 group-data-[collapsible=icon]:h-5 group-data-[collapsible=icon]:w-5" />
                                 <span className="font-medium group-data-[collapsible=icon]:hidden">
@@ -435,7 +435,7 @@ export function AppSidebar() {
                                 disabled
                                 className="group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-3"
                             >
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent flex-shrink-0" />
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent shrink-0" />
                                 <span className="group-data-[collapsible=icon]:hidden">
                                     Loading...
                                 </span>

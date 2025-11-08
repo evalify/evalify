@@ -18,7 +18,7 @@ export default function Loading() {
     }, []);
 
     return (
-        <div className="fixed inset-0 bg-gradient-to-br  flex flex-col items-center justify-center z-50">
+        <div className="fixed inset-0 bg-linear-to-br flex flex-col items-center justify-center z-50">
             <div className="flex flex-col items-center">
                 {/* Logo animation */}
                 <motion.div
@@ -42,7 +42,7 @@ export default function Loading() {
                             transition={{ delay: 0.3, duration: 0.5 }}
                             className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
                         >
-                            <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                            <span className="text-3xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                                 E
                             </span>
                         </motion.div>
@@ -54,7 +54,7 @@ export default function Loading() {
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.2, duration: 0.5 }}
-                    className="text-2xl md:text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
+                    className="text-2xl md:text-3xl font-bold mb-2 bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"
                 >
                     Evalify
                 </motion.h1>
@@ -77,7 +77,7 @@ export default function Loading() {
                     transition={{ delay: 0.5, duration: 0.5 }}
                 >
                     <motion.div
-                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
+                        className="h-full bg-linear-to-r from-blue-500 to-indigo-500"
                         initial={{ width: "0%" }}
                         animate={{ width: "100%" }}
                         transition={{

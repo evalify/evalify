@@ -203,7 +203,7 @@ export default function AdminDashboard() {
             {/* Overview Stats */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 <Card
-                    className="border border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 cursor-pointer hover:scale-105 transition-transform"
+                    className="border border-blue-200 dark:border-blue-800 bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleNavigation("/admin/user", "Users Overview")}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -224,7 +224,7 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card
-                    className="border border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 cursor-pointer hover:scale-105 transition-transform"
+                    className="border border-green-200 dark:border-green-800 bg-linear-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleNavigation("/admin/batch", "Batches Overview")}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -245,7 +245,7 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card
-                    className="border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 cursor-pointer hover:scale-105 transition-transform"
+                    className="border border-purple-200 dark:border-purple-800 bg-linear-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleNavigation("/admin/course", "Courses Overview")}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card
-                    className="border border-orange-200 dark:border-orange-800 bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 cursor-pointer hover:scale-105 transition-transform"
+                    className="border border-orange-200 dark:border-orange-800 bg-linear-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleNavigation("/admin/department", "Departments Overview")}
                 >
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -486,7 +486,7 @@ export default function AdminDashboard() {
             {/* Quick Action Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card
-                    className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 border-indigo-200 dark:border-indigo-800 cursor-pointer hover:scale-105 transition-transform"
+                    className="bg-linear-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 border-indigo-200 dark:border-indigo-800 cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleNavigation("/admin/user", "Add New User")}
                 >
                     <CardContent className="p-4">
@@ -505,7 +505,7 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card
-                    className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800 cursor-pointer hover:scale-105 transition-transform"
+                    className="bg-linear-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 border-emerald-200 dark:border-emerald-800 cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleNavigation("/admin/batch", "Create Batch")}
                 >
                     <CardContent className="p-4">
@@ -524,7 +524,7 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card
-                    className="bg-gradient-to-br from-violet-50 to-violet-100 dark:from-violet-900/20 dark:to-violet-800/20 border-violet-200 dark:border-violet-800 cursor-pointer hover:scale-105 transition-transform"
+                    className="bg-linear-to-br from-violet-50 to-violet-100 dark:from-violet-900/20 dark:to-violet-800/20 border-violet-200 dark:border-violet-800 cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleNavigation("/admin/semester", "Manage Semesters")}
                 >
                     <CardContent className="p-4">
@@ -543,7 +543,7 @@ export default function AdminDashboard() {
                 </Card>
 
                 <Card
-                    className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800 cursor-pointer hover:scale-105 transition-transform"
+                    className="bg-linear-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20 border-amber-200 dark:border-amber-800 cursor-pointer hover:scale-105 transition-transform"
                     onClick={() => handleNavigation("/settings", "System Settings")}
                 >
                     <CardContent className="p-4">
