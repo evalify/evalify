@@ -6,7 +6,7 @@ import { banksTable, bankUsersTable, usersTable } from "@/db/schema";
 import { eq, and, or, ilike, desc, count, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
-const managerOrFacultyProcedure = createCustomProcedure([], [UserType.MANAGER, UserType.STAFF]);
+const managerOrFacultyProcedure = createCustomProcedure([UserType.MANAGER, UserType.STAFF]);
 
 export const bankRouter = createTRPCRouter({
     list: managerOrFacultyProcedure
@@ -14,7 +14,7 @@ export const bankRouter = createTRPCRouter({
             z.object({
                 searchTerm: z.string().optional(),
                 semester: z.number().optional(),
-                limit: z.number().min(1).max(100).default(50),
+                limit: z.number().min(1).max(100).default(10),
                 offset: z.number().min(0).default(0),
                 sortBy: z.string().optional(),
                 sortOrder: z.enum(["asc", "desc"]).optional(),

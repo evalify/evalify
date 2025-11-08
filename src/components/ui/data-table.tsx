@@ -16,6 +16,7 @@ import {
     type CellContext,
     type HeaderContext,
     type OnChangeFn,
+    type Header,
 } from "@tanstack/react-table";
 
 import {
@@ -43,6 +44,40 @@ import {
     SelectValue,
     SelectItem,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { GripVertical } from "lucide-react";
+
+function DataTableResizer<TData, TValue>({ header }: { header: Header<TData, TValue> }) {
+    const isResizing = header.column.getIsResizing();
+
+    return (
+        <div
+            onMouseDown={header.getResizeHandler()}
+            onTouchStart={header.getResizeHandler()}
+            className={`absolute right-0 top-0 flex h-full w-4 cursor-col-resize select-none touch-none items-center justify-center opacity-0 group-hover/th:opacity-100 z-10 ${
+                isResizing ? "opacity-100" : ""
+            }`}
+            aria-hidden="true"
+            data-resizing={isResizing ? "true" : undefined}
+        >
+            <div className="flex h-4/5 items-center justify-center">
+                <Separator
+                    orientation="vertical"
+                    decorative={false}
+                    className={`h-4/5 w-0.5 transition-colors duration-200 ${
+                        isResizing ? "bg-primary" : "bg-border"
+                    }`}
+                />
+                <GripVertical
+                    className={`absolute h-4 w-4 ${
+                        isResizing ? "text-primary" : "text-muted-foreground/70"
+                    }`}
+                    strokeWidth={1.5}
+                />
+            </div>
+        </div>
+    );
+}
 
 function DataTableSkeleton(props: { columns: number; rows?: number }) {
     const rows = props.rows ?? 10;
@@ -52,8 +87,8 @@ function DataTableSkeleton(props: { columns: number; rows?: number }) {
                 <TableHeader>
                     <TableRow>
                         {Array.from({ length: props.columns }).map((_, i) => (
-                            <TableHead key={i}>
-                                <Skeleton className="h-5 w-24" />
+                            <TableHead key={i} className="text-center">
+                                <Skeleton className="h-5 w-24 mx-auto" />
                             </TableHead>
                         ))}
                     </TableRow>
@@ -62,7 +97,7 @@ function DataTableSkeleton(props: { columns: number; rows?: number }) {
                     {Array.from({ length: rows }).map((_, r) => (
                         <TableRow key={r}>
                             {Array.from({ length: props.columns }).map((__, c) => (
-                                <TableCell key={c}>
+                                <TableCell key={c} className="text-center">
                                     <Skeleton className="h-5 w-full" />
                                 </TableCell>
                             ))}
@@ -129,6 +164,7 @@ export function DataTable<TData, TValue>({
     const [iRowSelection, iSetRowSelection] = React.useState<RowSelectionState>({});
     const [iPageIndex, iSetPageIndex] = React.useState<number>(0);
     const [iPageSize, iSetPageSize] = React.useState<number>(initialPageSize);
+    const [columnSizing, setColumnSizing] = React.useState({});
 
     const sorting = cSorting ?? iSorting;
     const pageIndex = cPageIndex ?? iPageIndex;
@@ -162,25 +198,30 @@ export function DataTable<TData, TValue>({
         const selectCol: ColumnDef<TData, TValue> = {
             id: "__select",
             header: (ctx: HeaderContext<TData, TValue>) => (
-                <Checkbox
-                    checked={
-                        ctx.table.getIsAllPageRowsSelected() ||
-                        (ctx.table.getIsSomePageRowsSelected() ? "indeterminate" : false)
-                    }
-                    onCheckedChange={(val) => ctx.table.toggleAllPageRowsSelected(Boolean(val))}
-                    aria-label="Select all"
-                />
+                <div className="flex justify-center">
+                    <Checkbox
+                        checked={
+                            ctx.table.getIsAllPageRowsSelected() ||
+                            (ctx.table.getIsSomePageRowsSelected() ? "indeterminate" : false)
+                        }
+                        onCheckedChange={(val) => ctx.table.toggleAllPageRowsSelected(Boolean(val))}
+                        aria-label="Select all"
+                    />
+                </div>
             ),
             cell: (ctx: CellContext<TData, TValue>) => (
-                <Checkbox
-                    checked={ctx.row.getIsSelected()}
-                    onCheckedChange={(val) => ctx.row.toggleSelected(Boolean(val))}
-                    aria-label="Select row"
-                />
+                <div className="flex justify-center">
+                    <Checkbox
+                        checked={ctx.row.getIsSelected()}
+                        onCheckedChange={(val) => ctx.row.toggleSelected(Boolean(val))}
+                        aria-label="Select row"
+                    />
+                </div>
             ),
             enableSorting: false,
             enableHiding: false,
-            size: 24,
+            size: 60,
+            enableResizing: false,
         };
         return [selectCol, ...columns];
     }, [columns, enableRowSelection]);
@@ -194,7 +235,12 @@ export function DataTable<TData, TValue>({
             columnVisibility,
             rowSelection,
             pagination: { pageIndex, pageSize },
+            columnSizing,
         },
+
+        onColumnSizingChange: setColumnSizing,
+        columnResizeMode: "onChange",
+        enableColumnResizing: true,
 
         onSortingChange: (updater) => {
             const next = typeof updater === "function" ? updater(sorting) : updater;
@@ -280,19 +326,30 @@ export function DataTable<TData, TValue>({
             {isLoading ? (
                 <DataTableSkeleton columns={computedColumns.length} rows={skeletonRowCount} />
             ) : (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                     <Table>
                         <TableHeader>
                             {table.getHeaderGroups().map((hg) => (
                                 <TableRow key={hg.id}>
                                     {hg.headers.map((header) => (
-                                        <TableHead key={header.id}>
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                      header.column.columnDef.header,
-                                                      header.getContext()
-                                                  )}
+                                        <TableHead
+                                            key={header.id}
+                                            className="text-center relative group/th"
+                                            style={{
+                                                width: header.getSize(),
+                                            }}
+                                        >
+                                            <div className="flex items-center justify-center truncate px-2">
+                                                {header.isPlaceholder
+                                                    ? null
+                                                    : flexRender(
+                                                          header.column.columnDef.header,
+                                                          header.getContext()
+                                                      )}
+                                            </div>
+                                            {header.column.getCanResize() && (
+                                                <DataTableResizer header={header} />
+                                            )}
                                         </TableHead>
                                     ))}
                                 </TableRow>
@@ -307,11 +364,22 @@ export function DataTable<TData, TValue>({
                                         data-state={row.getIsSelected() && "selected"}
                                     >
                                         {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id}>
-                                                {flexRender(
-                                                    cell.column.columnDef.cell,
-                                                    cell.getContext()
-                                                )}
+                                            <TableCell
+                                                key={cell.id}
+                                                className="text-center"
+                                                style={{
+                                                    width: cell.column.getSize(),
+                                                }}
+                                            >
+                                                <div
+                                                    className="truncate px-2"
+                                                    title={String(cell.getValue() ?? "")}
+                                                >
+                                                    {flexRender(
+                                                        cell.column.columnDef.cell,
+                                                        cell.getContext()
+                                                    )}
+                                                </div>
                                             </TableCell>
                                         ))}
                                     </TableRow>
