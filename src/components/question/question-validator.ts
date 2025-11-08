@@ -5,6 +5,7 @@ import {
     MMCQQuestion,
     FillInBlanksQuestion,
     TrueFalseQuestion,
+    DescriptiveQuestion,
 } from "@/types/questions";
 
 export interface ValidationError {
@@ -161,6 +162,16 @@ export function validateQuestion(question: Question | null): ValidationResult {
                 errors.push({
                     field: "trueFalseAnswer",
                     message: "Please select True or False as the correct answer",
+                });
+            }
+            break;
+
+        case QuestionType.DESCRIPTIVE:
+            const descQuestion = question as DescriptiveQuestion;
+            if (!descQuestion.descriptiveConfig) {
+                errors.push({
+                    field: "descriptiveConfig",
+                    message: "Descriptive configuration is required",
                 });
             }
             break;

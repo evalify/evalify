@@ -106,6 +106,25 @@ export default function EditQuestionPage({ params }: Props) {
                 topicIds: (question.topics || []).map((t) => t.topicId),
                 blankConfig: fibQuestion.blankConfig,
             });
+        } else if (question.type === "DESCRIPTIVE") {
+            const descQuestion = question as Question & {
+                descriptiveConfig: import("@/types/questions").DescriptiveConfig;
+            };
+
+            updateMutation.mutate({
+                questionId: params.questionId,
+                bankId: params.bankId,
+                type: question.type,
+                question: question.question,
+                explanation: question.explanation,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                descriptiveConfig: descQuestion.descriptiveConfig,
+            });
         }
     };
 

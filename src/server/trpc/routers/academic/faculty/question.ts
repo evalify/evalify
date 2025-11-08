@@ -98,6 +98,13 @@ const fillTheBlankConfigSchema = z.object({
     evaluationType: z.enum(["NORMAL", "STRICT", "LENIENT"]),
 });
 
+const descriptiveConfigSchema = z.object({
+    modelAnswer: z.string().optional(),
+    keywords: z.array(z.string()).optional(),
+    minWords: z.number().optional(),
+    maxWords: z.number().optional(),
+});
+
 export const questionRouter = createTRPCRouter({
     listByBank: managerOrFacultyProcedure
         .input(
@@ -284,6 +291,11 @@ export const questionRouter = createTRPCRouter({
                         blankConfig: fillTheBlankConfigSchema,
                         explanation: z.string().optional(),
                     }),
+                    z.object({
+                        type: z.literal("DESCRIPTIVE"),
+                        descriptiveConfig: descriptiveConfigSchema,
+                        explanation: z.string().optional(),
+                    }),
                 ])
             )
         )
@@ -328,11 +340,14 @@ export const questionRouter = createTRPCRouter({
                     questionData = input.questionData;
                     solution = input.solution;
                 } else if (input.type === "TRUE_FALSE") {
-                    questionData = {}; // TRUE_FALSE doesn't need questionData
+                    questionData = {};
                     solution = { trueFalseAnswer: input.trueFalseAnswer };
                 } else if (input.type === "FILL_THE_BLANK") {
                     questionData = input.blankConfig;
-                    solution = {}; // FILL_THE_BLANK stores answer in questionData
+                    solution = {};
+                } else if (input.type === "DESCRIPTIVE") {
+                    questionData = input.descriptiveConfig;
+                    solution = {};
                 }
 
                 const [question] = await db
@@ -417,6 +432,11 @@ export const questionRouter = createTRPCRouter({
                                 blankConfig: fillTheBlankConfigSchema.optional(),
                                 explanation: z.string().optional(),
                             }),
+                            z.object({
+                                type: z.literal("DESCRIPTIVE"),
+                                descriptiveConfig: descriptiveConfigSchema.optional(),
+                                explanation: z.string().optional(),
+                            }),
                         ])
                     )
                 )
@@ -492,7 +512,11 @@ export const questionRouter = createTRPCRouter({
                     }
                 } else if (input.type === "FILL_THE_BLANK") {
                     if ("blankConfig" in input && input.blankConfig !== undefined) {
-                        updateData.questionData = { blankConfig: input.blankConfig };
+                        updateData.questionData = input.blankConfig;
+                    }
+                } else if (input.type === "DESCRIPTIVE") {
+                    if ("descriptiveConfig" in input && input.descriptiveConfig !== undefined) {
+                        updateData.questionData = input.descriptiveConfig;
                     }
                 }
 
