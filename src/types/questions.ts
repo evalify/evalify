@@ -1,5 +1,3 @@
-import { iso } from "zod";
-
 export enum QuestionType {
     MCQ = "MCQ",
     MMCQ = "MMCQ",
@@ -21,11 +19,9 @@ export enum ProgrammingLanguage {
     PYTHON = "PYTHON",
     CPP = "CPP",
     JAVASCRIPT = "JAVASCRIPT",
-    TYPESCRIPT = "TYPESCRIPT",
-    KOTLIN = "KOTLIN",
-    GO = "GO",
-    RUST = "RUST",
     C = "C",
+    OCTAVE = "OCTAVE",
+    SCALA = "SCALA",
 }
 
 export enum BloomsLevel {
@@ -41,12 +37,6 @@ export enum Difficulty {
     EASY = "EASY",
     MEDIUM = "MEDIUM",
     HARD = "HARD",
-}
-
-export enum OutputChecker {
-    EXACT = "EXACT",
-    TRIMMED = "TRIMMED",
-    TOKEN = "TOKEN",
 }
 
 export enum FillInBlanksEvaluationType {
@@ -69,8 +59,8 @@ export interface VersionedJson<T> {
 
 export interface BaseQuestion {
     id?: string;
-    questionType: QuestionType;
-    text: string;
+    type: QuestionType;
+    question: string;
     explanation?: string;
     marks: number;
     negativeMarks: number;
@@ -162,8 +152,13 @@ export interface QuestionSettings {
 
 export interface FillInBlanksConfig {
     blankCount: number;
-    acceptableAnswers: Record<number, string[]>;
-    acceptedTypes: Record<number, FillInBlanksAcceptedType[]>;
+    acceptableAnswers: Record<
+        number,
+        {
+            answers: string[];
+            type: FillInBlanksAcceptedType;
+        }[]
+    >;
     blankWeights: Record<number, number>;
     evaluationType: FillInBlanksEvaluationType;
 }
@@ -191,8 +186,6 @@ export interface TestCase {
     visibility: TestCaseVisibility;
     marksWeightage?: number;
     orderIndex: number;
-    floatTolerance?: number;
-    checker: OutputChecker;
 }
 
 export interface FileUploadConfig {

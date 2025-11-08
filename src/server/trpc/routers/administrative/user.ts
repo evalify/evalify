@@ -516,6 +516,7 @@ export const userRouter = createTRPCRouter({
                         kcUser.username;
 
                     return {
+                        id: kcUser.id,
                         name: fullName,
                         email: kcUser.email!.toLowerCase(),
                         profileId: kcUser.attributes?.profileId?.[0] || kcUser.username,

@@ -64,6 +64,7 @@ export const questionsTable = pgTable(
         // For CODING: { language: string, starterCode: string, testCases: [], constraints: {} }
         questionData: jsonb("question_data").notNull(),
 
+        explaination: varchar({ length: 5000 }),
         // Solution
         solution: jsonb("solution").notNull(),
 
