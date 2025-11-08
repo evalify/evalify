@@ -1,20 +1,17 @@
 import { z } from "zod";
-import { createTRPCRouter, createCustomProcedure, protectedProcedure } from "@/server/trpc/trpc";
-import { UserType } from "@/lib/auth/utils";
+import { createTRPCRouter, facultyAndManagerProcedure, protectedProcedure } from "../../../trpc";
 import { db } from "@/db";
 import { banksTable, bankUsersTable, usersTable } from "@/db/schema";
 import { eq, and, or, ilike, desc, count, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
-const managerOrFacultyProcedure = createCustomProcedure([UserType.MANAGER, UserType.STAFF]);
-
 export const bankRouter = createTRPCRouter({
-    list: managerOrFacultyProcedure
+    list: facultyAndManagerProcedure
         .input(
             z.object({
                 searchTerm: z.string().optional(),
                 semester: z.number().optional(),
-                limit: z.number().min(1).max(100).default(10),
+                limit: z.number().min(1).max(100).default(50),
                 offset: z.number().min(0).default(0),
                 sortBy: z.string().optional(),
                 sortOrder: z.enum(["asc", "desc"]).optional(),
@@ -145,7 +142,7 @@ export const bankRouter = createTRPCRouter({
             }
         }),
 
-    get: managerOrFacultyProcedure
+    get: facultyAndManagerProcedure
         .input(
             z.object({
                 id: z.string().uuid(),
@@ -235,7 +232,7 @@ export const bankRouter = createTRPCRouter({
             }
         }),
 
-    create: managerOrFacultyProcedure
+    create: facultyAndManagerProcedure
         .input(
             z.object({
                 name: z.string().min(1, "Bank name is required").max(255),
@@ -273,7 +270,7 @@ export const bankRouter = createTRPCRouter({
             }
         }),
 
-    update: managerOrFacultyProcedure
+    update: facultyAndManagerProcedure
         .input(
             z.object({
                 id: z.string().uuid(),
@@ -335,7 +332,7 @@ export const bankRouter = createTRPCRouter({
             }
         }),
 
-    delete: managerOrFacultyProcedure
+    delete: facultyAndManagerProcedure
         .input(
             z.object({
                 id: z.string().uuid(),
@@ -373,7 +370,7 @@ export const bankRouter = createTRPCRouter({
             }
         }),
 
-    shareBank: managerOrFacultyProcedure
+    shareBank: facultyAndManagerProcedure
         .input(
             z.object({
                 bankId: z.string().uuid(),
@@ -427,7 +424,7 @@ export const bankRouter = createTRPCRouter({
             }
         }),
 
-    unshareBank: managerOrFacultyProcedure
+    unshareBank: facultyAndManagerProcedure
         .input(
             z.object({
                 bankId: z.string().uuid(),
@@ -480,7 +477,7 @@ export const bankRouter = createTRPCRouter({
             }
         }),
 
-    updateAccessLevel: managerOrFacultyProcedure
+    updateAccessLevel: facultyAndManagerProcedure
         .input(
             z.object({
                 bankId: z.string().uuid(),
@@ -536,7 +533,7 @@ export const bankRouter = createTRPCRouter({
             }
         }),
 
-    getSharedUsers: managerOrFacultyProcedure
+    getSharedUsers: facultyAndManagerProcedure
         .input(
             z.object({
                 bankId: z.string().uuid(),

@@ -9,6 +9,8 @@ import { ShareBankDialog } from "@/components/question-bank/share-bank-dialog";
 import { BankListItem } from "@/types/bank";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/components/ui/data-table";
+import AuthGuard from "@/components/auth/auth-guard";
+import { UserType } from "@/lib/auth/utils";
 
 export default function QuestionBankPage() {
     const [selectedBank, setSelectedBank] = useState<BankListItem | undefined>();
@@ -49,72 +51,74 @@ export default function QuestionBankPage() {
     const columns = getColumns(handleEdit, handleDelete, handleShare, session?.user?.id);
 
     return (
-        <div className="container mx-auto py-6">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Question Banks</h1>
-                    <p className="text-muted-foreground mt-2">
-                        Manage question banks for different courses and semesters
-                    </p>
+        <AuthGuard requiredGroups={[UserType.MANAGER, UserType.STAFF]}>
+            <div className="container mx-auto py-6">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Question Banks</h1>
+                        <p className="text-muted-foreground mt-2">
+                            Manage question banks for different courses and semesters
+                        </p>
+                    </div>
+                    <BankDialog mode="create" />
                 </div>
-                <BankDialog mode="create" />
+
+                <DataTable
+                    columns={columns}
+                    data={rows}
+                    filterColumn="name"
+                    initialPageSize={10}
+                    isLoading={isLoading}
+                    enableRowSelection={false}
+                    pageIndex={pageIndex}
+                    pageSize={pageSize}
+                    pageCount={pageCount}
+                    onPageIndexChange={setPageIndex}
+                    onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setPageIndex(0);
+                    }}
+                    filterValue={filterValue}
+                    onFilterChange={(value) => {
+                        setFilterValue(value);
+                        setPageIndex(0);
+                    }}
+                />
+
+                {selectedBank && (
+                    <BankDialog
+                        bank={selectedBank}
+                        isOpen={isEditDialogOpen}
+                        onClose={() => {
+                            setIsEditDialogOpen(false);
+                            setSelectedBank(undefined);
+                        }}
+                        mode="edit"
+                    />
+                )}
+
+                {bankToDelete && (
+                    <DeleteBankDialog
+                        bankId={bankToDelete}
+                        isOpen={isDeleteDialogOpen}
+                        onClose={() => {
+                            setIsDeleteDialogOpen(false);
+                            setBankToDelete(null);
+                        }}
+                    />
+                )}
+
+                {bankToShare && (
+                    <ShareBankDialog
+                        bank={bankToShare}
+                        isOpen={isShareDialogOpen}
+                        onClose={() => {
+                            setIsShareDialogOpen(false);
+                            setBankToShare(null);
+                        }}
+                    />
+                )}
             </div>
-
-            <DataTable
-                columns={columns}
-                data={rows}
-                filterColumn="name"
-                initialPageSize={10}
-                isLoading={isLoading}
-                enableRowSelection={false}
-                pageIndex={pageIndex}
-                pageSize={pageSize}
-                pageCount={pageCount}
-                onPageIndexChange={setPageIndex}
-                onPageSizeChange={(size) => {
-                    setPageSize(size);
-                    setPageIndex(0);
-                }}
-                filterValue={filterValue}
-                onFilterChange={(value) => {
-                    setFilterValue(value);
-                    setPageIndex(0);
-                }}
-            />
-
-            {selectedBank && (
-                <BankDialog
-                    bank={selectedBank}
-                    isOpen={isEditDialogOpen}
-                    onClose={() => {
-                        setIsEditDialogOpen(false);
-                        setSelectedBank(undefined);
-                    }}
-                    mode="edit"
-                />
-            )}
-
-            {bankToDelete && (
-                <DeleteBankDialog
-                    bankId={bankToDelete}
-                    isOpen={isDeleteDialogOpen}
-                    onClose={() => {
-                        setIsDeleteDialogOpen(false);
-                        setBankToDelete(null);
-                    }}
-                />
-            )}
-
-            {bankToShare && (
-                <ShareBankDialog
-                    bank={bankToShare}
-                    isOpen={isShareDialogOpen}
-                    onClose={() => {
-                        setIsShareDialogOpen(false);
-                        setBankToShare(null);
-                    }}
-                />
-            )}
-        </div>
+        </AuthGuard>
     );
 }
