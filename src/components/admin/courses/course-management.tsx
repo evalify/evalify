@@ -21,7 +21,7 @@ import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 interface Course {
     id: string;
     name: string;
-    description: string;
+    description: string | null;
     code: string;
     image?: string | null;
     type: "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL";
@@ -200,7 +200,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
                 (course) =>
                     course.name.toLowerCase().includes(lowerSearch) ||
                     course.code.toLowerCase().includes(lowerSearch) ||
-                    course.description.toLowerCase().includes(lowerSearch)
+                    course.description?.toLowerCase().includes(lowerSearch)
             );
         }
 
