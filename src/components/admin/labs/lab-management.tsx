@@ -11,6 +11,7 @@ import { LabForm } from "./lab-form";
 import { DataTable } from "../shared/data-table";
 import { useAnalytics } from "../../../hooks/use-analytics";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface Lab {
     id: string;
@@ -31,6 +32,10 @@ export function LabManagement() {
     const [currentPage, setCurrentPage] = useState(1);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [editingLab, setEditingLab] = useState<string | null>(null);
+
+    // Confirmation dialog state
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [labToDelete, setLabToDelete] = useState<string | null>(null);
 
     const [limit, setLimit] = useState(5);
 
@@ -72,16 +77,24 @@ export function LabManagement() {
     };
 
     const handleDelete = async (labId: string) => {
-        if (!confirm("Are you sure you want to delete this lab?")) return;
+        setLabToDelete(labId);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!labToDelete) return;
 
         try {
-            await deleteLab.mutateAsync({ id: labId });
-            track("Lab Deleted", { labId });
+            await deleteLab.mutateAsync({ id: labToDelete });
+            track("Lab Deleted", { labId: labToDelete });
         } catch (error) {
             console.error("Error deleting lab:", error);
             track("Lab Delete Error", {
                 error: error instanceof Error ? error.message : "Unknown error",
             });
+        } finally {
+            setIsDeleteDialogOpen(false);
+            setLabToDelete(null);
         }
     };
 
@@ -368,6 +381,17 @@ export function LabManagement() {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Delete Lab Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isDeleteDialogOpen}
+                onOpenChange={setIsDeleteDialogOpen}
+                title="Delete Lab"
+                message="Are you sure you want to delete this lab? This action cannot be undone."
+                onAccept={confirmDelete}
+                confirmButtonText="Delete"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }

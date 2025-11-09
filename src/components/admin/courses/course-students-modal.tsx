@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, Plus, X, Search, AlertTriangle } from "lucide-react";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface CourseStudentsModalProps {
     courseId: string;
@@ -17,6 +18,10 @@ interface CourseStudentsModalProps {
 export function CourseStudentsModal({ courseId, onClose }: CourseStudentsModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    // Confirmation dialog state
+    const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+    const [studentToRemove, setStudentToRemove] = useState<string | null>(null);
 
     const { track } = useAnalytics();
     const { success, error } = useToast();
@@ -71,14 +76,21 @@ export function CourseStudentsModal({ courseId, onClose }: CourseStudentsModalPr
     };
 
     const handleRemoveStudent = async (studentId: string) => {
-        if (confirm("Are you sure you want to remove this student from the course?")) {
-            setIsLoading(true);
-            try {
-                await removeStudent.mutateAsync({ courseId, studentId });
-                track("course_student_removed", { courseId, studentId });
-            } finally {
-                setIsLoading(false);
-            }
+        setStudentToRemove(studentId);
+        setIsRemoveDialogOpen(true);
+    };
+
+    const confirmRemoveStudent = async () => {
+        if (!studentToRemove) return;
+
+        setIsLoading(true);
+        try {
+            await removeStudent.mutateAsync({ courseId, studentId: studentToRemove });
+            track("course_student_removed", { courseId, studentId: studentToRemove });
+        } finally {
+            setIsLoading(false);
+            setIsRemoveDialogOpen(false);
+            setStudentToRemove(null);
         }
     };
 
@@ -149,7 +161,9 @@ export function CourseStudentsModal({ courseId, onClose }: CourseStudentsModalPr
                         <h3 className="text-lg font-semibold">Add Students</h3>
                     </div>
                     <p className="text-sm text-muted-foreground">
-                        Search and enroll students in this course
+                        {`Search and enroll students in this course. Note: Students from batches
+                        already assigned to this course are automatically enrolled and won't
+                        appear here.`}
                     </p>
                 </CardHeader>
                 <CardContent>
@@ -174,7 +188,7 @@ export function CourseStudentsModal({ courseId, onClose }: CourseStudentsModalPr
                                     <AlertDescription>
                                         {searchTerm
                                             ? `No students found matching "${searchTerm}"`
-                                            : "All active students are already enrolled in this course"}
+                                            : "All active students are already enrolled in this course (either directly or through batch assignment)"}
                                     </AlertDescription>
                                 </Alert>
                             ) : (
@@ -219,6 +233,17 @@ export function CourseStudentsModal({ courseId, onClose }: CourseStudentsModalPr
                     Close
                 </Button>
             </div>
+
+            {/* Remove Student Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isRemoveDialogOpen}
+                onOpenChange={setIsRemoveDialogOpen}
+                title="Remove Student"
+                message="Are you sure you want to remove this student from the course?"
+                onAccept={confirmRemoveStudent}
+                confirmButtonText="Remove"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }

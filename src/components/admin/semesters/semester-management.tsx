@@ -6,12 +6,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Calendar, Filter, Plus, Search, BookOpen } from "lucide-react";
+import { Calendar, Filter, Plus, Search, BookOpen, FolderPlus } from "lucide-react";
 import { DataTable } from "@/components/admin/shared/data-table";
 import { SemesterForm } from "./semester-form";
+import { SemesterBulkForm } from "./semester-bulk-form";
+import { SemesterManagersModal } from "./semester-managers-modal";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -22,6 +25,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface Semester {
     id: string;
@@ -40,10 +44,23 @@ export function SemesterManagement() {
     const [yearFilter, setYearFilter] = useState<string>("ALL");
     const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isBulkCreateModalOpen, setIsBulkCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [semesterToDelete, setSemesterToDelete] = useState<Semester | null>(null);
+
+    // Modal states for managers (feature in progress)
+    const [isManagersModalOpen, setIsManagersModalOpen] = useState(false);
+    const [selectedSemesterForModal, setSelectedSemesterForModal] = useState<string | null>(null);
+
+    // Detail card state (feature in progress)
+    const [_viewingSemester, _setViewingSemester] = useState<Semester | null>(null);
+    const [_managerSearchTerm, _setManagerSearchTerm] = useState("");
+
+    // Confirmation dialog state
+    const [isRemoveManagerDialogOpen, setIsRemoveManagerDialogOpen] = useState(false);
+    const [managerToRemove, setManagerToRemove] = useState<string | null>(null);
 
     const { track } = useAnalytics();
     const { success, error } = useToast();
@@ -69,6 +86,18 @@ export function SemesterManagement() {
     );
     const total = semestersData?.data?.total || 0;
     const totalPages = Math.ceil(total / limit);
+
+    // Get managers for the viewing semester (feature in progress)
+    const { data: managersData } = trpc.semester.getManagers.useQuery(
+        {
+            semesterId: _viewingSemester?.id || "",
+        },
+        {
+            enabled: !!_viewingSemester,
+        }
+    );
+
+    const _managers = managersData || [];
 
     // Mutations
     const utils = trpc.useUtils();
@@ -148,6 +177,44 @@ export function SemesterManagement() {
         },
     });
 
+    const bulkCreateSemesters = trpc.semester.bulkCreate.useMutation({
+        onSuccess: (data) => {
+            utils.semester.list.invalidate();
+            success(`${data.count} semesters created successfully`);
+        },
+        onError: (err) => {
+            console.error("Bulk create semesters error:", err);
+
+            // Parse error message for better user feedback
+            let errorMessage = "Failed to bulk create semesters";
+
+            if (err.message.includes("already exist")) {
+                errorMessage = err.message;
+            } else if (err.message.includes("department")) {
+                errorMessage = "Invalid departments selected. Please check your selection.";
+            } else if (err.message.includes("duplicate")) {
+                errorMessage = "Duplicate semester names detected. Please adjust your settings.";
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+
+            error(errorMessage);
+        },
+    });
+
+    const removeManager = trpc.semester.removeManager.useMutation({
+        onSuccess: () => {
+            if (_viewingSemester) {
+                utils.semester.getManagers.invalidate({ semesterId: _viewingSemester.id });
+            }
+            success("Manager removed from semester successfully");
+        },
+        onError: (err) => {
+            console.error("Remove manager error:", err);
+            error(err.message || "Failed to remove manager from semester");
+        },
+    });
+
     // Filter semesters based on search, status, and year
     const filteredSemesters = useMemo(() => {
         let filtered = semesters;
@@ -189,6 +256,23 @@ export function SemesterManagement() {
             track("semester_created", { name: data.name, year: data.year });
         } catch (error) {
             console.error("Error creating semester:", error);
+        }
+    };
+
+    const handleBulkCreate = async (
+        semesters: Array<{
+            name: string;
+            year: number;
+            departmentId: string;
+            isActive: "ACTIVE" | "INACTIVE";
+        }>
+    ) => {
+        try {
+            await bulkCreateSemesters.mutateAsync({ semesters });
+            setIsBulkCreateModalOpen(false);
+            track("semesters_bulk_created", { count: semesters.length });
+        } catch (error) {
+            console.error("Error bulk creating semesters:", error);
         }
     };
 
@@ -234,6 +318,39 @@ export function SemesterManagement() {
     const openEditModal = (semester: Semester) => {
         setSelectedSemester(semester);
         setIsEditModalOpen(true);
+    };
+
+    const _openManagersModal = (semester: Semester) => {
+        setSelectedSemesterForModal(semester.id);
+        setIsManagersModalOpen(true);
+        track("semester_managers_modal_opened", { semesterId: semester.id });
+    };
+
+    const _handleRemoveManager = async (managerId: string) => {
+        if (!_viewingSemester) return;
+
+        setManagerToRemove(managerId);
+        setIsRemoveManagerDialogOpen(true);
+    };
+
+    const confirmRemoveManager = async () => {
+        if (!_viewingSemester || !managerToRemove) return;
+
+        try {
+            await removeManager.mutateAsync({
+                semesterId: _viewingSemester.id,
+                managerId: managerToRemove,
+            });
+            track("semester_manager_removed", {
+                semesterId: _viewingSemester.id,
+                managerId: managerToRemove,
+            });
+        } catch (error) {
+            console.error("Error removing manager:", error);
+        } finally {
+            setIsRemoveManagerDialogOpen(false);
+            setManagerToRemove(null);
+        }
     };
 
     const resetFilters = () => {
@@ -300,7 +417,7 @@ export function SemesterManagement() {
                     className="flex items-center gap-2"
                 >
                     <BookOpen className="h-4 w-4" />
-                    View Courses
+                    View
                 </Button>
             ),
         },
@@ -318,13 +435,23 @@ export function SemesterManagement() {
                             </h2>
                             <p className="text-muted-foreground">Manage academic semesters</p>
                         </div>
-                        <Button
-                            onClick={() => setIsCreateModalOpen(true)}
-                            className="flex items-center gap-2"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Semester
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => setIsBulkCreateModalOpen(true)}
+                                variant="outline"
+                                className="flex items-center gap-2"
+                            >
+                                <FolderPlus className="h-4 w-4" />
+                                Bulk Create
+                            </Button>
+                            <Button
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="flex items-center gap-2"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Create Semester
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -490,6 +617,21 @@ export function SemesterManagement() {
                 </DialogContent>
             </Dialog>
 
+            {/* Bulk Create Modal */}
+            <Dialog open={isBulkCreateModalOpen} onOpenChange={setIsBulkCreateModalOpen}>
+                <DialogContent className="sm:max-w-3xl max-h-[90vh]">
+                    <DialogHeader>
+                        <DialogTitle>Bulk Create Semesters</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[calc(90vh-100px)] pr-4">
+                        <SemesterBulkForm
+                            onSubmit={handleBulkCreate}
+                            onCancel={() => setIsBulkCreateModalOpen(false)}
+                        />
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
+
             {/* Edit Modal */}
             <Dialog
                 open={isEditModalOpen}
@@ -529,6 +671,41 @@ export function SemesterManagement() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Managers Modal */}
+            {selectedSemesterForModal && (
+                <Dialog
+                    open={isManagersModalOpen}
+                    onOpenChange={(open) => {
+                        setIsManagersModalOpen(open);
+                        if (!open) setSelectedSemesterForModal(null);
+                    }}
+                >
+                    <DialogContent className="sm:max-w-6xl">
+                        <DialogHeader>
+                            <DialogTitle>Manage Semester Managers</DialogTitle>
+                        </DialogHeader>
+                        <SemesterManagersModal
+                            semesterId={selectedSemesterForModal}
+                            onClose={() => {
+                                setIsManagersModalOpen(false);
+                                setSelectedSemesterForModal(null);
+                            }}
+                        />
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Remove Manager Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isRemoveManagerDialogOpen}
+                onOpenChange={setIsRemoveManagerDialogOpen}
+                title="Remove Manager"
+                message="Are you sure you want to remove this manager from the semester?"
+                onAccept={confirmRemoveManager}
+                confirmButtonText="Remove"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }

@@ -46,3 +46,6 @@ drizzle/
 
 .history
 WARP.md
+.vscode/launch.json
+.vscode/settings.json
+.vscode/c_cpp_properties.json

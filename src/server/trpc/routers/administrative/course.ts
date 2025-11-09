@@ -10,6 +10,7 @@ import {
     semestersTable,
     usersTable,
     batchesTable,
+    batchStudentsTable,
     departmentsTable,
 } from "@/db/schema";
 import { eq, and, or, ilike, desc, count, notInArray } from "drizzle-orm";
@@ -150,7 +151,7 @@ export const courseRouter = createTRPCRouter({
         .input(
             z.object({
                 name: z.string().min(1, "Course name is required").max(255),
-                description: z.string().min(1, "Course description is required"),
+                description: z.string().optional(),
                 code: z.string().min(1, "Course code is required").max(50),
                 image: z.string().max(512).optional(),
                 type: z.enum(["CORE", "ELECTIVE", "MICRO_CREDENTIAL"]),
@@ -919,6 +920,9 @@ export const courseRouter = createTRPCRouter({
 
     /**
      * Get available students (not enrolled in course)
+     * Excludes students who are:
+     * 1. Directly enrolled in the course
+     * 2. Part of batches assigned to the course
      */
     getAvailableStudents: adminProcedure
         .input(
@@ -929,21 +933,36 @@ export const courseRouter = createTRPCRouter({
         )
         .query(async ({ input }) => {
             try {
-                // Get students already enrolled
+                // Get students already directly enrolled in the course
                 const enrolledStudents = await db
                     .select({ studentId: courseStudentsTable.studentId })
                     .from(courseStudentsTable)
                     .where(eq(courseStudentsTable.courseId, input.courseId));
 
-                const enrolledIds = enrolledStudents.map((s) => s.studentId);
+                const directlyEnrolledIds = enrolledStudents.map((s) => s.studentId);
+
+                // Get students who are part of batches assigned to this course
+                const batchStudents = await db
+                    .select({ studentId: batchStudentsTable.studentId })
+                    .from(batchStudentsTable)
+                    .innerJoin(
+                        courseBatchesTable,
+                        eq(batchStudentsTable.batchId, courseBatchesTable.batchId)
+                    )
+                    .where(eq(courseBatchesTable.courseId, input.courseId));
+
+                const batchEnrolledIds = batchStudents.map((s) => s.studentId);
+
+                // Combine both lists of student IDs to exclude
+                const allExcludedIds = [...new Set([...directlyEnrolledIds, ...batchEnrolledIds])];
 
                 const conditions = [
                     eq(usersTable.role, "STUDENT"),
                     eq(usersTable.status, "ACTIVE"),
                 ];
 
-                if (enrolledIds.length > 0) {
-                    conditions.push(notInArray(usersTable.id, enrolledIds));
+                if (allExcludedIds.length > 0) {
+                    conditions.push(notInArray(usersTable.id, allExcludedIds));
                 }
 
                 if (input.searchTerm) {
