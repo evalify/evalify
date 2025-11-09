@@ -30,7 +30,7 @@ interface CourseFormProps {
     initialData?: {
         id: string;
         name: string;
-        description: string;
+        description: string | null;
         code: string;
         image?: string;
         type: "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL";
@@ -70,7 +70,7 @@ export function CourseForm({
         if (initialData) {
             setFormData({
                 name: initialData.name,
-                description: initialData.description,
+                description: initialData.description || "",
                 code: initialData.code,
                 image: initialData.image || "",
                 type: initialData.type,

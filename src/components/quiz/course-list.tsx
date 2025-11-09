@@ -32,7 +32,7 @@ type CourseStatus = "ACTIVE" | "INACTIVE";
 export interface Course {
     id: string;
     name: string;
-    description: string;
+    description: string | null;
     code: string;
     image: string | null;
     type: CourseType;
