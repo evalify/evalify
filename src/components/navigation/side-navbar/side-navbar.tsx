@@ -40,6 +40,7 @@ import { useTheme } from "next-themes";
 import { useSession, signOut, signIn } from "next-auth/react";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 import AuthGuard from "@/components/auth/auth-guard";
 import { UserType } from "@/lib/auth/utils";
@@ -156,9 +157,17 @@ export function AppSidebar() {
             <SidebarHeader className="border-b border-sidebar-border bg-linear-to-br from-sidebar/40 via-sidebar/60 to-sidebar/80 dark:from-sidebar/60 dark:via-sidebar/80 dark:to-sidebar backdrop-blur-sm p-0">
                 <Link href="/" className="block">
                     <div className="flex items-center p-2 min-h-16 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground shadow-lg ring-2 ring-primary/20 transition-all duration-200 hover:scale-105 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8">
-                            <BarChart3 className="h-5 w-5 group-data-[collapsible=icon]:h-4 group-data-[collapsible=icon]:w-4" />
-                        </div>
+                        {/* <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary to-primary/80 text-primary-foreground shadow-lg ring-2 ring-primary/20 transition-all duration-200 hover:scale-105 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 p-1.5"> */}
+                        <Image
+                            src="/logo.svg"
+                            alt="Evalify Logo"
+                            width={40}
+                            height={40}
+                            className="object-contain dark:invert"
+                            priority
+                            color="green"
+                        />
+                        {/* </div> */}
                         <div className="ml-3 flex flex-col min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                             <span className="font-bold text-xl bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent truncate">
                                 Evalify
