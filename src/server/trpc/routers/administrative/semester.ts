@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { createTRPCRouter, adminProcedure } from "../../trpc";
 import { db } from "@/db";
-import { semestersTable, departmentsTable } from "@/db/schema";
-import { eq, and, ilike, desc, count } from "drizzle-orm";
+import { semestersTable, departmentsTable, semesterManagersTable, usersTable } from "@/db/schema";
+import { eq, and, or, ilike, desc, count, notInArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 /**
@@ -333,14 +333,335 @@ export const semesterRouter = createTRPCRouter({
                 .from(semestersTable)
                 .orderBy(desc(semestersTable.year));
 
-            const yearList = years.map((y) => y.year);
-
-            logger.info({ count: yearList.length }, "Unique years retrieved");
-
-            return yearList;
+            return years.map((y) => y.year);
         } catch (error) {
             logger.error({ error }, "Error getting unique years");
             throw error;
         }
     }),
+
+    /**
+     * Get managers assigned to a semester
+     */
+    getManagers: adminProcedure
+        .input(
+            z.object({
+                semesterId: z.uuid(),
+            })
+        )
+        .query(async ({ input }) => {
+            try {
+                const managers = await db
+                    .select({
+                        id: usersTable.id,
+                        name: usersTable.name,
+                        email: usersTable.email,
+                        profileId: usersTable.profileId,
+                        role: usersTable.role,
+                        status: usersTable.status,
+                        assignedAt: semesterManagersTable.created_at,
+                    })
+                    .from(semesterManagersTable)
+                    .innerJoin(usersTable, eq(semesterManagersTable.managerId, usersTable.id))
+                    .where(eq(semesterManagersTable.semesterId, input.semesterId))
+                    .orderBy(desc(semesterManagersTable.created_at));
+
+                logger.info(
+                    { semesterId: input.semesterId, count: managers.length },
+                    "Semester managers retrieved"
+                );
+
+                return managers;
+            } catch (error) {
+                logger.error(
+                    { error, semesterId: input.semesterId },
+                    "Error getting semester managers"
+                );
+                throw error;
+            }
+        }),
+
+    /**
+     * Add a manager to a semester
+     */
+    addManager: adminProcedure
+        .input(
+            z.object({
+                semesterId: z.uuid(),
+                managerId: z.uuid(),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                // Check if manager exists and is a manager
+                const manager = await db
+                    .select({ id: usersTable.id, role: usersTable.role })
+                    .from(usersTable)
+                    .where(and(eq(usersTable.id, input.managerId), eq(usersTable.role, "MANAGER")))
+                    .limit(1);
+
+                if (!manager[0]) {
+                    throw new Error("Manager not found or user is not a manager.");
+                }
+
+                // Check if already assigned
+                const existing = await db
+                    .select()
+                    .from(semesterManagersTable)
+                    .where(
+                        and(
+                            eq(semesterManagersTable.semesterId, input.semesterId),
+                            eq(semesterManagersTable.managerId, input.managerId)
+                        )
+                    )
+                    .limit(1);
+
+                if (existing[0]) {
+                    throw new Error("Manager is already assigned to this semester.");
+                }
+
+                await db.insert(semesterManagersTable).values({
+                    semesterId: input.semesterId,
+                    managerId: input.managerId,
+                });
+
+                logger.info(
+                    {
+                        semesterId: input.semesterId,
+                        managerId: input.managerId,
+                        userId: ctx.session.user.id,
+                    },
+                    "Manager added to semester"
+                );
+
+                return { success: true };
+            } catch (error: unknown) {
+                logger.error({ error, input }, "Error adding manager to semester");
+
+                if (
+                    error &&
+                    typeof error === "object" &&
+                    "message" in error &&
+                    typeof error.message === "string"
+                ) {
+                    throw new Error(error.message);
+                }
+
+                throw new Error("Failed to add manager to semester. Please try again.");
+            }
+        }),
+
+    /**
+     * Remove a manager from a semester
+     */
+    removeManager: adminProcedure
+        .input(
+            z.object({
+                semesterId: z.uuid(),
+                managerId: z.uuid(),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const deleted = await db
+                    .delete(semesterManagersTable)
+                    .where(
+                        and(
+                            eq(semesterManagersTable.semesterId, input.semesterId),
+                            eq(semesterManagersTable.managerId, input.managerId)
+                        )
+                    )
+                    .returning();
+
+                if (!deleted[0]) {
+                    throw new Error("Manager is not assigned to this semester.");
+                }
+
+                logger.info(
+                    {
+                        semesterId: input.semesterId,
+                        managerId: input.managerId,
+                        userId: ctx.session.user.id,
+                    },
+                    "Manager removed from semester"
+                );
+
+                return { success: true };
+            } catch (error: unknown) {
+                logger.error({ error, input }, "Error removing manager from semester");
+
+                if (
+                    error &&
+                    typeof error === "object" &&
+                    "message" in error &&
+                    typeof error.message === "string"
+                ) {
+                    throw new Error(error.message);
+                }
+
+                throw new Error("Failed to remove manager from semester. Please try again.");
+            }
+        }),
+
+    /**
+     * Get available managers (not assigned to semester)
+     */
+    getAvailableManagers: adminProcedure
+        .input(
+            z.object({
+                semesterId: z.uuid(),
+                searchTerm: z.string().optional(),
+            })
+        )
+        .query(async ({ input }) => {
+            try {
+                // Get managers already assigned
+                const assignedManagers = await db
+                    .select({ managerId: semesterManagersTable.managerId })
+                    .from(semesterManagersTable)
+                    .where(eq(semesterManagersTable.semesterId, input.semesterId));
+
+                const assignedIds = assignedManagers.map((m) => m.managerId);
+
+                const conditions = [
+                    eq(usersTable.role, "MANAGER"),
+                    eq(usersTable.status, "ACTIVE"),
+                ];
+
+                if (assignedIds.length > 0) {
+                    conditions.push(notInArray(usersTable.id, assignedIds));
+                }
+
+                if (input.searchTerm) {
+                    const searchConditions = or(
+                        ilike(usersTable.name, `%${input.searchTerm}%`),
+                        ilike(usersTable.email, `%${input.searchTerm}%`),
+                        ilike(usersTable.profileId, `%${input.searchTerm}%`)
+                    );
+                    if (searchConditions) {
+                        conditions.push(searchConditions);
+                    }
+                }
+
+                const managers = await db
+                    .select({
+                        id: usersTable.id,
+                        name: usersTable.name,
+                        email: usersTable.email,
+                        profileId: usersTable.profileId,
+                        role: usersTable.role,
+                        status: usersTable.status,
+                    })
+                    .from(usersTable)
+                    .where(and(...conditions))
+                    .orderBy(usersTable.name)
+                    .limit(50);
+
+                return managers;
+            } catch (error) {
+                logger.error(
+                    { error, semesterId: input.semesterId },
+                    "Error getting available managers"
+                );
+                throw error;
+            }
+        }),
+
+    /**
+     * Bulk create semesters
+     */
+    bulkCreate: adminProcedure
+        .input(
+            z.object({
+                semesters: z.array(
+                    z.object({
+                        name: z.string().min(1, "Semester name is required").max(255),
+                        year: z
+                            .number()
+                            .min(2000, "Year must be after 2000")
+                            .max(2100, "Year must be before 2100"),
+                        departmentId: z.uuid(),
+                        isActive: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+                    })
+                ),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                if (input.semesters.length === 0) {
+                    throw new Error("No semesters provided for creation");
+                }
+
+                // Validate all departments exist
+                const departmentIds = [...new Set(input.semesters.map((s) => s.departmentId))];
+                const departments = await db
+                    .select({ id: departmentsTable.id })
+                    .from(departmentsTable)
+                    .where(or(...departmentIds.map((id) => eq(departmentsTable.id, id))));
+
+                if (departments.length !== departmentIds.length) {
+                    throw new Error("One or more selected departments do not exist");
+                }
+
+                // Check for duplicate semester names
+                const semesterNames = input.semesters.map((s) => s.name);
+                const uniqueNames = new Set(semesterNames);
+                if (uniqueNames.size !== semesterNames.length) {
+                    throw new Error("Duplicate semester names detected in the batch");
+                }
+
+                // Check if any semesters already exist
+                const existingSemesters = await db
+                    .select({ name: semestersTable.name })
+                    .from(semestersTable)
+                    .where(or(...semesterNames.map((name) => eq(semestersTable.name, name))));
+
+                if (existingSemesters.length > 0) {
+                    const existingNames = existingSemesters.map((s) => s.name).join(", ");
+                    throw new Error(`The following semesters already exist: ${existingNames}`);
+                }
+
+                // Bulk insert all semesters
+                const createdSemesters = await db
+                    .insert(semestersTable)
+                    .values(
+                        input.semesters.map((sem) => ({
+                            name: sem.name,
+                            year: sem.year,
+                            departmentId: sem.departmentId,
+                            isActive: sem.isActive,
+                        }))
+                    )
+                    .returning();
+
+                logger.info(
+                    {
+                        count: createdSemesters.length,
+                        userId: ctx.session.user.id,
+                    },
+                    "Semesters bulk created"
+                );
+
+                return {
+                    success: true,
+                    count: createdSemesters.length,
+                    semesters: createdSemesters,
+                };
+            } catch (error: unknown) {
+                logger.error({ error, input }, "Error bulk creating semesters");
+
+                if (
+                    error &&
+                    typeof error === "object" &&
+                    "message" in error &&
+                    typeof error.message === "string"
+                ) {
+                    throw new Error(error.message);
+                }
+
+                throw new Error(
+                    "Failed to bulk create semesters. Please check your input and try again."
+                );
+            }
+        }),
 });

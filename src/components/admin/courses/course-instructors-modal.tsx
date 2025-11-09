@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { UserCheck, Plus, X, Search, AlertTriangle } from "lucide-react";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface CourseInstructorsModalProps {
     courseId: string;
@@ -17,6 +18,10 @@ interface CourseInstructorsModalProps {
 export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    // Confirmation dialog state
+    const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+    const [instructorToRemove, setInstructorToRemove] = useState<string | null>(null);
 
     const { track } = useAnalytics();
     const { success, error } = useToast();
@@ -72,14 +77,21 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
     };
 
     const handleRemoveInstructor = async (instructorId: string) => {
-        if (confirm("Are you sure you want to remove this instructor from the course?")) {
-            setIsLoading(true);
-            try {
-                await removeInstructor.mutateAsync({ courseId, instructorId });
-                track("course_instructor_removed", { courseId, instructorId });
-            } finally {
-                setIsLoading(false);
-            }
+        setInstructorToRemove(instructorId);
+        setIsRemoveDialogOpen(true);
+    };
+
+    const confirmRemoveInstructor = async () => {
+        if (!instructorToRemove) return;
+
+        setIsLoading(true);
+        try {
+            await removeInstructor.mutateAsync({ courseId, instructorId: instructorToRemove });
+            track("course_instructor_removed", { courseId, instructorId: instructorToRemove });
+        } finally {
+            setIsLoading(false);
+            setIsRemoveDialogOpen(false);
+            setInstructorToRemove(null);
         }
     };
 
@@ -222,6 +234,17 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
                     Close
                 </Button>
             </div>
+
+            {/* Remove Instructor Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isRemoveDialogOpen}
+                onOpenChange={setIsRemoveDialogOpen}
+                title="Remove Instructor"
+                message="Are you sure you want to remove this instructor from the course?"
+                onAccept={confirmRemoveInstructor}
+                confirmButtonText="Remove"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }

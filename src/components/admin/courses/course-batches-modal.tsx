@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Plus, X, Search, AlertTriangle } from "lucide-react";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 
 interface CourseBatchesModalProps {
     courseId: string;
@@ -18,6 +19,10 @@ interface CourseBatchesModalProps {
 export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProps) {
     const [searchTerm, setSearchTerm] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+
+    // Confirmation dialog state
+    const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+    const [batchToRemove, setBatchToRemove] = useState<string | null>(null);
 
     const { track } = useAnalytics();
     const { success, error } = useToast();
@@ -41,6 +46,9 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
         onSuccess: () => {
             utils.course.getBatches.invalidate({ courseId });
             utils.course.getAvailableBatches.invalidate({ courseId });
+            // Invalidate student queries since batch students are now enrolled
+            utils.course.getStudents.invalidate({ courseId });
+            utils.course.getAvailableStudents.invalidate({ courseId });
             success("Batch added to course successfully");
         },
         onError: (err) => {
@@ -53,6 +61,9 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
         onSuccess: () => {
             utils.course.getBatches.invalidate({ courseId });
             utils.course.getAvailableBatches.invalidate({ courseId });
+            // Invalidate student queries since batch students are no longer enrolled
+            utils.course.getStudents.invalidate({ courseId });
+            utils.course.getAvailableStudents.invalidate({ courseId });
             success("Batch removed from course successfully");
         },
         onError: (err) => {
@@ -72,14 +83,21 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
     };
 
     const handleRemoveBatch = async (batchId: string) => {
-        if (confirm("Are you sure you want to remove this batch from the course?")) {
-            setIsLoading(true);
-            try {
-                await removeBatch.mutateAsync({ courseId, batchId });
-                track("course_batch_removed", { courseId, batchId });
-            } finally {
-                setIsLoading(false);
-            }
+        setBatchToRemove(batchId);
+        setIsRemoveDialogOpen(true);
+    };
+
+    const confirmRemoveBatch = async () => {
+        if (!batchToRemove) return;
+
+        setIsLoading(true);
+        try {
+            await removeBatch.mutateAsync({ courseId, batchId: batchToRemove });
+            track("course_batch_removed", { courseId, batchId: batchToRemove });
+        } finally {
+            setIsLoading(false);
+            setIsRemoveDialogOpen(false);
+            setBatchToRemove(null);
         }
     };
 
@@ -238,6 +256,17 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
                     Close
                 </Button>
             </div>
+
+            {/* Remove Batch Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isRemoveDialogOpen}
+                onOpenChange={setIsRemoveDialogOpen}
+                title="Remove Batch"
+                message="Are you sure you want to remove this batch from the course?"
+                onAccept={confirmRemoveBatch}
+                confirmButtonText="Remove"
+                cancelButtonText="Cancel"
+            />
         </div>
     );
 }

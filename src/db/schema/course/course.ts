@@ -8,7 +8,7 @@ export const coursesTable = pgTable(
     {
         id: uuid("id").primaryKey().defaultRandom(),
         name: varchar({ length: 255 }).notNull(),
-        description: text().notNull(),
+        description: text(),
         code: varchar({ length: 50 }).notNull().unique(),
         image: varchar({ length: 512 }),
         type: courseTypeEnum("type").notNull(),
