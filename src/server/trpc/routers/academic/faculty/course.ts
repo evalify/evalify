@@ -4,8 +4,13 @@ import { db } from "@/db";
 import {
     coursesTable,
     courseInstructorsTable,
+    courseStudentsTable,
     semestersTable,
     semesterManagersTable,
+    usersTable,
+    labsTable,
+    batchesTable,
+    batchStudentsTable,
 } from "@/db/schema";
 import { eq, and, or, ilike, desc, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -132,4 +137,133 @@ export const facultyCourseRouter = createTRPCRouter({
                 throw error;
             }
         }),
+
+    /**
+     * Get all students from instructor's courses
+     */
+    getStudentsByInstructor: facultyAndManagerProcedure.query(async ({ ctx }) => {
+        try {
+            const userId = ctx.session.user.id;
+
+            // Get course IDs where user is an instructor
+            const instructorCourses = await db
+                .select({ courseId: courseInstructorsTable.courseId })
+                .from(courseInstructorsTable)
+                .where(eq(courseInstructorsTable.instructorId, userId));
+
+            const courseIds = instructorCourses.map((c) => c.courseId);
+
+            if (courseIds.length === 0) {
+                return [];
+            }
+
+            // Get all students from these courses with course details
+            const studentsWithCourses = await db
+                .select({
+                    studentId: usersTable.id,
+                    studentName: usersTable.name,
+                    studentEmail: usersTable.email,
+                    studentProfileId: usersTable.profileId,
+                    studentBatchId: batchStudentsTable.batchId,
+                    courseId: coursesTable.id,
+                    courseName: coursesTable.name,
+                    courseCode: coursesTable.code,
+                })
+                .from(courseStudentsTable)
+                .innerJoin(usersTable, eq(courseStudentsTable.studentId, usersTable.id))
+                .innerJoin(coursesTable, eq(courseStudentsTable.courseId, coursesTable.id))
+                .leftJoin(batchStudentsTable, eq(batchStudentsTable.studentId, usersTable.id))
+                .where(inArray(courseStudentsTable.courseId, courseIds))
+                .orderBy(usersTable.name);
+
+            // Group students by course
+            const courseStudentMap = new Map();
+            studentsWithCourses.forEach((row) => {
+                if (!courseStudentMap.has(row.courseId)) {
+                    courseStudentMap.set(row.courseId, {
+                        courseId: row.courseId,
+                        courseName: row.courseName,
+                        courseCode: row.courseCode,
+                        students: [],
+                    });
+                }
+                courseStudentMap.get(row.courseId).students.push({
+                    id: row.studentId,
+                    name: row.studentName,
+                    email: row.studentEmail,
+                    profileId: row.studentProfileId,
+                    batchId: row.studentBatchId,
+                });
+            });
+
+            const result = Array.from(courseStudentMap.values());
+
+            logger.info({ userId, courseCount: result.length }, "Students by instructor retrieved");
+
+            return result;
+        } catch (error) {
+            logger.error(
+                { error, userId: ctx.session.user.id },
+                "Error getting students by instructor"
+            );
+            throw error;
+        }
+    }),
+
+    /**
+     * Get all labs (available for quiz assignment)
+     */
+    getAllLabs: facultyAndManagerProcedure.query(async ({ ctx }) => {
+        try {
+            const labs = await db
+                .select({
+                    id: labsTable.id,
+                    name: labsTable.name,
+                    block: labsTable.block,
+                    ipSubnet: labsTable.ipSubnet,
+                    isActive: labsTable.isActive,
+                })
+                .from(labsTable)
+                .where(eq(labsTable.isActive, "ACTIVE"))
+                .orderBy(labsTable.name);
+
+            logger.info({ userId: ctx.session.user.id, count: labs.length }, "Labs retrieved");
+
+            return labs;
+        } catch (error) {
+            logger.error({ error, userId: ctx.session.user.id }, "Error getting labs");
+            throw error;
+        }
+    }),
+
+    /**
+     * Get all batches (available for quiz assignment)
+     */
+    getAllBatches: facultyAndManagerProcedure.query(async ({ ctx }) => {
+        try {
+            const batches = await db
+                .select({
+                    id: batchesTable.id,
+                    name: batchesTable.name,
+                    joinYear: batchesTable.joinYear,
+                    graduationYear: batchesTable.graduationYear,
+                    section: batchesTable.section,
+                    departmentId: batchesTable.departmentId,
+                    isActive: batchesTable.isActive,
+                })
+                .from(batchesTable)
+                .where(eq(batchesTable.isActive, "ACTIVE"))
+                .orderBy(desc(batchesTable.graduationYear), batchesTable.section);
+
+            logger.info(
+                { userId: ctx.session.user.id, count: batches.length },
+                "Batches retrieved"
+            );
+
+            return batches;
+        } catch (error) {
+            logger.error({ error, userId: ctx.session.user.id }, "Error getting batches");
+            throw error;
+        }
+    }),
 });
