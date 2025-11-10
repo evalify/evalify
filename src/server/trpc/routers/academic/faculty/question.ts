@@ -12,6 +12,22 @@ import {
 } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import {
+    versionMCQData,
+    versionMCQSolution,
+    versionMMCQData,
+    versionMMCQSolution,
+    versionTrueFalseSolution,
+    versionMatchingData,
+    versionMatchingSolution,
+    versionFillTheBlankData,
+    versionFillTheBlankSolution,
+    versionDescriptiveData,
+    versionDescriptiveSolution,
+    QUESTION_VERSIONS,
+    unwrapVersion,
+} from "@/lib/versioning/question-versioning";
+import { QuestionType } from "@/types/questions";
 
 const managerOrFacultyProcedure = createCustomProcedure([UserType.MANAGER, UserType.STAFF]);
 
@@ -49,10 +65,10 @@ const baseQuestionSchema = z.object({
     question: z.string().min(1),
     marks: z.number().positive(),
     negativeMarks: z.number().min(0).default(0),
-    difficulty: difficultyEnum.optional(),
-    courseOutcome: courseOutcomeEnum.optional(),
-    bloomTaxonomyLevel: bloomTaxonomyEnum.optional(),
-    topicIds: z.array(z.string().uuid()).optional(),
+    difficulty: difficultyEnum.nullish(),
+    courseOutcome: courseOutcomeEnum.nullish(),
+    bloomTaxonomyLevel: bloomTaxonomyEnum.nullish(),
+    topicIds: z.array(z.uuid()).nullish(),
 });
 
 const mcqDataSchema = z.object({
@@ -263,12 +279,82 @@ export const questionRouter = createTRPCRouter({
                     .innerJoin(topicsTable, eq(topicQuestionsTable.topicId, topicsTable.id))
                     .where(eq(topicQuestionsTable.questionId, input.questionId));
 
-                logger.info({ questionId: input.questionId }, "Question retrieved");
+                // Unwrap versioned data for frontend consumption
+                let unwrappedQuestionData: unknown = question.questionData;
+                let unwrappedSolution: unknown = question.solution;
 
-                return {
+                if (
+                    question.questionData &&
+                    typeof question.questionData === "object" &&
+                    "version" in question.questionData
+                ) {
+                    unwrappedQuestionData = unwrapVersion(question.questionData as never);
+                }
+
+                if (
+                    question.solution &&
+                    typeof question.solution === "object" &&
+                    "version" in question.solution
+                ) {
+                    unwrappedSolution = unwrapVersion(question.solution as never);
+                }
+
+                // Transform data based on question type for frontend
+                const transformedQuestion: Record<string, unknown> = {
                     ...question,
                     topics: topicLinks,
                 };
+
+                if (question.type === "MCQ" || question.type === "MMCQ") {
+                    transformedQuestion.questionData = unwrappedQuestionData;
+                    transformedQuestion.solution = unwrappedSolution;
+                } else if (question.type === "TRUE_FALSE") {
+                    transformedQuestion.trueFalseAnswer = (
+                        unwrappedSolution as { trueFalseAnswer?: boolean }
+                    )?.trueFalseAnswer;
+                } else if (question.type === "FILL_THE_BLANK") {
+                    // Merge data and solution back into blankConfig
+                    const data = unwrappedQuestionData as { config?: Record<string, unknown> };
+                    const solution = unwrappedSolution as { acceptableAnswers?: unknown };
+                    transformedQuestion.blankConfig = {
+                        ...data.config,
+                        acceptableAnswers: solution.acceptableAnswers,
+                    };
+                } else if (question.type === "DESCRIPTIVE") {
+                    // Merge data and solution back into descriptiveConfig
+                    const data = unwrappedQuestionData as { config?: Record<string, unknown> };
+                    const solution = unwrappedSolution as {
+                        modelAnswer?: string;
+                        keywords?: string[];
+                    };
+                    transformedQuestion.descriptiveConfig = {
+                        ...data.config,
+                        modelAnswer: solution.modelAnswer,
+                        keywords: solution.keywords,
+                    };
+                } else if (question.type === "MATCHING") {
+                    // Merge data and solution back into options
+                    const data = unwrappedQuestionData as {
+                        options?: Array<Record<string, unknown>>;
+                    };
+                    const solution = unwrappedSolution as {
+                        options?: Array<{ id: string; matchPairIds?: string[] }>;
+                    };
+
+                    if (data.options && solution.options) {
+                        transformedQuestion.options = data.options.map((opt) => {
+                            const solutionOpt = solution.options?.find((s) => s.id === opt.id);
+                            return {
+                                ...opt,
+                                matchPairIds: solutionOpt?.matchPairIds,
+                            };
+                        });
+                    }
+                }
+
+                logger.info({ questionId: input.questionId }, "Question retrieved");
+
+                return transformedQuestion;
             } catch (error) {
                 logger.error({ error, questionId: input.questionId }, "Error getting question");
                 throw error;
@@ -345,26 +431,72 @@ export const questionRouter = createTRPCRouter({
                     throw new Error("You do not have permission to add questions to this bank");
                 }
 
-                // Prepare question data based on type
+                // Prepare question data based on type with versioning
+                // All questionData and solution fields are now wrapped with version information
+                // Format: { version: number, data: actualData }
                 let questionData: unknown;
                 let solution: unknown;
 
-                if (input.type === "MCQ" || input.type === "MMCQ") {
-                    questionData = input.questionData;
-                    solution = input.solution;
+                if (input.type === "MCQ") {
+                    questionData = versionMCQData(input.questionData);
+                    solution = versionMCQSolution(input.solution);
+                } else if (input.type === "MMCQ") {
+                    questionData = versionMMCQData(input.questionData);
+                    solution = versionMMCQSolution(input.solution);
                 } else if (input.type === "TRUE_FALSE") {
-                    questionData = {};
-                    solution = { trueFalseAnswer: input.trueFalseAnswer };
+                    questionData = {
+                        version: QUESTION_VERSIONS[QuestionType.TRUE_FALSE].DATA,
+                        data: {},
+                    };
+                    solution = versionTrueFalseSolution({ trueFalseAnswer: input.trueFalseAnswer });
                 } else if (input.type === "FILL_THE_BLANK") {
-                    questionData = input.blankConfig;
-                    solution = {};
+                    // Split blankConfig into data (without acceptableAnswers) and solution (acceptableAnswers only)
+                    const { acceptableAnswers, ...dataWithoutAnswers } = input.blankConfig;
+                    questionData = versionFillTheBlankData({
+                        config: dataWithoutAnswers as never,
+                    });
+                    solution = versionFillTheBlankSolution({
+                        acceptableAnswers: acceptableAnswers as never,
+                    });
                 } else if (input.type === "DESCRIPTIVE") {
-                    questionData = input.descriptiveConfig;
-                    solution = {};
+                    // Split descriptiveConfig into data (without modelAnswer/keywords) and solution (modelAnswer/keywords only)
+                    const { modelAnswer, keywords, ...dataWithoutSolution } =
+                        input.descriptiveConfig;
+                    questionData = versionDescriptiveData({
+                        config: dataWithoutSolution as never,
+                    });
+                    solution = versionDescriptiveSolution({
+                        modelAnswer,
+                        keywords,
+                    });
                 } else if (input.type === "MATCHING") {
-                    questionData = { options: input.options };
-                    solution = {};
+                    // Split options into data (without matchPairIds) and solution (id + matchPairIds only)
+                    const optionsData = input.options.map(({ id, isLeft, text, orderIndex }) => ({
+                        id,
+                        isLeft,
+                        text,
+                        orderIndex,
+                    }));
+                    const optionsSolution = input.options.map(({ id, matchPairIds }) => ({
+                        id,
+                        matchPairIds,
+                    }));
+                    questionData = versionMatchingData({ options: optionsData as never });
+                    solution = versionMatchingSolution({ options: optionsSolution as never });
                 }
+
+                logger.info(
+                    {
+                        type: input.type,
+                        hasVersionedData: Boolean(
+                            questionData && "version" in (questionData as object)
+                        ),
+                        hasVersionedSolution: Boolean(
+                            solution && "version" in (solution as object)
+                        ),
+                    },
+                    "Creating question with versioned data"
+                );
 
                 const [question] = await db
                     .insert(questionsTable)
@@ -520,28 +652,68 @@ export const questionRouter = createTRPCRouter({
                 if (input.bloomTaxonomyLevel !== undefined)
                     updateData.bloomTaxonomyLevel = input.bloomTaxonomyLevel;
 
-                if (input.type === "MCQ" || input.type === "MMCQ") {
+                if (input.type === "MCQ") {
                     if ("questionData" in input && input.questionData !== undefined) {
-                        updateData.questionData = input.questionData;
+                        updateData.questionData = versionMCQData(input.questionData);
                     }
                     if ("solution" in input && input.solution !== undefined) {
-                        updateData.solution = input.solution;
+                        updateData.solution = versionMCQSolution(input.solution);
+                    }
+                } else if (input.type === "MMCQ") {
+                    if ("questionData" in input && input.questionData !== undefined) {
+                        updateData.questionData = versionMMCQData(input.questionData);
+                    }
+                    if ("solution" in input && input.solution !== undefined) {
+                        updateData.solution = versionMMCQSolution(input.solution);
                     }
                 } else if (input.type === "TRUE_FALSE") {
                     if ("trueFalseAnswer" in input && input.trueFalseAnswer !== undefined) {
-                        updateData.solution = { trueFalseAnswer: input.trueFalseAnswer };
+                        updateData.solution = versionTrueFalseSolution({
+                            trueFalseAnswer: input.trueFalseAnswer,
+                        });
                     }
                 } else if (input.type === "FILL_THE_BLANK") {
                     if ("blankConfig" in input && input.blankConfig !== undefined) {
-                        updateData.questionData = input.blankConfig;
+                        const { acceptableAnswers, ...dataWithoutAnswers } = input.blankConfig;
+                        updateData.questionData = versionFillTheBlankData({
+                            config: dataWithoutAnswers as never,
+                        });
+                        updateData.solution = versionFillTheBlankSolution({
+                            acceptableAnswers: acceptableAnswers as never,
+                        });
                     }
                 } else if (input.type === "DESCRIPTIVE") {
                     if ("descriptiveConfig" in input && input.descriptiveConfig !== undefined) {
-                        updateData.questionData = input.descriptiveConfig;
+                        const { modelAnswer, keywords, ...dataWithoutSolution } =
+                            input.descriptiveConfig;
+                        updateData.questionData = versionDescriptiveData({
+                            config: dataWithoutSolution as never,
+                        });
+                        updateData.solution = versionDescriptiveSolution({
+                            modelAnswer,
+                            keywords,
+                        });
                     }
                 } else if (input.type === "MATCHING") {
                     if ("options" in input && input.options !== undefined) {
-                        updateData.questionData = { options: input.options };
+                        const optionsData = input.options.map(
+                            ({ id, isLeft, text, orderIndex }) => ({
+                                id,
+                                isLeft,
+                                text,
+                                orderIndex,
+                            })
+                        );
+                        const optionsSolution = input.options.map(({ id, matchPairIds }) => ({
+                            id,
+                            matchPairIds,
+                        }));
+                        updateData.questionData = versionMatchingData({
+                            options: optionsData as never,
+                        });
+                        updateData.solution = versionMatchingSolution({
+                            options: optionsSolution as never,
+                        });
                     }
                 }
 
@@ -556,7 +728,7 @@ export const questionRouter = createTRPCRouter({
                         .delete(topicQuestionsTable)
                         .where(eq(topicQuestionsTable.questionId, input.questionId));
 
-                    if (input.topicIds.length > 0) {
+                    if (input.topicIds && input.topicIds.length > 0) {
                         await db.insert(topicQuestionsTable).values(
                             input.topicIds.map((topicId) => ({
                                 questionId: input.questionId,
