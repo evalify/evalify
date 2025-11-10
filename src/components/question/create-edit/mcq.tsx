@@ -22,12 +22,13 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
         value.type === QuestionType.MMCQ
     );
 
-    // Get current options from questionData
+    // Get current options and correct options
     const currentOptions = value.questionData.options || [];
+    const correctOptions = value.solution.correctOptions || [];
 
-    // Get correct option IDs from solution
+    // Get correct option IDs
     const correctOptionIds = new Set(
-        value.solution.correctOptions.filter((opt) => opt.isCorrect).map((opt) => opt.id)
+        correctOptions.filter((opt) => opt.isCorrect).map((opt) => opt.id)
     );
 
     // Merge options with their correct status
@@ -58,20 +59,13 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
     };
 
     const handleDeleteOption = (optionId: string) => {
-        const updatedOptions = currentOptions.filter((opt) => opt.id !== optionId);
-        const updatedCorrectOptions = value.solution.correctOptions.filter(
-            (opt) => opt.id !== optionId
-        );
-
         onChange({
             ...value,
             questionData: {
-                ...value.questionData,
-                options: updatedOptions,
+                options: currentOptions.filter((opt) => opt.id !== optionId),
             },
             solution: {
-                ...value.solution,
-                correctOptions: updatedCorrectOptions,
+                correctOptions: correctOptions.filter((opt) => opt.id !== optionId),
             },
         });
     };
@@ -80,18 +74,17 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
         if (!editor.trim()) return;
 
         if (editingOptionId) {
-            const updatedOptions = currentOptions.map((opt) =>
-                opt.id === editingOptionId ? { ...opt, optionText: editor } : opt
-            );
-
+            // Update existing option
             onChange({
                 ...value,
                 questionData: {
-                    ...value.questionData,
-                    options: updatedOptions,
+                    options: currentOptions.map((opt) =>
+                        opt.id === editingOptionId ? { ...opt, optionText: editor } : opt
+                    ),
                 },
             });
         } else {
+            // Add new option
             const newOption: Omit<QuestionOption, "isCorrect"> = {
                 id: crypto.randomUUID(),
                 optionText: editor,
@@ -101,7 +94,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
             onChange({
                 ...value,
                 questionData: {
-                    ...value.questionData,
                     options: [...currentOptions, newOption],
                 },
             });
@@ -117,15 +109,12 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
 
         if (allowMultipleCorrect) {
             // MMCQ: Toggle the option
-            const updatedCorrectOptions = isCurrentlyCorrect
-                ? value.solution.correctOptions.filter((opt) => opt.id !== optionId)
-                : [...value.solution.correctOptions, { id: optionId, isCorrect: true }];
-
             onChange({
                 ...value,
                 solution: {
-                    ...value.solution,
-                    correctOptions: updatedCorrectOptions,
+                    correctOptions: isCurrentlyCorrect
+                        ? correctOptions.filter((opt) => opt.id !== optionId)
+                        : [...correctOptions, { id: optionId, isCorrect: true }],
                 },
             } as MMCQQuestion);
         } else {
@@ -133,7 +122,6 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
             onChange({
                 ...value,
                 solution: {
-                    ...value.solution,
                     correctOptions: [{ id: optionId, isCorrect: true }],
                 },
             } as MCQQuestion);
@@ -148,17 +136,13 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
         setAllowMultipleCorrect(enabled);
         const newType = enabled ? QuestionType.MMCQ : QuestionType.MCQ;
 
-        let updatedCorrectOptions = value.solution.correctOptions;
-
-        if (!enabled && value.solution.correctOptions.length > 1) {
-            updatedCorrectOptions = [value.solution.correctOptions[0]!];
-        }
+        const updatedCorrectOptions =
+            !enabled && correctOptions.length > 1 ? [correctOptions[0]!] : correctOptions;
 
         onChange({
             ...value,
             type: newType,
             solution: {
-                ...value.solution,
                 correctOptions: updatedCorrectOptions,
             },
         } as MCQQuestion | MMCQQuestion);

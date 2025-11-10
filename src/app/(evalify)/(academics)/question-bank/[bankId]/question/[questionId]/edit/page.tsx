@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import AuthGuard from "@/components/auth/auth-guard";
 import { UserType } from "@/lib/auth/utils";
 import QuestionForm from "@/components/question/create-edit/question-form";
@@ -11,30 +11,32 @@ import { Question } from "@/types/questions";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
 
-type Props = {
-    params: { bankId: string; questionId: string };
-};
-
-export default function EditQuestionPage({ params }: Props) {
+export default function EditQuestionPage() {
     const router = useRouter();
     const { success, error } = useToast();
     const { track } = useAnalytics();
     const utils = trpc.useUtils();
 
-    const { data: questionData, isLoading } = trpc.question.getById.useQuery({
-        questionId: params.questionId,
-        bankId: params.bankId,
-    });
+    // ✅ Get params safely in a Client Component
+    const routeParams = useParams<{ bankId: string; questionId: string }>();
+    const bankId = Array.isArray(routeParams.bankId) ? routeParams.bankId[0] : routeParams.bankId;
+    const questionId = Array.isArray(routeParams.questionId)
+        ? routeParams.questionId[0]
+        : routeParams.questionId;
+
+    const enabled = !!bankId && !!questionId;
+
+    const { data: questionData, isLoading } = trpc.question.getById.useQuery(
+        { questionId: questionId!, bankId: bankId! },
+        { enabled }
+    );
 
     const updateMutation = trpc.question.update.useMutation({
         onSuccess: () => {
             success("Question updated successfully!");
-            utils.question.listByBank.invalidate({ bankId: params.bankId });
-            utils.question.getById.invalidate({
-                questionId: params.questionId,
-                bankId: params.bankId,
-            });
-            router.push(`/question-bank/${params.bankId}`);
+            utils.question.listByBank.invalidate({ bankId });
+            utils.question.getById.invalidate({ questionId, bankId });
+            router.push(`/question-bank/${bankId}`);
         },
         onError: (err) => {
             error(err.message || "Failed to update question");
@@ -43,9 +45,9 @@ export default function EditQuestionPage({ params }: Props) {
 
     const handleSave = (question: Question) => {
         track("question_updated", {
-            questionId: params.questionId,
+            questionId,
             questionType: question.type,
-            bankId: params.bankId,
+            bankId,
         });
 
         if (question.type === "MCQ" || question.type === "MMCQ") {
@@ -55,8 +57,8 @@ export default function EditQuestionPage({ params }: Props) {
             };
 
             updateMutation.mutate({
-                questionId: params.questionId,
-                bankId: params.bankId,
+                questionId,
+                bankId,
                 type: question.type,
                 question: question.question,
                 marks: question.marks,
@@ -69,13 +71,11 @@ export default function EditQuestionPage({ params }: Props) {
                 solution: mcqQuestion.solution,
             });
         } else if (question.type === "TRUE_FALSE") {
-            const tfQuestion = question as Question & {
-                trueFalseAnswer: boolean;
-            };
+            const tfQuestion = question as Question & { trueFalseAnswer: boolean };
 
             updateMutation.mutate({
-                questionId: params.questionId,
-                bankId: params.bankId,
+                questionId,
+                bankId,
                 type: question.type,
                 question: question.question,
                 explanation: question.explanation,
@@ -93,8 +93,8 @@ export default function EditQuestionPage({ params }: Props) {
             };
 
             updateMutation.mutate({
-                questionId: params.questionId,
-                bankId: params.bankId,
+                questionId,
+                bankId,
                 type: question.type,
                 question: question.question,
                 explanation: question.explanation,
@@ -112,8 +112,8 @@ export default function EditQuestionPage({ params }: Props) {
             };
 
             updateMutation.mutate({
-                questionId: params.questionId,
-                bankId: params.bankId,
+                questionId,
+                bankId,
                 type: question.type,
                 question: question.question,
                 explanation: question.explanation,
@@ -131,8 +131,8 @@ export default function EditQuestionPage({ params }: Props) {
             };
 
             updateMutation.mutate({
-                questionId: params.questionId,
-                bankId: params.bankId,
+                questionId,
+                bankId,
                 type: question.type,
                 question: question.question,
                 explanation: question.explanation,
@@ -148,12 +148,12 @@ export default function EditQuestionPage({ params }: Props) {
     };
 
     const handleCancel = () => {
-        router.push(`/question-bank/${params.bankId}`);
+        router.push(`/question-bank/${bankId}`);
     };
 
     return (
         <AuthGuard requiredGroups={[UserType.MANAGER, UserType.STAFF]}>
-            {isLoading ? (
+            {isLoading || !enabled ? (
                 <div className="flex items-center justify-center min-h-screen">
                     <Card>
                         <CardContent className="p-8">
@@ -166,12 +166,12 @@ export default function EditQuestionPage({ params }: Props) {
                 </div>
             ) : questionData ? (
                 <QuestionForm
-                    initialData={questionData as Question}
+                    initialData={questionData as unknown as Question}
                     onSave={handleSave}
                     onCancel={handleCancel}
                     isLoading={updateMutation.isPending}
                     context="bank"
-                    bankId={params.bankId}
+                    bankId={bankId}
                 />
             ) : (
                 <div className="flex items-center justify-center min-h-screen">

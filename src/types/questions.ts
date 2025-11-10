@@ -214,7 +214,7 @@ export type MCQData = {
 export type MMCQData = MCQData;
 
 export type FillTheBlankData = {
-    config: Omit<FillInBlanksConfig, "acceptedableAnswers">;
+    config: Omit<FillInBlanksConfig, "acceptableAnswers">;
 };
 
 export type MatchingData = {
