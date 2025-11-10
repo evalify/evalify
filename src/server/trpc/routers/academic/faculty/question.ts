@@ -9,6 +9,9 @@ import {
     bankUsersTable,
     topicsTable,
     topicQuestionsTable,
+    quizQuestionsTable,
+    courseQuizzesTable,
+    courseInstructorsTable,
 } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -800,6 +803,510 @@ export const questionRouter = createTRPCRouter({
                     throw error;
                 }
                 throw new Error("Failed to delete question. Please try again.");
+            }
+        }),
+
+    createForQuiz: managerOrFacultyProcedure
+        .input(
+            baseQuestionSchema.and(
+                z.discriminatedUnion("type", [
+                    z.object({
+                        type: z.literal("MCQ"),
+                        questionData: mcqDataSchema,
+                        solution: mcqSolutionSchema,
+                    }),
+                    z.object({
+                        type: z.literal("MMCQ"),
+                        questionData: mmcqDataSchema,
+                        solution: mmcqSolutionSchema,
+                    }),
+                    z.object({
+                        type: z.literal("TRUE_FALSE"),
+                        trueFalseAnswer: z.boolean(),
+                        explanation: z.string().optional(),
+                    }),
+                    z.object({
+                        type: z.literal("FILL_THE_BLANK"),
+                        blankConfig: fillTheBlankConfigSchema,
+                        explanation: z.string().optional(),
+                    }),
+                    z.object({
+                        type: z.literal("DESCRIPTIVE"),
+                        descriptiveConfig: descriptiveConfigSchema,
+                        explanation: z.string().optional(),
+                    }),
+                    z.object({
+                        type: z.literal("MATCHING"),
+                        options: z.array(matchOptionsSchema),
+                        explanation: z.string().optional(),
+                    }),
+                ])
+            )
+        )
+        .input(z.object({ quizId: z.string().uuid(), courseId: z.string().uuid() }))
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                const [quizCourse] = await db
+                    .select({ courseId: courseQuizzesTable.courseId })
+                    .from(courseQuizzesTable)
+                    .where(eq(courseQuizzesTable.quizId, input.quizId))
+                    .limit(1);
+
+                if (!quizCourse) {
+                    throw new Error("Quiz not found");
+                }
+
+                const [accessRecord] = await db
+                    .select()
+                    .from(courseInstructorsTable)
+                    .where(
+                        and(
+                            eq(courseInstructorsTable.courseId, input.courseId),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (!accessRecord) {
+                    throw new Error("You do not have permission to add questions to this quiz");
+                }
+
+                let questionData: unknown;
+                let solution: unknown;
+
+                if (input.type === "MCQ") {
+                    questionData = versionMCQData(input.questionData);
+                    solution = versionMCQSolution(input.solution);
+                } else if (input.type === "MMCQ") {
+                    questionData = versionMMCQData(input.questionData);
+                    solution = versionMMCQSolution(input.solution);
+                } else if (input.type === "TRUE_FALSE") {
+                    questionData = {
+                        version: QUESTION_VERSIONS[QuestionType.TRUE_FALSE].DATA,
+                        data: {},
+                    };
+                    solution = versionTrueFalseSolution({ trueFalseAnswer: input.trueFalseAnswer });
+                } else if (input.type === "FILL_THE_BLANK") {
+                    const { acceptableAnswers, ...dataWithoutAnswers } = input.blankConfig;
+                    questionData = versionFillTheBlankData({
+                        config: dataWithoutAnswers as never,
+                    });
+                    solution = versionFillTheBlankSolution({
+                        acceptableAnswers: acceptableAnswers as never,
+                    });
+                } else if (input.type === "DESCRIPTIVE") {
+                    const { modelAnswer, keywords, ...dataWithoutSolution } =
+                        input.descriptiveConfig;
+                    questionData = versionDescriptiveData({
+                        config: dataWithoutSolution as never,
+                    });
+                    solution = versionDescriptiveSolution({
+                        modelAnswer,
+                        keywords,
+                    });
+                } else if (input.type === "MATCHING") {
+                    const dataOptions = input.options.map(({ matchPairIds: _, ...opt }) => opt);
+                    questionData = versionMatchingData({ options: dataOptions as never });
+
+                    const solutionOptions = input.options.map((opt) => ({
+                        id: opt.id,
+                        matchPairIds: opt.matchPairIds || [],
+                    }));
+                    solution = versionMatchingSolution({ options: solutionOptions as never });
+                } else {
+                    throw new Error("Unsupported question type");
+                }
+
+                const [question] = await db
+                    .insert(questionsTable)
+                    .values({
+                        type: input.type,
+                        question: input.question,
+                        marks: input.marks,
+                        negativeMarks: input.negativeMarks,
+                        difficulty: input.difficulty,
+                        courseOutcome: input.courseOutcome,
+                        bloomTaxonomyLevel: input.bloomTaxonomyLevel,
+                        questionData,
+                        solution,
+                        createdById: userId,
+                    })
+                    .returning();
+
+                const [lastQuestion] = await db
+                    .select({ orderIndex: quizQuestionsTable.orderIndex })
+                    .from(quizQuestionsTable)
+                    .where(eq(quizQuestionsTable.quizId, input.quizId))
+                    .orderBy(desc(quizQuestionsTable.orderIndex))
+                    .limit(1);
+
+                const nextOrderIndex = lastQuestion ? lastQuestion.orderIndex + 1 : 0;
+
+                await db.insert(quizQuestionsTable).values({
+                    quizId: input.quizId,
+                    questionId: question.id,
+                    orderIndex: nextOrderIndex,
+                    sectionId: null,
+                });
+
+                if (input.topicIds && input.topicIds.length > 0) {
+                    await db.insert(topicQuestionsTable).values(
+                        input.topicIds.map((topicId) => ({
+                            questionId: question.id,
+                            topicId,
+                        }))
+                    );
+                }
+
+                logger.info(
+                    {
+                        questionId: question.id,
+                        quizId: input.quizId,
+                        type: input.type,
+                        userId,
+                    },
+                    "Question created for quiz"
+                );
+
+                return question;
+            } catch (error) {
+                logger.error({ error, input }, "Error creating question for quiz");
+                console.error("Full error details:", error);
+                if (error instanceof Error) {
+                    throw error;
+                }
+                throw new Error("Failed to create question. Please try again.");
+            }
+        }),
+
+    getByIdForQuiz: managerOrFacultyProcedure
+        .input(
+            z.object({
+                questionId: z.string().uuid(),
+                quizId: z.string().uuid(),
+                courseId: z.string().uuid(),
+            })
+        )
+        .query(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                const [question] = await db
+                    .select({
+                        id: questionsTable.id,
+                        type: questionsTable.type,
+                        question: questionsTable.question,
+                        marks: questionsTable.marks,
+                        negativeMarks: questionsTable.negativeMarks,
+                        difficulty: questionsTable.difficulty,
+                        courseOutcome: questionsTable.courseOutcome,
+                        bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
+                        questionData: questionsTable.questionData,
+                        solution: questionsTable.solution,
+                        createdById: questionsTable.createdById,
+                        createdAt: questionsTable.created_at,
+                    })
+                    .from(questionsTable)
+                    .where(eq(questionsTable.id, input.questionId))
+                    .limit(1);
+
+                if (!question) {
+                    throw new Error("Question not found");
+                }
+
+                const [quizCourse] = await db
+                    .select({ courseId: courseQuizzesTable.courseId })
+                    .from(courseQuizzesTable)
+                    .where(eq(courseQuizzesTable.quizId, input.quizId))
+                    .limit(1);
+
+                if (!quizCourse) {
+                    throw new Error("Quiz not found");
+                }
+
+                const [accessRecord] = await db
+                    .select()
+                    .from(courseInstructorsTable)
+                    .where(
+                        and(
+                            eq(courseInstructorsTable.courseId, input.courseId),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (!accessRecord) {
+                    throw new Error("You do not have access to this quiz");
+                }
+
+                const topicLinks = await db
+                    .select({
+                        topicId: topicQuestionsTable.topicId,
+                        topicName: topicsTable.name,
+                    })
+                    .from(topicQuestionsTable)
+                    .innerJoin(topicsTable, eq(topicQuestionsTable.topicId, topicsTable.id))
+                    .where(eq(topicQuestionsTable.questionId, input.questionId));
+
+                let unwrappedQuestionData: unknown = question.questionData;
+                let unwrappedSolution: unknown = question.solution;
+
+                if (
+                    question.questionData &&
+                    typeof question.questionData === "object" &&
+                    "version" in question.questionData
+                ) {
+                    unwrappedQuestionData = unwrapVersion(question.questionData as never);
+                }
+
+                if (
+                    question.solution &&
+                    typeof question.solution === "object" &&
+                    "version" in question.solution
+                ) {
+                    unwrappedSolution = unwrapVersion(question.solution as never);
+                }
+
+                const transformedQuestion: Record<string, unknown> = {
+                    ...question,
+                    topics: topicLinks,
+                };
+
+                if (question.type === "MCQ" || question.type === "MMCQ") {
+                    transformedQuestion.questionData = unwrappedQuestionData;
+                    transformedQuestion.solution = unwrappedSolution;
+                } else if (question.type === "TRUE_FALSE") {
+                    transformedQuestion.trueFalseAnswer = (
+                        unwrappedSolution as { trueFalseAnswer?: boolean }
+                    )?.trueFalseAnswer;
+                } else if (question.type === "FILL_THE_BLANK") {
+                    const data = unwrappedQuestionData as { config?: Record<string, unknown> };
+                    const solution = unwrappedSolution as { acceptableAnswers?: unknown };
+                    transformedQuestion.blankConfig = {
+                        ...data.config,
+                        acceptableAnswers: solution.acceptableAnswers,
+                    };
+                } else if (question.type === "DESCRIPTIVE") {
+                    const data = unwrappedQuestionData as { config?: Record<string, unknown> };
+                    const solution = unwrappedSolution as {
+                        modelAnswer?: string;
+                        keywords?: string[];
+                    };
+                    transformedQuestion.descriptiveConfig = {
+                        ...data.config,
+                        modelAnswer: solution.modelAnswer,
+                        keywords: solution.keywords,
+                    };
+                } else if (question.type === "MATCHING") {
+                    const data = unwrappedQuestionData as {
+                        options?: Array<Record<string, unknown>>;
+                    };
+                    const solution = unwrappedSolution as {
+                        options?: Array<{ id: string; matchPairIds?: string[] }>;
+                    };
+
+                    if (data.options && solution.options) {
+                        transformedQuestion.options = data.options.map((opt) => {
+                            const solutionOpt = solution.options?.find((s) => s.id === opt.id);
+                            return {
+                                ...opt,
+                                matchPairIds: solutionOpt?.matchPairIds,
+                            };
+                        });
+                    }
+                }
+
+                logger.info({ questionId: input.questionId }, "Question retrieved for quiz");
+
+                return transformedQuestion;
+            } catch (error) {
+                logger.error({ error, questionId: input.questionId }, "Error retrieving question");
+                throw error;
+            }
+        }),
+
+    updateForQuiz: managerOrFacultyProcedure
+        .input(
+            z
+                .object({
+                    questionId: z.string().uuid(),
+                    quizId: z.string().uuid(),
+                    courseId: z.string().uuid(),
+                })
+                .and(
+                    baseQuestionSchema.partial().and(
+                        z.discriminatedUnion("type", [
+                            z.object({
+                                type: z.literal("MCQ"),
+                                questionData: mcqDataSchema.optional(),
+                                solution: mcqSolutionSchema.optional(),
+                            }),
+                            z.object({
+                                type: z.literal("MMCQ"),
+                                questionData: mmcqDataSchema.optional(),
+                                solution: mmcqSolutionSchema.optional(),
+                            }),
+                            z.object({
+                                type: z.literal("TRUE_FALSE"),
+                                trueFalseAnswer: z.boolean().optional(),
+                                explanation: z.string().optional(),
+                            }),
+                            z.object({
+                                type: z.literal("FILL_THE_BLANK"),
+                                blankConfig: fillTheBlankConfigSchema.optional(),
+                                explanation: z.string().optional(),
+                            }),
+                            z.object({
+                                type: z.literal("DESCRIPTIVE"),
+                                descriptiveConfig: descriptiveConfigSchema.optional(),
+                                explanation: z.string().optional(),
+                            }),
+                            z.object({
+                                type: z.literal("MATCHING"),
+                                options: z.array(matchOptionsSchema).optional(),
+                                explanation: z.string().optional(),
+                            }),
+                        ])
+                    )
+                )
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                const [existing] = await db
+                    .select({ createdById: questionsTable.createdById })
+                    .from(questionsTable)
+                    .where(eq(questionsTable.id, input.questionId))
+                    .limit(1);
+
+                if (!existing) {
+                    throw new Error("Question not found");
+                }
+
+                const [quizCourse] = await db
+                    .select({ courseId: courseQuizzesTable.courseId })
+                    .from(courseQuizzesTable)
+                    .where(eq(courseQuizzesTable.quizId, input.quizId))
+                    .limit(1);
+
+                if (!quizCourse) {
+                    throw new Error("Quiz not found");
+                }
+
+                const [accessRecord] = await db
+                    .select()
+                    .from(courseInstructorsTable)
+                    .where(
+                        and(
+                            eq(courseInstructorsTable.courseId, input.courseId),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (!accessRecord && existing.createdById !== userId) {
+                    throw new Error("You do not have permission to edit this question");
+                }
+
+                const updateData: Partial<typeof questionsTable.$inferInsert> = {};
+                if (input.type !== undefined) updateData.type = input.type;
+                if (input.question !== undefined) updateData.question = input.question;
+                if (input.marks !== undefined) updateData.marks = input.marks;
+                if (input.negativeMarks !== undefined)
+                    updateData.negativeMarks = input.negativeMarks;
+                if (input.difficulty !== undefined) updateData.difficulty = input.difficulty;
+                if (input.courseOutcome !== undefined)
+                    updateData.courseOutcome = input.courseOutcome;
+                if (input.bloomTaxonomyLevel !== undefined)
+                    updateData.bloomTaxonomyLevel = input.bloomTaxonomyLevel;
+
+                if (input.type === "MCQ" || input.type === "MMCQ") {
+                    if (input.questionData) {
+                        updateData.questionData =
+                            input.type === "MCQ"
+                                ? versionMCQData(input.questionData)
+                                : versionMMCQData(input.questionData);
+                    }
+                    if (input.solution) {
+                        updateData.solution =
+                            input.type === "MCQ"
+                                ? versionMCQSolution(input.solution)
+                                : versionMMCQSolution(input.solution);
+                    }
+                } else if (input.type === "TRUE_FALSE" && input.trueFalseAnswer !== undefined) {
+                    updateData.questionData = {
+                        version: QUESTION_VERSIONS[QuestionType.TRUE_FALSE].DATA,
+                        data: {},
+                    };
+                    updateData.solution = versionTrueFalseSolution({
+                        trueFalseAnswer: input.trueFalseAnswer,
+                    });
+                } else if (input.type === "FILL_THE_BLANK" && input.blankConfig) {
+                    const { acceptableAnswers, ...dataWithoutAnswers } = input.blankConfig;
+                    updateData.questionData = versionFillTheBlankData({
+                        config: dataWithoutAnswers as never,
+                    });
+                    updateData.solution = versionFillTheBlankSolution({
+                        acceptableAnswers: acceptableAnswers as never,
+                    });
+                } else if (input.type === "DESCRIPTIVE" && input.descriptiveConfig) {
+                    const { modelAnswer, keywords, ...dataWithoutSolution } =
+                        input.descriptiveConfig;
+                    updateData.questionData = versionDescriptiveData({
+                        config: dataWithoutSolution as never,
+                    });
+                    updateData.solution = versionDescriptiveSolution({
+                        modelAnswer,
+                        keywords,
+                    });
+                } else if (input.type === "MATCHING" && input.options) {
+                    const dataOptions = input.options.map(({ matchPairIds: _, ...opt }) => opt);
+                    updateData.questionData = versionMatchingData({
+                        options: dataOptions as never,
+                    });
+
+                    const solutionOptions = input.options.map((opt) => ({
+                        id: opt.id,
+                        matchPairIds: opt.matchPairIds || [],
+                    }));
+                    updateData.solution = versionMatchingSolution({
+                        options: solutionOptions as never,
+                    });
+                }
+
+                const [question] = await db
+                    .update(questionsTable)
+                    .set(updateData)
+                    .where(eq(questionsTable.id, input.questionId))
+                    .returning();
+
+                if (input.topicIds !== undefined) {
+                    await db
+                        .delete(topicQuestionsTable)
+                        .where(eq(topicQuestionsTable.questionId, input.questionId));
+
+                    if (input.topicIds && input.topicIds.length > 0) {
+                        await db.insert(topicQuestionsTable).values(
+                            input.topicIds.map((topicId) => ({
+                                questionId: input.questionId,
+                                topicId,
+                            }))
+                        );
+                    }
+                }
+
+                logger.info({ questionId: input.questionId, userId }, "Question updated for quiz");
+
+                return question;
+            } catch (error) {
+                logger.error({ error, questionId: input.questionId }, "Error updating question");
+                if (error instanceof Error) {
+                    throw error;
+                }
+                throw new Error("Failed to update question. Please try again.");
             }
         }),
 });
