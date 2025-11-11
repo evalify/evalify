@@ -11,6 +11,7 @@ import { DataTable } from "@/components/admin/shared/data-table";
 import { SemesterForm } from "./semester-form";
 import { SemesterBulkForm } from "./semester-bulk-form";
 import { SemesterManagersModal } from "./semester-managers-modal";
+import { CourseBulkCreateForm } from "./semester-excel-form";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -45,6 +46,7 @@ export function SemesterManagement() {
     const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isBulkCreateModalOpen, setIsBulkCreateModalOpen] = useState(false);
+    const [isCourseBulkCreateModalOpen, setIsCourseBulkCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -437,6 +439,14 @@ export function SemesterManagement() {
                         </div>
                         <div className="flex gap-2">
                             <Button
+                                onClick={() => setIsCourseBulkCreateModalOpen(true)}
+                                variant="outline"
+                                className="flex items-center gap-2"
+                            >
+                                <FolderPlus className="h-4 w-4" />
+                                Course Bulk Create
+                            </Button>
+                            <Button
                                 onClick={() => setIsBulkCreateModalOpen(true)}
                                 variant="outline"
                                 className="flex items-center gap-2"
@@ -627,6 +637,23 @@ export function SemesterManagement() {
                         <SemesterBulkForm
                             onSubmit={handleBulkCreate}
                             onCancel={() => setIsBulkCreateModalOpen(false)}
+                        />
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
+
+            {/* Course Bulk Create Modal */}
+            <Dialog
+                open={isCourseBulkCreateModalOpen}
+                onOpenChange={setIsCourseBulkCreateModalOpen}
+            >
+                <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+                    <DialogHeader>
+                        <DialogTitle>Bulk Create Courses</DialogTitle>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[calc(90vh-100px)] pr-4">
+                        <CourseBulkCreateForm
+                            onCancel={() => setIsCourseBulkCreateModalOpen(false)}
                         />
                     </ScrollArea>
                 </DialogContent>

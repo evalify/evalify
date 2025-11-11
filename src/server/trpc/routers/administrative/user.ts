@@ -546,4 +546,42 @@ export const userRouter = createTRPCRouter({
                 throw error;
             }
         }),
+
+    /**
+     * Get all users for validation (no pagination)
+     * Used by bulk operations that need complete data
+     */
+    listAll: adminProcedure
+        .input(
+            z.object({
+                role: z.enum(["ADMIN", "MANAGER", "FACULTY", "STUDENT"]).optional(),
+            })
+        )
+        .query(async ({ input }) => {
+            try {
+                const conditions = [];
+
+                if (input.role) {
+                    conditions.push(eq(usersTable.role, input.role));
+                }
+
+                const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+                const users = await db
+                    .select()
+                    .from(usersTable)
+                    .where(whereClause)
+                    .orderBy(desc(usersTable.created_at));
+
+                logger.info(
+                    { count: users.length, role: input.role },
+                    "All users listed for validation"
+                );
+
+                return users;
+            } catch (error) {
+                logger.error({ error }, "Error listing all users");
+                throw error;
+            }
+        }),
 });
