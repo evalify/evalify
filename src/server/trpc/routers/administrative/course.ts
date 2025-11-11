@@ -1096,4 +1096,211 @@ export const courseRouter = createTRPCRouter({
                 departmentId: input.departmentId,
             };
         }),
+
+    /**
+     * Bulk create courses with instructors and batches
+     * This is a transactional operation - all or nothing
+     */
+    bulkCreate: adminProcedure
+        .input(
+            z.object({
+                courses: z.array(
+                    z.object({
+                        name: z.string().min(1).max(255),
+                        code: z.string().min(1).max(50),
+                        description: z.string().optional(),
+                        type: z.enum(["CORE", "ELECTIVE", "MICRO_CREDENTIAL"]),
+                        semesterId: z.uuid(),
+                        instructorIds: z.array(z.uuid()).optional(),
+                        batchIds: z.array(z.uuid()).optional(),
+                        isActive: z.enum(["ACTIVE", "INACTIVE"]).default("ACTIVE"),
+                    })
+                ),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const createdCourses: Array<{ id: string; name: string; code: string }> = [];
+
+                // Use a transaction to ensure all-or-nothing behavior
+                await db.transaction(async (tx) => {
+                    for (const courseData of input.courses) {
+                        // Create the course
+                        const [course] = await tx
+                            .insert(coursesTable)
+                            .values({
+                                name: courseData.name,
+                                code: courseData.code,
+                                description: courseData.description || null,
+                                type: courseData.type,
+                                semesterId: courseData.semesterId,
+                                isActive: courseData.isActive,
+                                image: null,
+                            })
+                            .returning();
+
+                        if (!course) {
+                            throw new Error(`Failed to create course: ${courseData.name}`);
+                        }
+
+                        createdCourses.push({
+                            id: course.id,
+                            name: course.name,
+                            code: course.code,
+                        });
+
+                        // Add instructors if provided
+                        if (courseData.instructorIds && courseData.instructorIds.length > 0) {
+                            const instructorValues = courseData.instructorIds.map(
+                                (instructorId) => ({
+                                    courseId: course.id,
+                                    instructorId,
+                                })
+                            );
+
+                            await tx
+                                .insert(courseInstructorsTable)
+                                .values(instructorValues)
+                                .onConflictDoNothing();
+                        }
+
+                        // Add batches if provided
+                        if (courseData.batchIds && courseData.batchIds.length > 0) {
+                            const batchValues = courseData.batchIds.map((batchId) => ({
+                                courseId: course.id,
+                                batchId,
+                            }));
+
+                            await tx
+                                .insert(courseBatchesTable)
+                                .values(batchValues)
+                                .onConflictDoNothing();
+                        }
+                    }
+                });
+
+                logger.info(
+                    {
+                        count: createdCourses.length,
+                        userId: ctx.session.user.id,
+                    },
+                    "Courses bulk created"
+                );
+
+                return {
+                    success: true,
+                    count: createdCourses.length,
+                    courses: createdCourses,
+                };
+            } catch (error: unknown) {
+                logger.error({ error, input }, "Error bulk creating courses");
+
+                if (
+                    error &&
+                    typeof error === "object" &&
+                    "message" in error &&
+                    typeof error.message === "string"
+                ) {
+                    throw new Error(error.message);
+                }
+
+                throw new Error("Failed to bulk create courses. Transaction rolled back.");
+            }
+        }),
+
+    /**
+     * Check if a course with exact same configuration already exists
+     * Checks: semester + code + batches + instructors
+     */
+    checkDuplicates: adminProcedure
+        .input(
+            z.object({
+                courses: z.array(
+                    z.object({
+                        semesterId: z.uuid(),
+                        code: z.string(),
+                        batchIds: z.array(z.uuid()).optional(),
+                        instructorIds: z.array(z.uuid()).optional(),
+                    })
+                ),
+            })
+        )
+        .query(async ({ input }) => {
+            try {
+                const duplicates: Array<{
+                    semesterId: string;
+                    code: string;
+                    isDuplicate: boolean;
+                    existingCourseName?: string;
+                }> = [];
+
+                for (const courseCheck of input.courses) {
+                    // Find courses with matching semester and code
+                    const matchingCourses = await db
+                        .select({
+                            id: coursesTable.id,
+                            name: coursesTable.name,
+                            code: coursesTable.code,
+                        })
+                        .from(coursesTable)
+                        .where(
+                            and(
+                                eq(coursesTable.semesterId, courseCheck.semesterId),
+                                eq(coursesTable.code, courseCheck.code)
+                            )
+                        );
+
+                    let isExactDuplicate = false;
+                    let existingCourseName: string | undefined;
+
+                    // For each matching course, check if batches and instructors also match
+                    for (const course of matchingCourses) {
+                        // Get batches for this course
+                        const courseBatches = await db
+                            .select({ batchId: courseBatchesTable.batchId })
+                            .from(courseBatchesTable)
+                            .where(eq(courseBatchesTable.courseId, course.id));
+
+                        const existingBatchIds = courseBatches.map((b) => b.batchId).sort();
+                        const newBatchIds = (courseCheck.batchIds || []).sort();
+
+                        // Get instructors for this course
+                        const courseInstructors = await db
+                            .select({ instructorId: courseInstructorsTable.instructorId })
+                            .from(courseInstructorsTable)
+                            .where(eq(courseInstructorsTable.courseId, course.id));
+
+                        const existingInstructorIds = courseInstructors
+                            .map((i) => i.instructorId)
+                            .sort();
+                        const newInstructorIds = (courseCheck.instructorIds || []).sort();
+
+                        // Check if both arrays match exactly
+                        const batchesMatch =
+                            JSON.stringify(existingBatchIds) === JSON.stringify(newBatchIds);
+                        const instructorsMatch =
+                            JSON.stringify(existingInstructorIds) ===
+                            JSON.stringify(newInstructorIds);
+
+                        if (batchesMatch && instructorsMatch) {
+                            isExactDuplicate = true;
+                            existingCourseName = course.name;
+                            break;
+                        }
+                    }
+
+                    duplicates.push({
+                        semesterId: courseCheck.semesterId,
+                        code: courseCheck.code,
+                        isDuplicate: isExactDuplicate,
+                        existingCourseName,
+                    });
+                }
+
+                return duplicates;
+            } catch (error) {
+                logger.error({ error }, "Error checking for duplicate courses");
+                throw error;
+            }
+        }),
 });

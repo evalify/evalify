@@ -72,7 +72,7 @@ const generateSemesters = (
 export function SemesterBulkForm({ onSubmit, onCancel }: SemesterBulkFormProps) {
     const [formData, setFormData] = useState<SemesterBulkFormData>({
         departmentIds: [],
-        batchStartYear: new Date().getFullYear() - 4, // Default to 4 years ago
+        batchStartYear: new Date().getFullYear() - 3, // Default to 3 years ago
         batchEndYear: new Date().getFullYear(),
         semesterType: "ODD",
     });

@@ -664,4 +664,34 @@ export const semesterRouter = createTRPCRouter({
                 );
             }
         }),
+
+    /**
+     * Get all semesters for validation (no pagination)
+     * Used by bulk operations that need complete data
+     */
+    listAll: adminProcedure.query(async () => {
+        try {
+            const semesters = await db
+                .select({
+                    id: semestersTable.id,
+                    name: semestersTable.name,
+                    year: semestersTable.year,
+                    departmentId: semestersTable.departmentId,
+                    isActive: semestersTable.isActive,
+                    createdAt: semestersTable.created_at,
+                    updatedAt: semestersTable.updated_at,
+                    departmentName: departmentsTable.name,
+                })
+                .from(semestersTable)
+                .leftJoin(departmentsTable, eq(semestersTable.departmentId, departmentsTable.id))
+                .orderBy(desc(semestersTable.year), desc(semestersTable.created_at));
+
+            logger.info({ count: semesters.length }, "All semesters listed for validation");
+
+            return semesters;
+        } catch (error) {
+            logger.error({ error }, "Error listing all semesters");
+            throw error;
+        }
+    }),
 });

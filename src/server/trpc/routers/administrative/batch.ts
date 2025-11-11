@@ -438,4 +438,36 @@ export const batchRouter = createTRPCRouter({
                 throw error;
             }
         }),
+
+    /**
+     * Get all batches for validation (no pagination)
+     * Used by bulk operations that need complete data
+     */
+    listAll: adminProcedure.query(async () => {
+        try {
+            const batches = await db
+                .select({
+                    id: batchesTable.id,
+                    name: batchesTable.name,
+                    joinYear: batchesTable.joinYear,
+                    graduationYear: batchesTable.graduationYear,
+                    section: batchesTable.section,
+                    departmentId: batchesTable.departmentId,
+                    isActive: batchesTable.isActive,
+                    createdAt: batchesTable.created_at,
+                    updatedAt: batchesTable.updated_at,
+                    departmentName: departmentsTable.name,
+                })
+                .from(batchesTable)
+                .leftJoin(departmentsTable, eq(batchesTable.departmentId, departmentsTable.id))
+                .orderBy(desc(batchesTable.created_at));
+
+            logger.info({ count: batches.length }, "All batches listed for validation");
+
+            return batches;
+        } catch (error) {
+            logger.error({ error }, "Error listing all batches");
+            throw error;
+        }
+    }),
 });
