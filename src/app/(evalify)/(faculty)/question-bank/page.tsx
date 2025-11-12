@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { getColumns } from "@/components/question-bank/bank-column";
 import { BankDialog } from "@/components/question-bank/bank-dialog";
@@ -11,6 +12,7 @@ import { useSession } from "next-auth/react";
 import { DataTable } from "@/components/ui/data-table";
 
 export default function QuestionBankPage() {
+    const router = useRouter();
     const [selectedBank, setSelectedBank] = useState<BankListItem | undefined>();
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -48,6 +50,10 @@ export default function QuestionBankPage() {
 
     const columns = getColumns(handleEdit, handleDelete, handleShare, session?.user?.id);
 
+    const handleRowClick = (bank: BankListItem) => {
+        router.push(`/question-bank/${bank.id}`);
+    };
+
     return (
         <div className="container mx-auto py-6">
             <div className="flex justify-between items-center mb-6">
@@ -80,6 +86,7 @@ export default function QuestionBankPage() {
                     setFilterValue(value);
                     setPageIndex(0);
                 }}
+                onRowClick={handleRowClick}
             />
 
             {selectedBank && (

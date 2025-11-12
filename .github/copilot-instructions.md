@@ -30,3 +30,4 @@
 - Always Use shadCNUI components for building the UI. follow the design system.
 - Use lucide icons from `lucide-react` package for icons in the UI.
 - Make sure UI works well in both light and dark modes.
+- use `src/components/ui/custom-alert-dialog.tsx` for alert dialogs.

@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, X, Settings, Hash, BrainCircuit, Target, Tags, Gauge } from "lucide-react";
+import { X, Settings, Hash, BrainCircuit, Target, Tags, Gauge } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
+import { Separator } from "@/components/ui/separator";
 
 interface QuestionSettingsProps {
     value: Question;
@@ -32,13 +33,13 @@ export default function QuestionSettings({
 }: QuestionSettingsProps) {
     const [newTopicInput, setNewTopicInput] = useState("");
 
-    // Fetch bank topics if in bank context
-    const { data: bankData } = trpc.bank.get.useQuery(
-        { id: bankId! },
+    // Fetch bank topics with IDs if in bank context
+    const { data: bankTopics } = trpc.topic.listByBank.useQuery(
+        { bankId: bankId! },
         { enabled: context === "bank" && !!bankId }
     );
 
-    const availableTopics = context === "bank" ? (bankData?.topics as string[]) || [] : [];
+    const availableTopics = context === "bank" ? bankTopics || [] : [];
 
     const handleMarksChange = (marks: string) => {
         const parsed = parseFloat(marks);
@@ -69,7 +70,8 @@ export default function QuestionSettings({
         });
     };
 
-    const handleAddTopic = () => {
+    // Reserved for future use - manual topic addition
+    const _handleAddTopic = () => {
         if (!newTopicInput.trim()) return;
 
         const currentTopics = value.topics || [];
@@ -84,13 +86,16 @@ export default function QuestionSettings({
         setNewTopicInput("");
     };
 
-    const handleAddBankTopic = (topicName: string) => {
-        if (!topicName.trim()) return;
+    const handleAddBankTopic = (topicId: string) => {
+        if (!topicId.trim()) return;
+
+        const topic = availableTopics.find((t) => t.id === topicId);
+        if (!topic) return;
 
         const currentTopics = value.topics || [];
-        const newTopic = { topicId: `temp-${Date.now()}`, topicName: topicName.trim() };
+        const newTopic = { topicId: topic.id, topicName: topic.name };
 
-        if (!currentTopics.some((t) => t.topicName === newTopic.topicName)) {
+        if (!currentTopics.some((t) => t.topicId === newTopic.topicId)) {
             onChange({
                 ...value,
                 topics: [...currentTopics, newTopic],
@@ -114,6 +119,80 @@ export default function QuestionSettings({
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-0">
+                <div className="space-y-3">
+                    {context === "bank" && availableTopics.length > 0 && (
+                        <>
+                            <div>
+                                <Label className="text-sm font-medium flex items-center gap-2">
+                                    <Tags className="h-4 w-4 text-orange-500" />
+                                    Topics
+                                </Label>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    {context === "bank"
+                                        ? "Select from predefined bank topics"
+                                        : "Add custom topics for this quiz question"}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Select
+                                    value="__placeholder__"
+                                    onValueChange={(val) => {
+                                        if (val !== "__placeholder__") handleAddBankTopic(val);
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select topic from bank" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__placeholder__" disabled>
+                                            Select a topic
+                                        </SelectItem>
+                                        {availableTopics
+                                            .filter(
+                                                (topic) =>
+                                                    !(value.topics || []).some(
+                                                        (t) => t.topicId === topic.id
+                                                    )
+                                            )
+                                            .map((topic) => (
+                                                <SelectItem key={topic.id} value={topic.id}>
+                                                    {topic.name}
+                                                </SelectItem>
+                                            ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {/* Display selected topics */}
+                            {value.topics &&
+                                value.topics.length > 0 &&
+                                context === "bank" &&
+                                availableTopics.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {value.topics.map((topic) => (
+                                            <Badge
+                                                key={topic.topicId}
+                                                variant="secondary"
+                                                className="pl-2 pr-1"
+                                            >
+                                                {topic.topicName}
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => handleRemoveTopic(topic.topicId)}
+                                                    className="h-4 w-4 p-0 ml-1 hover:bg-transparent"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </Button>
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                )}
+                            <Separator />
+                        </>
+                    )}
+                </div>
+
                 <div className="space-y-3">
                     <Label htmlFor="marks" className="text-sm font-medium flex items-center gap-2">
                         <Hash className="h-4 w-4 text-blue-500" />
@@ -148,31 +227,6 @@ export default function QuestionSettings({
                         value={value.negativeMarks}
                         onChange={(e) => handleNegativeMarksChange(e.target.value)}
                     />
-                </div>
-
-                <div className="space-y-3">
-                    <Label
-                        htmlFor="bloomLevel"
-                        className="text-sm font-medium flex items-center gap-2"
-                    >
-                        <BrainCircuit className="h-4 w-4 text-purple-500" />
-                        Bloom&apos;s Taxonomy Level
-                    </Label>
-                    <Select
-                        value={value.bloomsLevel || ""}
-                        onValueChange={(val) => handleBloomLevelChange(val as BloomsLevel)}
-                    >
-                        <SelectTrigger id="bloomLevel">
-                            <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Object.values(BloomsLevel).map((level) => (
-                                <SelectItem key={level} value={level}>
-                                    {level}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                 </div>
 
                 <div className="space-y-3">
@@ -212,6 +266,31 @@ export default function QuestionSettings({
 
                 <div className="space-y-3">
                     <Label
+                        htmlFor="bloomLevel"
+                        className="text-sm font-medium flex items-center gap-2"
+                    >
+                        <BrainCircuit className="h-4 w-4 text-purple-500" />
+                        Bloom&apos;s Taxonomy Level
+                    </Label>
+                    <Select
+                        value={value.bloomsLevel || ""}
+                        onValueChange={(val) => handleBloomLevelChange(val as BloomsLevel)}
+                    >
+                        <SelectTrigger id="bloomLevel">
+                            <SelectValue placeholder="Select level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {Object.values(BloomsLevel).map((level) => (
+                                <SelectItem key={level} value={level}>
+                                    {level}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-3">
+                    <Label
                         htmlFor="courseOutcome"
                         className="text-sm font-medium flex items-center gap-2"
                     >
@@ -234,102 +313,6 @@ export default function QuestionSettings({
                             ))}
                         </SelectContent>
                     </Select>
-                </div>
-
-                <div className="space-y-3">
-                    <div>
-                        <Label className="text-sm font-medium flex items-center gap-2">
-                            <Tags className="h-4 w-4 text-orange-500" />
-                            Topics
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {context === "bank"
-                                ? "Select from predefined bank topics"
-                                : "Add custom topics for this quiz question"}
-                        </p>
-                    </div>
-
-                    {context === "bank" && availableTopics.length > 0 && (
-                        <div className="space-y-2">
-                            <Select
-                                value="__placeholder__"
-                                onValueChange={(val) => {
-                                    if (val !== "__placeholder__") handleAddBankTopic(val);
-                                }}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select topic from bank" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="__placeholder__" disabled>
-                                        Select a topic
-                                    </SelectItem>
-                                    {availableTopics
-                                        .filter(
-                                            (topic: string) =>
-                                                !(value.topics || []).some(
-                                                    (t) => t.topicName === topic
-                                                )
-                                        )
-                                        .map((topic: string) => (
-                                            <SelectItem key={topic} value={topic}>
-                                                {topic}
-                                            </SelectItem>
-                                        ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-
-                    {/* For Quiz: Show input to add custom topics */}
-                    {context === "quiz" && (
-                        <div className="flex gap-2">
-                            <Input
-                                placeholder="Enter topic name"
-                                value={newTopicInput}
-                                onChange={(e) => setNewTopicInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        handleAddTopic();
-                                    }
-                                }}
-                            />
-                            <Button
-                                type="button"
-                                onClick={handleAddTopic}
-                                disabled={!newTopicInput.trim()}
-                                size="sm"
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add
-                            </Button>
-                        </div>
-                    )}
-
-                    {/* Display selected topics */}
-                    {value.topics && value.topics.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {value.topics.map((topic) => (
-                                <Badge
-                                    key={topic.topicId}
-                                    variant="secondary"
-                                    className="pl-2 pr-1"
-                                >
-                                    {topic.topicName}
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => handleRemoveTopic(topic.topicId)}
-                                        className="h-4 w-4 p-0 ml-1 hover:bg-transparent"
-                                    >
-                                        <X className="h-3 w-3" />
-                                    </Button>
-                                </Badge>
-                            ))}
-                        </div>
-                    )}
                 </div>
             </CardContent>
         </Card>

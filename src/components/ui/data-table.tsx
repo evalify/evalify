@@ -131,6 +131,8 @@ export type DataTableProps<TData, TValue> = {
 
     filterValue?: string;
     onFilterChange?: (value: string) => void;
+
+    onRowClick?: (row: TData) => void;
 };
 
 export function DataTable<TData, TValue>({
@@ -155,6 +157,8 @@ export function DataTable<TData, TValue>({
 
     filterValue: cFilterValue,
     onFilterChange,
+
+    onRowClick,
 }: DataTableProps<TData, TValue>) {
     const [iSorting, iSetSorting] = React.useState<SortingState>(defaultSorting);
     const [iColumnFilters, iSetColumnFilters] = React.useState<ColumnFiltersState>(
@@ -362,6 +366,8 @@ export function DataTable<TData, TValue>({
                                     <TableRow
                                         key={row.id}
                                         data-state={row.getIsSelected() && "selected"}
+                                        onClick={() => onRowClick?.(row.original)}
+                                        className={onRowClick ? "cursor-pointer" : undefined}
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell

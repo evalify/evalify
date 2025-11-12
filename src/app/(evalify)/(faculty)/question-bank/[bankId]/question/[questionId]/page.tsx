@@ -36,10 +36,25 @@ export default function QuestionPage() {
     );
 
     const createMutation = trpc.question.createForBank.useMutation({
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             success("Question created successfully!");
             utils.question.listByBank.invalidate({ bankId });
-            router.push(`/question-bank/${bankId}`);
+            utils.question.listByTopics.invalidate({ bankId });
+
+            // Redirect with topics and new question ID for auto-scroll
+            const topicIds = variables.topicIds || [];
+            const params = new URLSearchParams();
+
+            // Only set topics param if question has topics
+            if (topicIds.length > 0) {
+                params.set("topics", topicIds.join(","));
+            }
+            // else: no topics param means the question has no topics,
+            // the main page will auto-select "No Topic"
+
+            params.set("newQuestion", data.id);
+
+            router.push(`/question-bank/${bankId}?${params.toString()}`);
         },
         onError: (err) => {
             error(err.message || "Failed to create question");
@@ -47,11 +62,26 @@ export default function QuestionPage() {
     });
 
     const updateMutation = trpc.question.update.useMutation({
-        onSuccess: () => {
+        onSuccess: (data, variables) => {
             success("Question updated successfully!");
             utils.question.listByBank.invalidate({ bankId });
+            utils.question.listByTopics.invalidate({ bankId });
             utils.question.getById.invalidate({ questionId, bankId });
-            router.push(`/question-bank/${bankId}`);
+
+            // Redirect with topics and question ID for auto-scroll
+            const topicIds = variables.topicIds || [];
+            const params = new URLSearchParams();
+
+            // Only set topics param if question has topics
+            if (topicIds.length > 0) {
+                params.set("topics", topicIds.join(","));
+            }
+            // else: no topics param means the question has no topics,
+            // the main page will auto-select "No Topic"
+
+            params.set("newQuestion", questionId);
+
+            router.push(`/question-bank/${bankId}?${params.toString()}`);
         },
         onError: (err) => {
             error(err.message || "Failed to update question");
@@ -263,7 +293,7 @@ export default function QuestionPage() {
     };
 
     const handleCancel = () => {
-        router.push(`/question-bank/${bankId}`);
+        router.back();
     };
 
     // Show loading state only in edit mode while fetching data
