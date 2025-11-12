@@ -13,7 +13,7 @@ import {
     courseQuizzesTable,
     courseInstructorsTable,
 } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray, sql, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import {
     versionMCQData,
@@ -33,6 +33,48 @@ import {
 import { QuestionType } from "@/types/questions";
 
 const managerOrFacultyProcedure = createCustomProcedure([UserType.MANAGER, UserType.STAFF]);
+
+// Type definitions for database query results
+type TopicLink = {
+    topicId: string;
+    topicName: string;
+};
+
+type TransformedQuestion = Record<string, unknown> & {
+    id: string;
+    type: string;
+    topics: TopicLink[];
+};
+
+type TrueFalseSolution = {
+    trueFalseAnswer?: boolean;
+    explanation?: string;
+};
+
+type FillBlankData = {
+    config?: Record<string, unknown>;
+};
+
+type FillBlankSolution = {
+    acceptableAnswers?: unknown;
+};
+
+type DescriptiveData = {
+    config?: Record<string, unknown>;
+};
+
+type DescriptiveSolution = {
+    modelAnswer?: string;
+    keywords?: string[];
+};
+
+type MatchingData = {
+    options?: Array<Record<string, unknown>>;
+};
+
+type MatchingSolution = {
+    options?: Array<{ id: string; matchPairIds?: string[] }>;
+};
 
 const questionTypeEnum = z.enum([
     "MCQ",
@@ -133,6 +175,212 @@ const matchOptionsSchema = z.object({
 });
 
 export const questionRouter = createTRPCRouter({
+    listByTopics: managerOrFacultyProcedure
+        .input(
+            z.object({
+                bankId: z.string().uuid(),
+                topicIds: z.array(z.string().uuid()),
+                limit: z.number().min(1).max(100).default(50),
+                offset: z.number().min(0).default(0),
+            })
+        )
+        .query(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                const [bank] = await db
+                    .select({ createdById: banksTable.createdById })
+                    .from(banksTable)
+                    .where(eq(banksTable.id, input.bankId))
+                    .limit(1);
+
+                if (!bank) {
+                    throw new Error("Bank not found");
+                }
+
+                const hasAccess =
+                    bank.createdById === userId ||
+                    (
+                        await db
+                            .select()
+                            .from(bankUsersTable)
+                            .where(
+                                and(
+                                    eq(bankUsersTable.bankId, input.bankId),
+                                    eq(bankUsersTable.userId, userId)
+                                )
+                            )
+                            .limit(1)
+                    ).length > 0;
+
+                if (!hasAccess) {
+                    throw new Error("You do not have access to this bank");
+                }
+
+                // If no topics selected, get all questions from the bank
+                let questions;
+                if (input.topicIds.length === 0) {
+                    questions = await db
+                        .select({
+                            id: questionsTable.id,
+                            type: questionsTable.type,
+                            question: questionsTable.question,
+                            marks: questionsTable.marks,
+                            negativeMarks: questionsTable.negativeMarks,
+                            difficulty: questionsTable.difficulty,
+                            courseOutcome: questionsTable.courseOutcome,
+                            bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
+                            questionData: questionsTable.questionData,
+                            solution: questionsTable.solution,
+                            createdAt: questionsTable.created_at,
+                            bankQuestionId: bankQuestionsTable.id,
+                        })
+                        .from(questionsTable)
+                        .innerJoin(
+                            bankQuestionsTable,
+                            eq(questionsTable.id, bankQuestionsTable.questionId)
+                        )
+                        .where(eq(bankQuestionsTable.bankId, input.bankId))
+                        .orderBy(desc(questionsTable.created_at))
+                        .limit(input.limit)
+                        .offset(input.offset);
+                } else {
+                    // Get questions that belong to any of the selected topics
+                    questions = await db
+                        .selectDistinct({
+                            id: questionsTable.id,
+                            type: questionsTable.type,
+                            question: questionsTable.question,
+                            marks: questionsTable.marks,
+                            negativeMarks: questionsTable.negativeMarks,
+                            difficulty: questionsTable.difficulty,
+                            courseOutcome: questionsTable.courseOutcome,
+                            bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
+                            questionData: questionsTable.questionData,
+                            solution: questionsTable.solution,
+                            createdAt: questionsTable.created_at,
+                            bankQuestionId: bankQuestionsTable.id,
+                        })
+                        .from(questionsTable)
+                        .innerJoin(
+                            bankQuestionsTable,
+                            eq(questionsTable.id, bankQuestionsTable.questionId)
+                        )
+                        .innerJoin(
+                            topicQuestionsTable,
+                            eq(questionsTable.id, topicQuestionsTable.questionId)
+                        )
+                        .where(
+                            and(
+                                eq(bankQuestionsTable.bankId, input.bankId),
+                                inArray(topicQuestionsTable.topicId, input.topicIds)
+                            )
+                        )
+                        .orderBy(desc(questionsTable.created_at))
+                        .limit(input.limit)
+                        .offset(input.offset);
+                }
+
+                // Fetch topics for each question
+                const questionsWithTopics = await Promise.all(
+                    questions.map(async (question): Promise<TransformedQuestion> => {
+                        const topics: TopicLink[] = await db
+                            .select({
+                                topicId: topicQuestionsTable.topicId,
+                                topicName: topicsTable.name,
+                            })
+                            .from(topicQuestionsTable)
+                            .innerJoin(topicsTable, eq(topicQuestionsTable.topicId, topicsTable.id))
+                            .where(eq(topicQuestionsTable.questionId, question.id));
+
+                        // Unwrap versioned data
+                        let unwrappedQuestionData: unknown = question.questionData;
+                        let unwrappedSolution: unknown = question.solution;
+
+                        if (
+                            question.questionData &&
+                            typeof question.questionData === "object" &&
+                            "version" in question.questionData
+                        ) {
+                            unwrappedQuestionData = unwrapVersion(question.questionData as never);
+                        }
+
+                        if (
+                            question.solution &&
+                            typeof question.solution === "object" &&
+                            "version" in question.solution
+                        ) {
+                            unwrappedSolution = unwrapVersion(question.solution as never);
+                        }
+
+                        // Transform based on type
+                        const transformed: TransformedQuestion = {
+                            ...question,
+                            topics,
+                        };
+
+                        if (question.type === "MCQ" || question.type === "MMCQ") {
+                            transformed.questionData = unwrappedQuestionData;
+                            transformed.solution = unwrappedSolution;
+                        } else if (question.type === "TRUE_FALSE") {
+                            const solutionData = unwrappedSolution as TrueFalseSolution;
+                            transformed.trueFalseAnswer = solutionData?.trueFalseAnswer;
+                            transformed.explanation = solutionData?.explanation;
+                        } else if (question.type === "FILL_THE_BLANK") {
+                            const data = unwrappedQuestionData as FillBlankData;
+                            const solution = unwrappedSolution as FillBlankSolution;
+                            transformed.blankConfig = {
+                                ...data.config,
+                                acceptableAnswers: solution.acceptableAnswers,
+                            };
+                        } else if (question.type === "DESCRIPTIVE") {
+                            const data = unwrappedQuestionData as DescriptiveData;
+                            const solution = unwrappedSolution as DescriptiveSolution;
+                            transformed.descriptiveConfig = {
+                                ...data.config,
+                                modelAnswer: solution.modelAnswer,
+                                keywords: solution.keywords,
+                            };
+                        } else if (question.type === "MATCHING") {
+                            const data = unwrappedQuestionData as MatchingData;
+                            const solution = unwrappedSolution as MatchingSolution;
+
+                            if (data.options && solution.options) {
+                                transformed.options = data.options.map((opt) => {
+                                    const solutionOpt = solution.options?.find(
+                                        (s) => s.id === opt.id
+                                    );
+                                    return {
+                                        ...opt,
+                                        matchPairIds: solutionOpt?.matchPairIds,
+                                    };
+                                });
+                            }
+                        }
+
+                        return transformed;
+                    })
+                );
+
+                logger.info(
+                    {
+                        bankId: input.bankId,
+                        topicIds: input.topicIds,
+                        count: questionsWithTopics.length,
+                        bankQuestionIds: questionsWithTopics
+                            .map((q) => q.bankQuestionId)
+                            .filter(Boolean),
+                    },
+                    "Questions listed by topics"
+                );
+
+                return questionsWithTopics;
+            } catch (error) {
+                logger.error({ error, bankId: input.bankId }, "Error listing questions by topics");
+                throw error;
+            }
+        }),
+
     listByBank: managerOrFacultyProcedure
         .input(
             z.object({
@@ -199,9 +447,98 @@ export const questionRouter = createTRPCRouter({
                     .limit(input.limit)
                     .offset(input.offset);
 
-                logger.info({ bankId: input.bankId, count: questions.length }, "Questions listed");
+                // Fetch topics for each question and transform data
+                const questionsWithTopics = await Promise.all(
+                    questions.map(async (question): Promise<TransformedQuestion> => {
+                        const topicLinks: TopicLink[] = await db
+                            .select({
+                                topicId: topicsTable.id,
+                                topicName: topicsTable.name,
+                            })
+                            .from(topicQuestionsTable)
+                            .innerJoin(topicsTable, eq(topicQuestionsTable.topicId, topicsTable.id))
+                            .where(eq(topicQuestionsTable.questionId, question.id));
 
-                return questions;
+                        // Unwrap versioned data for frontend consumption
+                        let unwrappedQuestionData: unknown = question.questionData;
+                        let unwrappedSolution: unknown = question.solution;
+
+                        if (
+                            question.questionData &&
+                            typeof question.questionData === "object" &&
+                            "version" in question.questionData
+                        ) {
+                            unwrappedQuestionData = (
+                                question.questionData as unknown as { data: unknown }
+                            ).data;
+                        }
+
+                        if (
+                            question.solution &&
+                            typeof question.solution === "object" &&
+                            "version" in question.solution
+                        ) {
+                            unwrappedSolution = (question.solution as unknown as { data: unknown })
+                                .data;
+                        }
+
+                        // Transform data based on question type for frontend
+                        const transformedQuestion: TransformedQuestion = {
+                            ...question,
+                            topics: topicLinks,
+                        };
+
+                        if (question.type === "MCQ" || question.type === "MMCQ") {
+                            transformedQuestion.questionData = unwrappedQuestionData;
+                            transformedQuestion.solution = unwrappedSolution;
+                        } else if (question.type === "TRUE_FALSE") {
+                            const solutionData = unwrappedSolution as TrueFalseSolution;
+                            transformedQuestion.trueFalseAnswer = solutionData?.trueFalseAnswer;
+                            transformedQuestion.explanation = solutionData?.explanation;
+                        } else if (question.type === "FILL_THE_BLANK") {
+                            const data = unwrappedQuestionData as FillBlankData;
+                            const solution = unwrappedSolution as FillBlankSolution;
+                            transformedQuestion.blankConfig = {
+                                ...data.config,
+                                acceptableAnswers: solution.acceptableAnswers,
+                            };
+                            const solutionData = unwrappedSolution as { explanation?: string };
+                            transformedQuestion.explanation = solutionData?.explanation;
+                        } else if (question.type === "DESCRIPTIVE") {
+                            const data = unwrappedQuestionData as DescriptiveData;
+                            const solution = unwrappedSolution as DescriptiveSolution;
+                            transformedQuestion.descriptiveConfig = {
+                                ...data.config,
+                                modelAnswer: solution.modelAnswer,
+                                keywords: solution.keywords,
+                            };
+                            const solutionData = unwrappedSolution as { explanation?: string };
+                            transformedQuestion.explanation = solutionData?.explanation;
+                        } else if (question.type === "MATCHING") {
+                            const data = unwrappedQuestionData as MatchingData;
+                            const solution = unwrappedSolution as MatchingSolution;
+                            if (data.options && solution.options) {
+                                transformedQuestion.options = data.options.map((opt) => {
+                                    const solutionOpt = solution.options?.find(
+                                        (s) => s.id === opt.id
+                                    );
+                                    return { ...opt, matchPairIds: solutionOpt?.matchPairIds };
+                                });
+                            }
+                            const solutionData = unwrappedSolution as { explanation?: string };
+                            transformedQuestion.explanation = solutionData?.explanation;
+                        }
+
+                        return transformedQuestion;
+                    })
+                );
+
+                logger.info(
+                    { bankId: input.bankId, count: questionsWithTopics.length },
+                    "Questions listed"
+                );
+
+                return questionsWithTopics;
             } catch (error) {
                 logger.error({ error, bankId: input.bankId }, "Error listing questions");
                 throw error;
@@ -273,7 +610,7 @@ export const questionRouter = createTRPCRouter({
                     }
                 }
 
-                const topicLinks = await db
+                const topicLinks: TopicLink[] = await db
                     .select({
                         topicId: topicQuestionsTable.topicId,
                         topicName: topicsTable.name,
@@ -303,7 +640,7 @@ export const questionRouter = createTRPCRouter({
                 }
 
                 // Transform data based on question type for frontend
-                const transformedQuestion: Record<string, unknown> = {
+                const transformedQuestion: TransformedQuestion = {
                     ...question,
                     topics: topicLinks,
                 };
@@ -312,24 +649,21 @@ export const questionRouter = createTRPCRouter({
                     transformedQuestion.questionData = unwrappedQuestionData;
                     transformedQuestion.solution = unwrappedSolution;
                 } else if (question.type === "TRUE_FALSE") {
-                    transformedQuestion.trueFalseAnswer = (
-                        unwrappedSolution as { trueFalseAnswer?: boolean }
-                    )?.trueFalseAnswer;
+                    const solutionData = unwrappedSolution as TrueFalseSolution;
+                    transformedQuestion.trueFalseAnswer = solutionData?.trueFalseAnswer;
+                    transformedQuestion.explanation = solutionData?.explanation;
                 } else if (question.type === "FILL_THE_BLANK") {
                     // Merge data and solution back into blankConfig
-                    const data = unwrappedQuestionData as { config?: Record<string, unknown> };
-                    const solution = unwrappedSolution as { acceptableAnswers?: unknown };
+                    const data = unwrappedQuestionData as FillBlankData;
+                    const solution = unwrappedSolution as FillBlankSolution;
                     transformedQuestion.blankConfig = {
                         ...data.config,
                         acceptableAnswers: solution.acceptableAnswers,
                     };
                 } else if (question.type === "DESCRIPTIVE") {
                     // Merge data and solution back into descriptiveConfig
-                    const data = unwrappedQuestionData as { config?: Record<string, unknown> };
-                    const solution = unwrappedSolution as {
-                        modelAnswer?: string;
-                        keywords?: string[];
-                    };
+                    const data = unwrappedQuestionData as DescriptiveData;
+                    const solution = unwrappedSolution as DescriptiveSolution;
                     transformedQuestion.descriptiveConfig = {
                         ...data.config,
                         modelAnswer: solution.modelAnswer,
@@ -337,12 +671,8 @@ export const questionRouter = createTRPCRouter({
                     };
                 } else if (question.type === "MATCHING") {
                     // Merge data and solution back into options
-                    const data = unwrappedQuestionData as {
-                        options?: Array<Record<string, unknown>>;
-                    };
-                    const solution = unwrappedSolution as {
-                        options?: Array<{ id: string; matchPairIds?: string[] }>;
-                    };
+                    const data = unwrappedQuestionData as MatchingData;
+                    const solution = unwrappedSolution as MatchingSolution;
 
                     if (data.options && solution.options) {
                         transformedQuestion.options = data.options.map((opt) => {
@@ -843,7 +1173,13 @@ export const questionRouter = createTRPCRouter({
                 ])
             )
         )
-        .input(z.object({ quizId: z.string().uuid(), courseId: z.string().uuid() }))
+        .input(
+            z.object({
+                quizId: z.string().uuid(),
+                courseId: z.string().uuid(),
+                sectionId: z.string().uuid().optional().nullable(),
+            })
+        )
         .mutation(async ({ input, ctx }) => {
             try {
                 const userId = ctx.session.user.id;
@@ -948,7 +1284,7 @@ export const questionRouter = createTRPCRouter({
                     quizId: input.quizId,
                     questionId: question.id,
                     orderIndex: nextOrderIndex,
-                    sectionId: null,
+                    sectionId: input.sectionId || null,
                 });
 
                 if (input.topicIds && input.topicIds.length > 0) {
@@ -1041,7 +1377,7 @@ export const questionRouter = createTRPCRouter({
                     throw new Error("You do not have access to this quiz");
                 }
 
-                const topicLinks = await db
+                const topicLinks: TopicLink[] = await db
                     .select({
                         topicId: topicQuestionsTable.topicId,
                         topicName: topicsTable.name,
@@ -1069,7 +1405,7 @@ export const questionRouter = createTRPCRouter({
                     unwrappedSolution = unwrapVersion(question.solution as never);
                 }
 
-                const transformedQuestion: Record<string, unknown> = {
+                const transformedQuestion: TransformedQuestion = {
                     ...question,
                     topics: topicLinks,
                 };
@@ -1078,34 +1414,27 @@ export const questionRouter = createTRPCRouter({
                     transformedQuestion.questionData = unwrappedQuestionData;
                     transformedQuestion.solution = unwrappedSolution;
                 } else if (question.type === "TRUE_FALSE") {
-                    transformedQuestion.trueFalseAnswer = (
-                        unwrappedSolution as { trueFalseAnswer?: boolean }
-                    )?.trueFalseAnswer;
+                    const solutionData = unwrappedSolution as TrueFalseSolution;
+                    transformedQuestion.trueFalseAnswer = solutionData?.trueFalseAnswer;
+                    transformedQuestion.explanation = solutionData?.explanation;
                 } else if (question.type === "FILL_THE_BLANK") {
-                    const data = unwrappedQuestionData as { config?: Record<string, unknown> };
-                    const solution = unwrappedSolution as { acceptableAnswers?: unknown };
+                    const data = unwrappedQuestionData as FillBlankData;
+                    const solution = unwrappedSolution as FillBlankSolution;
                     transformedQuestion.blankConfig = {
                         ...data.config,
                         acceptableAnswers: solution.acceptableAnswers,
                     };
                 } else if (question.type === "DESCRIPTIVE") {
-                    const data = unwrappedQuestionData as { config?: Record<string, unknown> };
-                    const solution = unwrappedSolution as {
-                        modelAnswer?: string;
-                        keywords?: string[];
-                    };
+                    const data = unwrappedQuestionData as DescriptiveData;
+                    const solution = unwrappedSolution as DescriptiveSolution;
                     transformedQuestion.descriptiveConfig = {
                         ...data.config,
                         modelAnswer: solution.modelAnswer,
                         keywords: solution.keywords,
                     };
                 } else if (question.type === "MATCHING") {
-                    const data = unwrappedQuestionData as {
-                        options?: Array<Record<string, unknown>>;
-                    };
-                    const solution = unwrappedSolution as {
-                        options?: Array<{ id: string; matchPairIds?: string[] }>;
-                    };
+                    const data = unwrappedQuestionData as MatchingData;
+                    const solution = unwrappedSolution as MatchingSolution;
 
                     if (data.options && solution.options) {
                         transformedQuestion.options = data.options.map((opt) => {
@@ -1307,6 +1636,187 @@ export const questionRouter = createTRPCRouter({
                     throw error;
                 }
                 throw new Error("Failed to update question. Please try again.");
+            }
+        }),
+
+    deleteFromQuiz: managerOrFacultyProcedure
+        .input(
+            z.object({
+                questionId: z.string().uuid(),
+                quizId: z.string().uuid(),
+                courseId: z.string().uuid(),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                // Verify access
+                const [accessRecord] = await db
+                    .select()
+                    .from(courseInstructorsTable)
+                    .where(
+                        and(
+                            eq(courseInstructorsTable.courseId, input.courseId),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (!accessRecord) {
+                    throw new Error("You do not have permission to modify this quiz");
+                }
+
+                // Delete from quiz_questions table (not from questions table)
+                await db
+                    .delete(quizQuestionsTable)
+                    .where(
+                        and(
+                            eq(quizQuestionsTable.questionId, input.questionId),
+                            eq(quizQuestionsTable.quizId, input.quizId)
+                        )
+                    );
+
+                logger.info(
+                    { questionId: input.questionId, quizId: input.quizId, userId },
+                    "Question removed from quiz"
+                );
+
+                return { success: true, id: input.questionId };
+            } catch (error) {
+                logger.error(
+                    { error, questionId: input.questionId, quizId: input.quizId },
+                    "Error removing question from quiz"
+                );
+                if (error instanceof Error) {
+                    throw error;
+                }
+                throw new Error("Failed to remove question from quiz. Please try again.");
+            }
+        }),
+
+    addQuestionsFromBank: managerOrFacultyProcedure
+        .input(
+            z.object({
+                quizId: z.string().uuid(),
+                courseId: z.string().uuid(),
+                sectionId: z.string().uuid().nullable(),
+                bankQuestionIds: z.array(z.string().uuid()).min(1),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                // Verify access
+                const [accessRecord] = await db
+                    .select()
+                    .from(courseInstructorsTable)
+                    .where(
+                        and(
+                            eq(courseInstructorsTable.courseId, input.courseId),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .limit(1);
+
+                if (!accessRecord) {
+                    throw new Error("You do not have permission to modify this quiz");
+                }
+
+                // Get the bank question details to extract the actual question IDs
+                const bankQuestions = await db
+                    .select({
+                        id: bankQuestionsTable.id,
+                        questionId: bankQuestionsTable.questionId,
+                    })
+                    .from(bankQuestionsTable)
+                    .where(inArray(bankQuestionsTable.id, input.bankQuestionIds));
+
+                if (bankQuestions.length === 0) {
+                    throw new Error("No valid questions found");
+                }
+
+                // Check for existing questions in quiz (using bankQuestionId to prevent duplicates)
+                const existingQuizQuestions = await db
+                    .select({
+                        bankQuestionId: quizQuestionsTable.bankQuestionId,
+                    })
+                    .from(quizQuestionsTable)
+                    .where(
+                        and(
+                            eq(quizQuestionsTable.quizId, input.quizId),
+                            inArray(quizQuestionsTable.bankQuestionId, input.bankQuestionIds)
+                        )
+                    );
+
+                const existingBankQuestionIds = new Set(
+                    existingQuizQuestions
+                        .map((q) => q.bankQuestionId)
+                        .filter((id): id is string => id !== null)
+                );
+
+                // Filter out questions that already exist
+                const questionsToAdd = bankQuestions.filter(
+                    (bq) => !existingBankQuestionIds.has(bq.id)
+                );
+
+                if (questionsToAdd.length === 0) {
+                    throw new Error("All selected questions are already in the quiz");
+                }
+
+                // Get the current max order index for the section/quiz
+                const maxOrderResult = await db
+                    .select({
+                        maxOrder: sql<number>`COALESCE(MAX(${quizQuestionsTable.orderIndex}), -1)`,
+                    })
+                    .from(quizQuestionsTable)
+                    .where(
+                        and(
+                            eq(quizQuestionsTable.quizId, input.quizId),
+                            input.sectionId
+                                ? eq(quizQuestionsTable.sectionId, input.sectionId)
+                                : isNull(quizQuestionsTable.sectionId)
+                        )
+                    );
+
+                let currentOrder = Number(maxOrderResult[0]?.maxOrder ?? -1) + 1;
+
+                // Insert questions into quiz
+                const quizQuestions = questionsToAdd.map((bq) => ({
+                    quizId: input.quizId,
+                    questionId: bq.questionId,
+                    sectionId: input.sectionId,
+                    bankQuestionId: bq.id,
+                    orderIndex: currentOrder++,
+                }));
+
+                await db.insert(quizQuestionsTable).values(quizQuestions);
+
+                logger.info(
+                    {
+                        quizId: input.quizId,
+                        userId,
+                        questionCount: questionsToAdd.length,
+                        skipped: bankQuestions.length - questionsToAdd.length,
+                    },
+                    "Questions added from bank to quiz"
+                );
+
+                return {
+                    success: true,
+                    added: questionsToAdd.length,
+                    skipped: bankQuestions.length - questionsToAdd.length,
+                };
+            } catch (error) {
+                logger.error(
+                    { error, quizId: input.quizId },
+                    "Error adding questions from bank to quiz"
+                );
+                if (error instanceof Error) {
+                    throw error;
+                }
+                throw new Error("Failed to add questions to quiz. Please try again.");
             }
         }),
 });

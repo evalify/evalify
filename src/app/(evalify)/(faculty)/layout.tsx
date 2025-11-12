@@ -12,7 +12,7 @@ export default function FacultyLayout({
 }>) {
     return (
         <AuthGuard requiredGroups={[UserType.MANAGER, UserType.STAFF]}>
-            <div className="space-y-6">{children}</div>
+            <div>{children}</div>
         </AuthGuard>
     );
 }

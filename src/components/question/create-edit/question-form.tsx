@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Save, AlertCircle, FileText } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TiptapEditor } from "@/components/rich-text-editor/editor";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface QuestionFormProps {
     initialData?: Question;
@@ -37,6 +39,7 @@ export default function QuestionForm({
         initialData || createDefaultQuestion(QuestionType.MCQ)
     );
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
+    const [showExplanation, setShowExplanation] = useState<boolean>(!!initialData?.explanation);
 
     const { error } = useToast();
 
@@ -85,17 +88,34 @@ export default function QuestionForm({
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+            <Card className="p-4">
+                <div className="flex items-center justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">
                             {initialData ? "Edit Question" : "Create Question"}
                         </h1>
                     </div>
+                    <div className="gap-4 flex">
+                        <Button type="button" variant="outline" onClick={onCancel}>
+                            Cancel
+                        </Button>
+                        <Button type="button" onClick={handleSave} disabled={isLoading}>
+                            <Save className="mr-2 h-4 w-4" />
+                            {isLoading
+                                ? "Saving..."
+                                : initialData
+                                  ? "Update Question"
+                                  : "Create Question"}
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            </Card>
 
-            <QuestionTypeSelector selectedType={selectedType} onSelect={handleTypeChange} />
+            <QuestionTypeSelector
+                selectedType={selectedType}
+                onSelect={handleTypeChange}
+                disabled={!!initialData}
+            />
 
             {validationErrors.length > 0 && (
                 <Alert variant="destructive">
@@ -110,21 +130,33 @@ export default function QuestionForm({
                 </Alert>
             )}
 
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <div className="space-y-6 lg:col-span-2">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+                <div className="space-y-6 lg:col-span-3">
                     {question &&
                         (() => {
                             const QuestionComponent = getQuestionComponent(question.type);
                             return <QuestionComponent value={question} onChange={setQuestion} />;
                         })()}
-                    {question && (
-                        <Card>
-                            <CardHeader>
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
                                 <CardTitle className="flex items-center gap-2 text-lg">
                                     <FileText className="h-5 w-5 text-primary" />
                                     Explanation (Optional)
                                 </CardTitle>
-                            </CardHeader>
+                                <div className="flex items-center gap-2">
+                                    <Switch
+                                        id="explanation-toggle"
+                                        checked={showExplanation}
+                                        onCheckedChange={setShowExplanation}
+                                    />
+                                    <Label htmlFor="explanation-toggle" className="cursor-pointer">
+                                        {showExplanation ? "Hide" : "Show"}
+                                    </Label>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        {showExplanation && (
                             <CardContent>
                                 <p className="mb-4 text-xs text-muted-foreground">
                                     Provide an explanation that will be shown after the question is
@@ -137,30 +169,14 @@ export default function QuestionForm({
                                     }
                                 />
                             </CardContent>
-                        </Card>
-                    )}
-
-                    <Card className="p-4">
-                        <div className="flex items-center justify-end gap-4">
-                            <Button type="button" variant="outline" onClick={onCancel}>
-                                Cancel
-                            </Button>
-                            <Button type="button" onClick={handleSave} disabled={isLoading}>
-                                <Save className="mr-2 h-4 w-4" />
-                                {isLoading
-                                    ? "Saving..."
-                                    : initialData
-                                      ? "Update Question"
-                                      : "Create Question"}
-                            </Button>
-                        </div>
+                        )}
                     </Card>
                 </div>
 
                 <div className="lg:col-span-1">
                     <div className="sticky top-6">
                         <Card>
-                            <CardContent className="pt-6">
+                            <CardContent>
                                 <QuestionSettings
                                     value={question}
                                     onChange={setQuestion}

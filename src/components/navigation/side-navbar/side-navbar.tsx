@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-    BarChart3,
     BookOpen,
     Calendar,
     GraduationCap,

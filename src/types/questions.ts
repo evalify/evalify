@@ -84,6 +84,13 @@ export interface BaseQuestion {
     updatedAt?: Date;
 }
 
+// Extension for questions in a quiz context
+export interface QuizQuestionMetadata {
+    quizQuestionId: string;
+    orderIndex: number;
+    bankQuestionId?: string | null;
+}
+
 export interface MCQQuestion extends BaseQuestion {
     type: QuestionType.MCQ;
     questionData: MCQData;
@@ -137,6 +144,26 @@ export type Question =
     | DescriptiveQuestion
     | CodingQuestion
     | FileUploadQuestion;
+
+// Quiz question types with metadata
+export type QuizMCQQuestion = MCQQuestion & QuizQuestionMetadata;
+export type QuizMMCQQuestion = MMCQQuestion & QuizQuestionMetadata;
+export type QuizTrueFalseQuestion = TrueFalseQuestion & QuizQuestionMetadata;
+export type QuizFillInBlanksQuestion = FillInBlanksQuestion & QuizQuestionMetadata;
+export type QuizMatchTheFollowingQuestion = MatchTheFollowingQuestion & QuizQuestionMetadata;
+export type QuizDescriptiveQuestion = DescriptiveQuestion & QuizQuestionMetadata;
+export type QuizCodingQuestion = CodingQuestion & QuizQuestionMetadata;
+export type QuizFileUploadQuestion = FileUploadQuestion & QuizQuestionMetadata;
+
+export type QuizQuestion =
+    | QuizMCQQuestion
+    | QuizMMCQQuestion
+    | QuizTrueFalseQuestion
+    | QuizFillInBlanksQuestion
+    | QuizMatchTheFollowingQuestion
+    | QuizDescriptiveQuestion
+    | QuizCodingQuestion
+    | QuizFileUploadQuestion;
 
 export interface QuestionOption {
     id: string;
