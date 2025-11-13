@@ -32,7 +32,7 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
             courseId,
         });
 
-    const { data: availableData } = trpc.course.getAvailableFaculty.useQuery({
+    const { data: availableData } = trpc.course.getAvailableFacultyAndManagers.useQuery({
         courseId,
         searchTerm: searchTerm || undefined,
     });
@@ -42,7 +42,7 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
 
     // Mutations
     const utils = trpc.useUtils();
-    const addInstructor = trpc.course.addInstructor.useMutation({
+    const addInstructor = trpc.course.addFacultyAndManagers.useMutation({
         onSuccess: () => {
             utils.course.getInstructors.invalidate({ courseId });
             utils.course.getAvailableFaculty.invalidate({ courseId });

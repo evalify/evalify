@@ -1,6 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+    images: {
+        remotePatterns: [
+            {
+                protocol: "http",
+                hostname: "localhost",
+                port: "9000",
+                pathname: "/profile-images/**",
+            },
+        ],
+        // Allow localhost images in development
+        dangerouslyAllowSVG: true,
+        unoptimized: process.env.NODE_ENV === "development",
+    },
     async rewrites() {
         return [
             {
