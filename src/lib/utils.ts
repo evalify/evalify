@@ -6,6 +6,14 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
+// Helper function to capitalize course name
+export function capitalizeName(name: string): string {
+    return name
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(" ");
+}
+
 export const languages = [
     { id: "octave", name: "Matlab (octave)", language_id: 66 },
     { id: "python", name: "Python", language_id: 71 },

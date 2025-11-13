@@ -276,7 +276,7 @@ export function QuizParticipant({ data, updateData }: QuizParticipantProps) {
             <Card>
                 <CardContent className="p-6">
                     <div className="flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                        <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
                         <div className="text-sm">
                             <p className="font-medium text-destructive mb-2">Error loading data</p>
                             <p className="text-muted-foreground">
@@ -697,7 +697,7 @@ export function QuizParticipant({ data, updateData }: QuizParticipantProps) {
                                 )}
                             </CardHeader>
                             <CardContent>
-                                <ScrollArea className="h-[224px] pr-4">
+                                <ScrollArea className="h-56 pr-4">
                                     {data.batches.length === 0 ? (
                                         <div className="text-center text-sm text-muted-foreground py-8">
                                             Select batches first
@@ -721,9 +721,9 @@ export function QuizParticipant({ data, updateData }: QuizParticipantProps) {
                                                         )}
                                                     >
                                                         {isSelected ? (
-                                                            <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                                                            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
                                                         ) : (
-                                                            <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                                            <Circle className="h-4 w-4 text-muted-foreground shrink-0" />
                                                         )}
                                                         <div className="flex-1 min-w-0">
                                                             <div className="text-sm font-medium truncate group-hover:text-primary transition-colors">
