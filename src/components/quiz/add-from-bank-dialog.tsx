@@ -215,11 +215,10 @@ export function AddFromBankDialog({
 
         const filtered = questionsData.filter((question) => {
             // Filter out already added questions
-            if (
-                question.bankQuestionId &&
-                alreadyAddedBankQuestionIds.has(question.bankQuestionId)
-            ) {
-                console.log("❌ Filtering out duplicate question:", question.bankQuestionId);
+            const bankQuestionId =
+                typeof question.bankQuestionId === "string" ? question.bankQuestionId : null;
+            if (bankQuestionId && alreadyAddedBankQuestionIds.has(bankQuestionId)) {
+                console.log("❌ Filtering out duplicate question:", bankQuestionId);
                 return false;
             }
 
@@ -237,14 +236,17 @@ export function AddFromBankDialog({
 
             // Check difficulty - if filter is set, must match at least one
             if (hasDifficultyFilter) {
-                matchesDifficulty = question.difficulty
-                    ? filters.difficulty.includes(question.difficulty as string)
+                const difficultyValue =
+                    typeof question.difficulty === "string" ? question.difficulty : null;
+                matchesDifficulty = difficultyValue
+                    ? filters.difficulty.includes(difficultyValue)
                     : false;
             }
 
             // Check question type - if filter is set, must match at least one
             if (hasTypeFilter) {
-                matchesType = filters.questionTypes.includes(question.type);
+                const typeValue = typeof question.type === "string" ? question.type : null;
+                matchesType = typeValue ? filters.questionTypes.includes(typeValue) : false;
             }
 
             // Both conditions must pass (AND between categories, OR within categories)
@@ -260,7 +262,7 @@ export function AddFromBankDialog({
         if (!bankDetails?.topics) return [];
         if (!topicSearch) return bankDetails.topics;
         return bankDetails.topics.filter((topic) =>
-            topic.toLowerCase().includes(topicSearch.toLowerCase())
+            topic.name.toLowerCase().includes(topicSearch.toLowerCase())
         );
     }, [bankDetails, topicSearch]);
 
@@ -540,13 +542,13 @@ export function AddFromBankDialog({
                                                         ) : (
                                                             filteredTopics.map((topic) => (
                                                                 <div
-                                                                    key={topic}
+                                                                    key={topic.id}
                                                                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
                                                                 >
                                                                     <Checkbox
-                                                                        id={`topic-${topic}`}
+                                                                        id={`topic-${topic.id}`}
                                                                         checked={filters.topicIds.includes(
-                                                                            topic
+                                                                            topic.id
                                                                         )}
                                                                         onCheckedChange={(
                                                                             checked
@@ -556,7 +558,7 @@ export function AddFromBankDialog({
                                                                                     ...filters,
                                                                                     topicIds: [
                                                                                         ...filters.topicIds,
-                                                                                        topic,
+                                                                                        topic.id,
                                                                                     ],
                                                                                 });
                                                                             } else {
@@ -566,7 +568,7 @@ export function AddFromBankDialog({
                                                                                         filters.topicIds.filter(
                                                                                             (t) =>
                                                                                                 t !==
-                                                                                                topic
+                                                                                                topic.id
                                                                                         ),
                                                                                 });
                                                                             }
@@ -574,10 +576,10 @@ export function AddFromBankDialog({
                                                                         className="h-5 w-5"
                                                                     />
                                                                     <Label
-                                                                        htmlFor={`topic-${topic}`}
+                                                                        htmlFor={`topic-${topic.id}`}
                                                                         className="cursor-pointer flex-1 text-sm"
                                                                     >
-                                                                        {topic}
+                                                                        {topic.name}
                                                                     </Label>
                                                                 </div>
                                                             ))
@@ -871,21 +873,28 @@ export function AddFromBankDialog({
                                 ) : filteredQuestions && filteredQuestions.length > 0 ? (
                                     <div className="grid grid-cols-1 gap-6">
                                         {filteredQuestions.map((question, index) => {
-                                            const isSelected = selectedQuestionIds.includes(
-                                                question.bankQuestionId ?? ""
-                                            );
+                                            const bankQId =
+                                                typeof question.bankQuestionId === "string"
+                                                    ? question.bankQuestionId
+                                                    : null;
+                                            const qId =
+                                                typeof question.id === "string"
+                                                    ? question.id
+                                                    : null;
+                                            const questionId =
+                                                bankQId ?? qId ?? `question-${index}`;
+                                            const isSelected =
+                                                selectedQuestionIds.includes(questionId);
                                             return (
                                                 <Card
-                                                    key={question.bankQuestionId || question.id}
+                                                    key={questionId}
                                                     className={`transition-all duration-200 cursor-pointer border-2 ${
                                                         isSelected
                                                             ? "border-primary shadow-lg shadow-primary/20 bg-linear-to-br from-primary/5 to-transparent"
                                                             : "border-border hover:border-primary/30 hover:shadow-md"
                                                     }`}
                                                     onClick={() =>
-                                                        toggleQuestionSelection(
-                                                            question.bankQuestionId ?? ""
-                                                        )
+                                                        toggleQuestionSelection(questionId)
                                                     }
                                                 >
                                                     <CardContent className="p-6">
@@ -896,8 +905,7 @@ export function AddFromBankDialog({
                                                                     checked={isSelected}
                                                                     onCheckedChange={() =>
                                                                         toggleQuestionSelection(
-                                                                            question.bankQuestionId ??
-                                                                                ""
+                                                                            questionId
                                                                         )
                                                                     }
                                                                     className="h-6 w-6"
@@ -916,7 +924,9 @@ export function AddFromBankDialog({
                                                             {/* Question Content */}
                                                             <div className="flex-1 min-w-0">
                                                                 <QuestionRender
-                                                                    question={question as Question}
+                                                                    question={
+                                                                        question as unknown as Question
+                                                                    }
                                                                     questionNumber={index + 1}
                                                                     showMetadata={true}
                                                                     showSolution={false}

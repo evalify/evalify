@@ -210,7 +210,10 @@ export const bankRouter = createTRPCRouter({
 
                 // Get bank topics
                 const topics = await db
-                    .select({ name: topicsTable.name })
+                    .select({
+                        id: topicsTable.id,
+                        name: topicsTable.name,
+                    })
                     .from(topicsTable)
                     .where(eq(topicsTable.bankId, bank.id))
                     .orderBy(topicsTable.name);
@@ -232,7 +235,7 @@ export const bankRouter = createTRPCRouter({
                           }
                         : null,
                     accessLevel,
-                    topics: topics.map((t) => t.name),
+                    topics: topics.map((t) => ({ id: t.id, name: t.name })),
                 };
             } catch (error) {
                 logger.error({ error, bankId: input.id }, "Error getting bank");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useImperativeHandle, forwardRef, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,12 @@ import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuestionRender } from "@/components/question/question-renderer";
 import type { Question } from "@/types/questions";
+import { useQuestionNavigation } from "@/contexts/question-navigation-context";
+import { useSidebar } from "@/components/ui/sidebar";
+
+export interface QuestionListRef {
+    scrollToQuestion: (questionId: string) => void;
+}
 
 type TopicLink = {
     topicId: string;
@@ -60,19 +66,45 @@ export default function QuestionBankPage() {
     const { success, error } = useToast();
     const { track } = useAnalytics();
     const utils = trpc.useUtils();
+    const { navigationState, clearNavigationTarget } = useQuestionNavigation();
 
     const bankId = Array.isArray(params.bankId) ? params.bankId[0] : params.bankId;
 
     const [newTopicInput, setNewTopicInput] = useState("");
-    const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
     const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
     const [editingTopicName, setEditingTopicName] = useState("");
     const [topicToDelete, setTopicToDelete] = useState<{ id: string; name: string } | null>(null);
     const [questionToDelete, setQuestionToDelete] = useState<{ id: string } | null>(null);
 
     const questionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+    const questionListRef = useRef<QuestionListRef>(null);
 
-    const NO_TOPIC_ID = "__NO_TOPIC__";
+    const NO_TOPIC_ID = "no-topic";
+
+    // Derive selected topics from navigation state or URL params
+    const selectedTopics = useMemo(() => {
+        // Priority 1: Navigation state from question creation/edit
+        if (navigationState.bankId === bankId && navigationState.topicIds) {
+            return navigationState.topicIds.length > 0 ? navigationState.topicIds : [NO_TOPIC_ID];
+        }
+
+        // Priority 2: URL params for direct navigation
+        const topicsParam = searchParams.get("topics");
+        if (topicsParam) {
+            return topicsParam.split(",");
+        }
+
+        // Default: empty array (will show all or need initialization)
+        return [];
+    }, [navigationState.bankId, navigationState.topicIds, bankId, searchParams]);
+
+    const { open, toggleSidebar } = useSidebar();
+
+    useEffect(() => {
+        if (open) {
+            toggleSidebar();
+        }
+    });
 
     // Fetch bank details
     const { data: bank, isLoading: isBankLoading } = trpc.bank.get.useQuery({ id: bankId });
@@ -116,76 +148,29 @@ export default function QuestionBankPage() {
         ? isQuestionsWithoutTopicsLoading
         : isQuestionsLoading;
 
-    // Initialize selected topics from URL params (only on mount or when URL actually changes)
+    // Auto-scroll to new question from context
     useEffect(() => {
-        const topicsParam = searchParams.get("topics");
-        const newQuestionId = searchParams.get("newQuestion");
-
-        if (topicsParam) {
-            const topicsArray = topicsParam.split(",");
-            setSelectedTopics(topicsArray);
-        } else if (newQuestionId && !topicsParam && selectedTopics.length === 0) {
-            // Only auto-select "No Topic" if no topics are currently selected
-            // This prevents overriding user's manual topic selection
-            setSelectedTopics([NO_TOPIC_ID]);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams.get("topics"), searchParams.get("newQuestion")]);
-
-    // Update URL when selected topics change (but avoid infinite loops)
-    useEffect(() => {
-        const currentTopics = searchParams.get("topics");
-        const currentTopicsArray = currentTopics ? currentTopics.split(",") : [];
-
-        // Filter out NO_TOPIC_ID from URL comparison since it's not persisted in URL
-        const selectedTopicsForUrl = selectedTopics.filter((id) => id !== NO_TOPIC_ID);
-        const newTopicsParam =
-            selectedTopicsForUrl.length > 0 ? selectedTopicsForUrl.join(",") : null;
-
-        // Only update if topics have actually changed
-        const topicsChanged =
-            currentTopicsArray.length !== selectedTopicsForUrl.length ||
-            !currentTopicsArray.every((t) => selectedTopicsForUrl.includes(t));
-
-        if (topicsChanged) {
-            const params = new URLSearchParams(searchParams.toString());
-            if (newTopicsParam) {
-                params.set("topics", newTopicsParam);
-            } else {
-                params.delete("topics");
-            }
-            router.push(`/question-bank/${bankId}?${params.toString()}`, { scroll: false });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedTopics, bankId]);
-
-    // Auto-scroll to new question - wait for questions to load first
-    useEffect(() => {
-        const newQuestionId = searchParams.get("newQuestion");
-
-        // Only proceed if we have a question ID, questions are loaded, and not currently loading
-        if (newQuestionId && displayQuestions && !isLoadingQuestions) {
+        if (
+            navigationState.bankId === bankId &&
+            navigationState.questionId &&
+            displayQuestions &&
+            !isLoadingQuestions
+        ) {
             // Check if the question exists in the current display
-            const questionExists = displayQuestions.some((q) => q.id === newQuestionId);
+            const questionExists = displayQuestions.some(
+                (q) => q.id === navigationState.questionId
+            );
 
-            if (questionExists) {
-                // Small delay to ensure DOM is ready
+            if (questionExists && questionListRef.current) {
+                // Use the QuestionList's scroll method
                 const timer = setTimeout(() => {
-                    const element = questionRefs.current.get(newQuestionId);
-                    if (element) {
-                        element.scrollIntoView({ behavior: "smooth", block: "center" });
-                        // Remove the newQuestion param after scrolling
-                        const params = new URLSearchParams(searchParams.toString());
-                        params.delete("newQuestion");
-                        router.replace(`/question-bank/${bankId}?${params.toString()}`, {
-                            scroll: false,
-                        });
-                    }
-                }, 300);
+                    questionListRef.current?.scrollToQuestion(navigationState.questionId!);
+                    clearNavigationTarget();
+                }, 500);
                 return () => clearTimeout(timer);
             }
         }
-    }, [searchParams, displayQuestions, isLoadingQuestions, bankId, router]);
+    }, [navigationState, bankId, displayQuestions, isLoadingQuestions, clearNavigationTarget]);
 
     // Create topic mutation
     const createTopicMutation = trpc.topic.create.useMutation({
@@ -205,7 +190,15 @@ export default function QuestionBankPage() {
         onSuccess: (data) => {
             success("Topic deleted successfully!");
             utils.topic.listByBank.invalidate({ bankId });
-            setSelectedTopics((prev) => prev.filter((id) => id !== data.id));
+
+            // Remove deleted topic from selected topics in URL params
+            const updatedTopics = selectedTopics.filter((id) => id !== data.id);
+            if (updatedTopics.length > 0) {
+                router.push(`/question-bank/${bankId}?topics=${updatedTopics.join(",")}`);
+            } else {
+                router.push(`/question-bank/${bankId}`);
+            }
+
             setTopicToDelete(null);
             track("topic_deleted", { bankId, topicId: data.id });
         },
@@ -287,9 +280,15 @@ export default function QuestionBankPage() {
     };
 
     const toggleTopicSelection = (topicId: string) => {
-        setSelectedTopics((prev) =>
-            prev.includes(topicId) ? prev.filter((id) => id !== topicId) : [...prev, topicId]
-        );
+        const updatedTopics = selectedTopics.includes(topicId)
+            ? selectedTopics.filter((id) => id !== topicId)
+            : [...selectedTopics, topicId];
+
+        if (updatedTopics.length > 0) {
+            router.push(`/question-bank/${bankId}?topics=${updatedTopics.join(",")}`);
+        } else {
+            router.push(`/question-bank/${bankId}`);
+        }
     };
 
     const handleCreateQuestion = () => {
@@ -562,6 +561,7 @@ export default function QuestionBankPage() {
                         </div>
                     ) : displayQuestions && displayQuestions.length > 0 ? (
                         <QuestionList
+                            ref={questionListRef}
                             questions={displayQuestions}
                             selectedTopics={selectedTopics}
                             NO_TOPIC_ID={NO_TOPIC_ID}
@@ -619,94 +619,108 @@ export default function QuestionBankPage() {
     );
 }
 
-function QuestionList({
-    questions,
-    selectedTopics,
-    NO_TOPIC_ID,
-    questionRefs,
-    onEdit,
-    onDelete,
-}: {
+type QuestionListProps = {
     questions: QuestionWithTopics[];
     selectedTopics: string[];
     NO_TOPIC_ID: string;
     questionRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
-}) {
-    const parentRef = useRef<HTMLDivElement>(null);
+};
 
-    const virtualizer = useVirtualizer({
-        count: questions.length,
-        getScrollElement: () => parentRef.current,
-        estimateSize: () => 400, // Estimated height of each question card
-        overscan: 2, // Render 2 extra items above and below viewport
-    });
+const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
+    ({ questions, selectedTopics, NO_TOPIC_ID, questionRefs, onEdit, onDelete }, ref) => {
+        const parentRef = useRef<HTMLDivElement>(null);
 
-    return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-muted-foreground">
-                    Showing {questions.length} question
-                    {questions.length !== 1 ? "s" : ""} for{" "}
-                    {selectedTopics.includes(NO_TOPIC_ID)
-                        ? "No Topic"
-                        : selectedTopics.length === 1
-                          ? "1 topic"
-                          : `${selectedTopics.length} topics`}
-                </p>
-            </div>
-            <div
-                ref={parentRef}
-                className="h-[calc(100vh-240px)] overflow-auto"
-                style={{
-                    contain: "strict",
-                }}
-            >
+        // eslint-disable-next-line react-hooks/incompatible-library
+        const virtualizer = useVirtualizer({
+            count: questions.length,
+            getScrollElement: () => parentRef.current,
+            estimateSize: () => 400, // Estimated height of each question card
+            overscan: 2, // Render 2 extra items above and below viewport
+        });
+
+        // Expose scroll method to parent
+        useImperativeHandle(ref, () => ({
+            scrollToQuestion: (questionId: string) => {
+                const index = questions.findIndex((q) => q.id === questionId);
+                if (index !== -1) {
+                    // Scroll virtualizer to the index
+                    virtualizer.scrollToIndex(index, {
+                        align: "center",
+                        behavior: "smooth",
+                    });
+                }
+            },
+        }));
+
+        return (
+            <div className="space-y-6">
+                <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-muted-foreground">
+                        Showing {questions.length} question
+                        {questions.length !== 1 ? "s" : ""} for{" "}
+                        {selectedTopics.includes(NO_TOPIC_ID)
+                            ? "No Topic"
+                            : selectedTopics.length === 1
+                              ? "1 topic"
+                              : `${selectedTopics.length} topics`}
+                    </p>
+                </div>
                 <div
+                    ref={parentRef}
+                    className="h-[calc(100vh-240px)] overflow-auto"
                     style={{
-                        height: `${virtualizer.getTotalSize()}px`,
-                        width: "100%",
-                        position: "relative",
+                        contain: "strict",
                     }}
                 >
-                    {virtualizer.getVirtualItems().map((virtualItem) => {
-                        const question = questions[virtualItem.index];
-                        return (
-                            <div
-                                key={question.id}
-                                data-index={virtualItem.index}
-                                ref={(el) => {
-                                    virtualizer.measureElement(el);
-                                    if (el && question.id) {
-                                        questionRefs.current.set(question.id, el);
-                                    }
-                                }}
-                                style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: "100%",
-                                    transform: `translateY(${virtualItem.start}px)`,
-                                }}
-                                className="pb-6"
-                            >
-                                <QuestionRender
-                                    question={question as Question}
-                                    questionNumber={virtualItem.index + 1}
-                                    showMetadata={true}
-                                    showSolution={true}
-                                    showExplanation={true}
-                                    isReadOnly={true}
-                                    compareWithStudentAnswer={false}
-                                    onEdit={onEdit}
-                                    onDelete={onDelete}
-                                />
-                            </div>
-                        );
-                    })}
+                    <div
+                        style={{
+                            height: `${virtualizer.getTotalSize()}px`,
+                            width: "100%",
+                            position: "relative",
+                        }}
+                    >
+                        {virtualizer.getVirtualItems().map((virtualItem) => {
+                            const question = questions[virtualItem.index];
+                            return (
+                                <div
+                                    key={question.id}
+                                    data-index={virtualItem.index}
+                                    ref={(el) => {
+                                        virtualizer.measureElement(el);
+                                        if (el && question.id) {
+                                            questionRefs.current.set(question.id, el);
+                                        }
+                                    }}
+                                    style={{
+                                        position: "absolute",
+                                        top: 0,
+                                        left: 0,
+                                        width: "100%",
+                                        transform: `translateY(${virtualItem.start}px)`,
+                                    }}
+                                    className="pb-6"
+                                >
+                                    <QuestionRender
+                                        question={question as Question}
+                                        questionNumber={virtualItem.index + 1}
+                                        showMetadata={true}
+                                        showSolution={true}
+                                        showExplanation={true}
+                                        isReadOnly={true}
+                                        compareWithStudentAnswer={false}
+                                        onEdit={onEdit}
+                                        onDelete={onDelete}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-}
+        );
+    }
+);
+
+QuestionList.displayName = "QuestionList";

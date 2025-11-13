@@ -9,7 +9,7 @@ import { getQuestionComponent, createDefaultQuestion } from "../question-factory
 import { validateQuestion } from "../question-validator";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Save, AlertCircle, FileText } from "lucide-react";
+import { Save, AlertCircle, FileText, Plus } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TiptapEditor } from "@/components/rich-text-editor/editor";
 import { Switch } from "@/components/ui/switch";
@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 interface QuestionFormProps {
     initialData?: Question;
     onSave: (question: Question) => void;
+    onSaveAndContinue?: (question: Question) => void;
     onCancel: () => void;
     isLoading?: boolean;
     context?: "bank" | "quiz";
@@ -27,6 +28,7 @@ interface QuestionFormProps {
 export default function QuestionForm({
     initialData,
     onSave,
+    onSaveAndContinue,
     onCancel,
     isLoading = false,
     context = "quiz",
@@ -86,6 +88,17 @@ export default function QuestionForm({
         onSave(question);
     };
 
+    const handleSaveAndContinue = () => {
+        if (!validateQuestionData() || !question) {
+            error("Please fix validation errors before saving");
+            return;
+        }
+
+        if (onSaveAndContinue) {
+            onSaveAndContinue(question);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <Card className="p-4">
@@ -99,6 +112,17 @@ export default function QuestionForm({
                         <Button type="button" variant="outline" onClick={onCancel}>
                             Cancel
                         </Button>
+                        {!initialData && onSaveAndContinue && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleSaveAndContinue}
+                                disabled={isLoading}
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Save & Add Another
+                            </Button>
+                        )}
                         <Button type="button" onClick={handleSave} disabled={isLoading}>
                             <Save className="mr-2 h-4 w-4" />
                             {isLoading

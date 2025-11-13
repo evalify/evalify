@@ -75,7 +75,7 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
     };
 
     const handleAddAnswer = (blankIndex: number) => {
-        const currentAnswerGroup = value.blankConfig.acceptableAnswers[blankIndex];
+        const currentAnswerGroup = value.blankConfig?.acceptableAnswers?.[blankIndex];
         if (!currentAnswerGroup) return;
 
         onChange({
@@ -94,7 +94,7 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
     };
 
     const handleRemoveAnswer = (blankIndex: number, answerIndex: number) => {
-        const currentAnswerGroup = value.blankConfig.acceptableAnswers[blankIndex];
+        const currentAnswerGroup = value.blankConfig?.acceptableAnswers?.[blankIndex];
         if (!currentAnswerGroup) return;
 
         onChange({
@@ -113,7 +113,7 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
     };
 
     const handleAnswerChange = (blankIndex: number, answerIndex: number, answer: string) => {
-        const currentAnswerGroup = value.blankConfig.acceptableAnswers[blankIndex];
+        const currentAnswerGroup = value.blankConfig?.acceptableAnswers?.[blankIndex];
         if (!currentAnswerGroup) return;
 
         const newAnswers = [...currentAnswerGroup.answers];
@@ -135,7 +135,7 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
     };
 
     const handleAnswerTypeChange = (blankIndex: number, type: FillInBlanksAcceptedType) => {
-        const currentAnswerGroup = value.blankConfig.acceptableAnswers[blankIndex];
+        const currentAnswerGroup = value.blankConfig?.acceptableAnswers?.[blankIndex];
         if (!currentAnswerGroup) return;
 
         onChange({
@@ -300,7 +300,12 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
                     </CardHeader>
                     <CardContent className="space-y-6">
                         {Array.from({ length: detectedBlanks }).map((_, blankIndex) => {
-                            const answerGroup = value.blankConfig.acceptableAnswers[blankIndex];
+                            const answerGroup = value.blankConfig?.acceptableAnswers?.[
+                                blankIndex
+                            ] || {
+                                answers: [""],
+                                type: FillInBlanksAcceptedType.TEXT,
+                            };
                             return (
                                 <div
                                     key={blankIndex}
@@ -321,7 +326,8 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
                                                 min="0"
                                                 step="0.1"
                                                 value={
-                                                    value.blankConfig.blankWeights[blankIndex] ?? ""
+                                                    value.blankConfig?.blankWeights?.[blankIndex] ??
+                                                    ""
                                                 }
                                                 onChange={(e) =>
                                                     handleWeightChange(blankIndex, e.target.value)
