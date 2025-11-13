@@ -27,7 +27,7 @@ export function LabManagement() {
     const { track } = useAnalytics();
     const { success, error } = useToast();
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
     const [blockFilter, setBlockFilter] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [showCreateModal, setShowCreateModal] = useState(false);

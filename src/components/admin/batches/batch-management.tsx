@@ -40,7 +40,7 @@ export function BatchManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [departmentFilter, setDepartmentFilter] = useState<string | "ALL">("ALL");
     const [yearFilter, setYearFilter] = useState<string>("ALL");
-    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
     const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);

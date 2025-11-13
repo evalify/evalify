@@ -41,7 +41,7 @@ interface Semester {
 
 export function SemesterManagement() {
     const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
     const [yearFilter, setYearFilter] = useState<string>("ALL");
     const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
