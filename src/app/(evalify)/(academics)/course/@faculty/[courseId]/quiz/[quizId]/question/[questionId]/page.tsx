@@ -108,6 +108,18 @@ export default function QuizQuestionPage() {
         },
     });
 
+    const createAndContinueMutation = trpc.question.createForQuiz.useMutation({
+        onSuccess: () => {
+            success("Question created successfully!");
+            // Reload the page to reset the form
+            const sectionParam = sectionId ? `?sectionId=${sectionId}` : "";
+            router.push(`/course/${courseId}/quiz/${quizId}/question/create${sectionParam}`);
+        },
+        onError: (err) => {
+            error(err.message || "Failed to create question");
+        },
+    });
+
     const updateMutation = trpc.question.updateForQuiz.useMutation({
         onSuccess: () => {
             success("Question updated successfully!");
@@ -236,6 +248,95 @@ export default function QuizQuestionPage() {
         }
     };
 
+    const handleSaveAndContinue = (question: Question) => {
+        track("quiz_question_created", {
+            questionType: question.type,
+            quizId,
+            courseId,
+        });
+
+        const baseInput = {
+            quizId,
+            courseId,
+            sectionId: sectionId || null,
+            question: question.question,
+            marks: question.marks,
+            negativeMarks: question.negativeMarks,
+            difficulty: question.difficulty,
+            bloomTaxonomyLevel: question.bloomsLevel,
+            courseOutcome: question.courseOutcome,
+            topicIds: (question.topics || []).map((t) => t.topicId),
+        };
+
+        if (question.type === "MCQ" || question.type === "MMCQ") {
+            const mcqQuestion = question as Question & {
+                questionData: { options: QuestionOption[] };
+                solution: { correctOptions: { id: string; isCorrect: boolean }[] };
+            };
+
+            const input: CreateQuestionInput = {
+                ...baseInput,
+                type: question.type,
+                questionData: mcqQuestion.questionData,
+                solution: mcqQuestion.solution,
+            };
+
+            createAndContinueMutation.mutate(input);
+        } else if (question.type === "TRUE_FALSE") {
+            const tfQuestion = question as Question & {
+                trueFalseAnswer: boolean;
+            };
+
+            const input: CreateQuestionInput = {
+                ...baseInput,
+                type: question.type,
+                explanation: question.explanation,
+                trueFalseAnswer: tfQuestion.trueFalseAnswer,
+            };
+
+            createAndContinueMutation.mutate(input);
+        } else if (question.type === "FILL_THE_BLANK") {
+            const fibQuestion = question as Question & {
+                blankConfig: FillInBlanksConfig;
+            };
+
+            const input: CreateQuestionInput = {
+                ...baseInput,
+                type: question.type,
+                explanation: question.explanation,
+                blankConfig: fibQuestion.blankConfig,
+            };
+
+            createAndContinueMutation.mutate(input);
+        } else if (question.type === "DESCRIPTIVE") {
+            const descQuestion = question as Question & {
+                descriptiveConfig: DescriptiveConfig;
+            };
+
+            const input: CreateQuestionInput = {
+                ...baseInput,
+                type: question.type,
+                explanation: question.explanation,
+                descriptiveConfig: descQuestion.descriptiveConfig,
+            };
+
+            createAndContinueMutation.mutate(input);
+        } else if (question.type === "MATCHING") {
+            const matchQuestion = question as Question & {
+                options: MatchOptions[];
+            };
+
+            const input: CreateQuestionInput = {
+                ...baseInput,
+                type: question.type,
+                explanation: question.explanation,
+                options: matchQuestion.options,
+            };
+
+            createAndContinueMutation.mutate(input);
+        }
+    };
+
     const handleCancel = () => {
         router.push(`/course/${courseId}/quiz/${quizId}/view`);
     };
@@ -265,8 +366,13 @@ export default function QuizQuestionPage() {
                 <QuestionForm
                     initialData={!isCreateMode ? (questionData as unknown as Question) : undefined}
                     onSave={handleSave}
+                    onSaveAndContinue={isCreateMode ? handleSaveAndContinue : undefined}
                     onCancel={handleCancel}
-                    isLoading={createMutation.isPending || updateMutation.isPending}
+                    isLoading={
+                        createMutation.isPending ||
+                        createAndContinueMutation.isPending ||
+                        updateMutation.isPending
+                    }
                     context="quiz"
                 />
             )}

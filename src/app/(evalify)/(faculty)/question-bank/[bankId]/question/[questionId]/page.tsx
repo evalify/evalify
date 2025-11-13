@@ -14,12 +14,14 @@ import {
 } from "@/types/questions";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
+import { useQuestionNavigation } from "@/contexts/question-navigation-context";
 
 export default function QuestionPage() {
     const router = useRouter();
     const { success, error } = useToast();
     const { track } = useAnalytics();
     const utils = trpc.useUtils();
+    const { setNavigationTarget } = useQuestionNavigation();
 
     const routeParams = useParams<{ bankId: string; questionId: string }>();
     const bankId = Array.isArray(routeParams.bankId) ? routeParams.bankId[0] : routeParams.bankId;
@@ -41,20 +43,26 @@ export default function QuestionPage() {
             utils.question.listByBank.invalidate({ bankId });
             utils.question.listByTopics.invalidate({ bankId });
 
-            // Redirect with topics and new question ID for auto-scroll
+            // Set navigation target in context
             const topicIds = variables.topicIds || [];
-            const params = new URLSearchParams();
+            setNavigationTarget(bankId, data.id, topicIds);
 
-            // Only set topics param if question has topics
-            if (topicIds.length > 0) {
-                params.set("topics", topicIds.join(","));
-            }
-            // else: no topics param means the question has no topics,
-            // the main page will auto-select "No Topic"
+            // Navigate to bank page
+            router.push(`/question-bank/${bankId}`);
+        },
+        onError: (err) => {
+            error(err.message || "Failed to create question");
+        },
+    });
 
-            params.set("newQuestion", data.id);
+    const createAndContinueMutation = trpc.question.createForBank.useMutation({
+        onSuccess: () => {
+            success("Question created successfully!");
+            utils.question.listByBank.invalidate({ bankId });
+            utils.question.listByTopics.invalidate({ bankId });
 
-            router.push(`/question-bank/${bankId}?${params.toString()}`);
+            // Reload the page to reset the form
+            router.push(`/question-bank/${bankId}/question/create`);
         },
         onError: (err) => {
             error(err.message || "Failed to create question");
@@ -68,20 +76,12 @@ export default function QuestionPage() {
             utils.question.listByTopics.invalidate({ bankId });
             utils.question.getById.invalidate({ questionId, bankId });
 
-            // Redirect with topics and question ID for auto-scroll
+            // Set navigation target in context
             const topicIds = variables.topicIds || [];
-            const params = new URLSearchParams();
+            setNavigationTarget(bankId, data.id, topicIds);
 
-            // Only set topics param if question has topics
-            if (topicIds.length > 0) {
-                params.set("topics", topicIds.join(","));
-            }
-            // else: no topics param means the question has no topics,
-            // the main page will auto-select "No Topic"
-
-            params.set("newQuestion", questionId);
-
-            router.push(`/question-bank/${bankId}?${params.toString()}`);
+            // Navigate to bank page
+            router.push(`/question-bank/${bankId}`);
         },
         onError: (err) => {
             error(err.message || "Failed to update question");
@@ -292,6 +292,110 @@ export default function QuestionPage() {
         }
     };
 
+    const handleSaveAndContinue = (question: Question) => {
+        track("question_created", {
+            questionType: question.type,
+            bankId,
+        });
+
+        const mutateQuestion = (input: never) => {
+            createAndContinueMutation.mutate(input);
+        };
+
+        if (question.type === "MCQ" || question.type === "MMCQ") {
+            const mcqQuestion = question as Question & {
+                questionData: { options: QuestionOption[] };
+                solution: { correctOptions: { id: string; isCorrect: boolean }[] };
+            };
+
+            mutateQuestion({
+                bankId,
+                type: question.type,
+                question: question.question,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                questionData: mcqQuestion.questionData,
+                solution: mcqQuestion.solution,
+            } as never);
+        } else if (question.type === "TRUE_FALSE") {
+            const tfQuestion = question as Question & {
+                trueFalseAnswer: boolean;
+            };
+
+            mutateQuestion({
+                bankId,
+                type: question.type,
+                question: question.question,
+                explanation: question.explanation,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                trueFalseAnswer: tfQuestion.trueFalseAnswer,
+            } as never);
+        } else if (question.type === "FILL_THE_BLANK") {
+            const fibQuestion = question as Question & {
+                blankConfig: FillInBlanksConfig;
+            };
+
+            mutateQuestion({
+                bankId,
+                type: question.type,
+                question: question.question,
+                explanation: question.explanation,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                blankConfig: fibQuestion.blankConfig,
+            } as never);
+        } else if (question.type === "DESCRIPTIVE") {
+            const descQuestion = question as Question & {
+                descriptiveConfig: DescriptiveConfig;
+            };
+
+            mutateQuestion({
+                bankId,
+                type: question.type,
+                question: question.question,
+                explanation: question.explanation,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                descriptiveConfig: descQuestion.descriptiveConfig,
+            } as never);
+        } else if (question.type === "MATCHING") {
+            const matchQuestion = question as Question & {
+                options: MatchOptions[];
+            };
+
+            mutateQuestion({
+                bankId,
+                type: question.type,
+                question: question.question,
+                explanation: question.explanation,
+                marks: question.marks,
+                negativeMarks: question.negativeMarks,
+                difficulty: question.difficulty,
+                bloomTaxonomyLevel: question.bloomsLevel,
+                courseOutcome: question.courseOutcome,
+                topicIds: (question.topics || []).map((t) => t.topicId),
+                options: matchQuestion.options,
+            } as never);
+        }
+    };
+
     const handleCancel = () => {
         router.back();
     };
@@ -329,8 +433,13 @@ export default function QuestionPage() {
         <QuestionForm
             initialData={isCreateMode ? undefined : (questionData as unknown as Question)}
             onSave={handleSave}
+            onSaveAndContinue={isCreateMode ? handleSaveAndContinue : undefined}
             onCancel={handleCancel}
-            isLoading={isCreateMode ? createMutation.isPending : updateMutation.isPending}
+            isLoading={
+                isCreateMode
+                    ? createMutation.isPending || createAndContinueMutation.isPending
+                    : updateMutation.isPending
+            }
             context="bank"
             bankId={bankId}
         />
