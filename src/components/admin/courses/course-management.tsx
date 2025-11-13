@@ -39,7 +39,7 @@ interface CourseManagementProps {
 
 export function CourseManagement({ semesterId }: CourseManagementProps) {
     const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+    const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ACTIVE");
     const [typeFilter, setTypeFilter] = useState<"ALL" | "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL">(
         "ALL"
     );
@@ -514,7 +514,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
 
             {/* Semester Details Card - Only show when semesterId is provided */}
             {semesterId && semesterData && (
-                <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+                <Card className="mb-6">
                     <CardContent className="p-4">
                         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                             {/* Left side - Semester Info (3/5 width) */}
@@ -696,7 +696,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
             )}
 
             {/* Filters Card */}
-            <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+            <Card className="mb-6">
                 <CardHeader>
                     <div className="flex items-center gap-2">
                         <Filter className="h-5 w-5" />
@@ -781,7 +781,7 @@ export function CourseManagement({ semesterId }: CourseManagementProps) {
             </Card>
 
             {/* Data Table Card */}
-            <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+            <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div>

@@ -43,7 +43,7 @@ export function UserManagement() {
         "ALL" | "ADMIN" | "FACULTY" | "STUDENT" | "MANAGER"
     >("ALL");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE" | "SUSPENDED">(
-        "ALL"
+        "ACTIVE"
     );
     const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
