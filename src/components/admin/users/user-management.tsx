@@ -475,6 +475,7 @@ export function UserManagement() {
                     </DialogHeader>
                     <UserForm
                         initialData={selectedUser}
+                        userId={selectedUser?.id}
                         onSubmit={handleEdit}
                         onCancel={() => {
                             setIsEditModalOpen(false);

@@ -640,6 +640,76 @@ export const courseRouter = createTRPCRouter({
         }),
 
     /**
+     * Add an instructor to a course
+     */
+    addFacultyAndManagers: adminProcedure
+        .input(
+            z.object({
+                courseId: z.uuid(),
+                instructorId: z.uuid(),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                // Check if instructor exists
+                const instructor = await db
+                    .select({ id: usersTable.id, role: usersTable.role })
+                    .from(usersTable)
+                    .where(eq(usersTable.id, input.instructorId))
+                    .limit(1);
+
+                if (!instructor[0]) {
+                    throw new Error("Instructor not found ");
+                }
+
+                // Check if already assigned
+                const existing = await db
+                    .select()
+                    .from(courseInstructorsTable)
+                    .where(
+                        and(
+                            eq(courseInstructorsTable.courseId, input.courseId),
+                            eq(courseInstructorsTable.instructorId, input.instructorId)
+                        )
+                    )
+                    .limit(1);
+
+                if (existing[0]) {
+                    throw new Error("Instructor is already assigned to this course.");
+                }
+
+                await db.insert(courseInstructorsTable).values({
+                    courseId: input.courseId,
+                    instructorId: input.instructorId,
+                });
+
+                logger.info(
+                    {
+                        courseId: input.courseId,
+                        instructorId: input.instructorId,
+                        userId: ctx.session.user.id,
+                    },
+                    "Instructor added to course"
+                );
+
+                return { success: true };
+            } catch (error: unknown) {
+                logger.error({ error, input }, "Error adding instructor to course");
+
+                if (
+                    error &&
+                    typeof error === "object" &&
+                    "message" in error &&
+                    typeof error.message === "string"
+                ) {
+                    throw new Error(error.message);
+                }
+
+                throw new Error("Failed to add instructor to course. Please try again.");
+            }
+        }),
+
+    /**
      * Remove an instructor from a course
      */
     removeInstructor: adminProcedure
@@ -919,6 +989,70 @@ export const courseRouter = createTRPCRouter({
         }),
 
     /**
+     * Get available faculty and Managers (not assigned to course)
+     */
+    getAvailableFacultyAndManagers: adminProcedure
+        .input(
+            z.object({
+                courseId: z.uuid(),
+                searchTerm: z.string().optional(),
+            })
+        )
+        .query(async ({ input }) => {
+            try {
+                // Get instructors already assigned
+                const assignedInstructors = await db
+                    .select({ instructorId: courseInstructorsTable.instructorId })
+                    .from(courseInstructorsTable)
+                    .where(eq(courseInstructorsTable.courseId, input.courseId));
+
+                const assignedIds = assignedInstructors.map((i) => i.instructorId);
+
+                const conditions = [
+                    or(eq(usersTable.role, "FACULTY"), eq(usersTable.role, "MANAGER")),
+                    eq(usersTable.status, "ACTIVE"),
+                ];
+
+                if (assignedIds.length > 0) {
+                    conditions.push(notInArray(usersTable.id, assignedIds));
+                }
+
+                if (input.searchTerm) {
+                    const searchConditions = or(
+                        ilike(usersTable.name, `%${input.searchTerm}%`),
+                        ilike(usersTable.email, `%${input.searchTerm}%`),
+                        ilike(usersTable.profileId, `%${input.searchTerm}%`)
+                    );
+                    if (searchConditions) {
+                        conditions.push(searchConditions);
+                    }
+                }
+
+                const facultyAndManagers = await db
+                    .select({
+                        id: usersTable.id,
+                        name: usersTable.name,
+                        email: usersTable.email,
+                        profileId: usersTable.profileId,
+                        role: usersTable.role,
+                        status: usersTable.status,
+                    })
+                    .from(usersTable)
+                    .where(and(...conditions))
+                    .orderBy(usersTable.name)
+                    .limit(50);
+
+                return facultyAndManagers;
+            } catch (error) {
+                logger.error(
+                    { error, courseId: input.courseId },
+                    "Error getting available faculty and managers"
+                );
+                throw error;
+            }
+        }),
+
+    /**
      * Get available students (not enrolled in course)
      * Excludes students who are:
      * 1. Directly enrolled in the course
@@ -1061,40 +1195,6 @@ export const courseRouter = createTRPCRouter({
                 );
                 throw error;
             }
-        }),
-
-    /**
-     * Custom procedure - Only faculty from specific department group can access
-     * Example: Only CS department faculty can manage CS courses
-     */
-    manageDepartmentCourses: createCustomProcedure(
-        [UserType.STAFF],
-        [] // You can add specific groups here, e.g., ['department-cs']
-    )
-        .input(
-            z.object({
-                departmentId: z.string(),
-                action: z.enum(["list", "stats"]),
-            })
-        )
-        .query(async ({ ctx, input }) => {
-            // Check if user's groups match the department
-            const userGroups = ctx.session.user.groups;
-            const hasDepartmentAccess = userGroups.some((group) =>
-                group.includes(`department-${input.departmentId}`)
-            );
-
-            if (!hasDepartmentAccess) {
-                throw new Error("You don't have access to this department's courses");
-            }
-
-            const departmentCourses = await db.select().from(coursesTable).limit(50);
-
-            return {
-                courses: departmentCourses,
-                count: departmentCourses.length,
-                departmentId: input.departmentId,
-            };
         }),
 
     /**

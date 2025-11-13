@@ -5,6 +5,7 @@ import {
     facultyProcedure,
     managerProcedure,
     studentProcedure,
+    protectedProcedure,
     createCustomProcedure,
 } from "../../trpc";
 import { UserType } from "@/lib/auth/utils";
@@ -335,9 +336,9 @@ export const userRouter = createTRPCRouter({
         }),
 
     /**
-     * STUDENT ONLY - Get own profile
+     * Get own profile - Available to all authenticated users
      */
-    getMyProfile: studentProcedure.query(async ({ ctx }) => {
+    getMyProfile: protectedProcedure.query(async ({ ctx }) => {
         const user = await db
             .select()
             .from(usersTable)
@@ -348,23 +349,32 @@ export const userRouter = createTRPCRouter({
     }),
 
     /**
-     * STUDENT ONLY - Update own profile
+     * Update own profile - Available to all authenticated users
      */
-    updateMyProfile: studentProcedure
+    updateMyProfile: protectedProcedure
         .input(
             z.object({
-                name: z.string().min(1).optional(),
-                email: z.string().email().optional(),
+                phoneNumber: z.string().max(20).optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
-            const updated = await db
-                .update(usersTable)
-                .set(input)
-                .where(eq(usersTable.id, ctx.session.user.id))
-                .returning();
+            try {
+                const updateData: Partial<typeof usersTable.$inferInsert> = {};
+                if (input.phoneNumber !== undefined) updateData.phoneNumber = input.phoneNumber;
 
-            return updated[0];
+                const [updated] = await db
+                    .update(usersTable)
+                    .set(updateData)
+                    .where(eq(usersTable.id, ctx.session.user.id))
+                    .returning();
+
+                logger.info({ userId: ctx.session.user.id }, "User profile updated");
+
+                return updated;
+            } catch (error) {
+                logger.error({ error, userId: ctx.session.user.id }, "Error updating profile");
+                throw error;
+            }
         }),
 
     /**

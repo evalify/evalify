@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,13 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
-import { User, X, Camera } from "lucide-react";
+import { ImageUploadCropModal } from "@/components/settings/image-upload-crop-modal";
+import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
+import { User, X, Camera, Loader2 } from "lucide-react";
+import { trpc } from "@/lib/trpc/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface UserFormData {
     name: string;
     email: string;
     profileId: string;
-    image?: string;
+    profileImage?: string;
     role: "ADMIN" | "FACULTY" | "STUDENT" | "MANAGER";
     phoneNumber: string;
     status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
@@ -33,6 +37,7 @@ interface UserFormProps {
     } | null;
     onSubmit: (data: UserFormData) => Promise<void>;
     onCancel: () => void;
+    userId?: string; // Optional user ID for admin uploads
 }
 
 const USER_ROLES = [
@@ -62,12 +67,13 @@ const USER_ROLES = [
     },
 ] as const;
 
-export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
+export function UserForm({ initialData, onSubmit, onCancel, userId }: UserFormProps) {
+    const { success, error } = useToast();
     const [formData, setFormData] = useState<UserFormData>({
         name: "",
         email: "",
         profileId: "",
-        image: "",
+        profileImage: "",
         role: "STUDENT",
         phoneNumber: "",
         status: "ACTIVE",
@@ -75,8 +81,18 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [imagePreview, setImagePreview] = useState<string>("");
-    const [_imageFile, setImageFile] = useState<File | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isDeletingImage, setIsDeletingImage] = useState(false);
+
+    // tRPC mutations for image upload (use admin endpoints if userId is provided)
+    const getUploadUrlMutation = trpc.profileImage.getUploadUrl.useMutation();
+    const confirmUploadMutation = trpc.profileImage.confirmUpload.useMutation();
+    const adminGetUploadUrlMutation = trpc.profileImage.adminGetUploadUrl.useMutation();
+    const adminConfirmUploadMutation = trpc.profileImage.adminConfirmUpload.useMutation();
+    const deleteProfileImageMutation = trpc.profileImage.deleteProfileImage.useMutation();
+    const adminDeleteProfileImageMutation = trpc.profileImage.adminDeleteProfileImage.useMutation();
 
     useEffect(() => {
         if (initialData) {
@@ -84,7 +100,7 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
                 name: initialData.name,
                 email: initialData.email,
                 profileId: initialData.profileId,
-                image: initialData.profileImage || "",
+                profileImage: initialData.profileImage || "",
                 role: initialData.role,
                 phoneNumber: initialData.phoneNumber || "",
                 status: initialData.status,
@@ -126,49 +142,97 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
+    const handleImageCropped = async (croppedImage: Blob) => {
+        setIsUploadingImage(true);
+        try {
+            let uploadUrl: string;
+            let key: string;
+            let imageUrl: string | null | undefined;
 
-        // Validate file type
-        if (!file.type.startsWith("image/")) {
-            setErrors((prev) => ({
-                ...prev,
-                image: "Please select a valid image file",
-            }));
-            return;
+            // Use admin endpoints if userId is provided (editing existing user)
+            if (userId) {
+                const uploadData = await adminGetUploadUrlMutation.mutateAsync({
+                    userId,
+                    fileType: croppedImage.type,
+                });
+                uploadUrl = uploadData.uploadUrl;
+                key = uploadData.key;
+            } else {
+                // Use regular endpoints for current user
+                const uploadData = await getUploadUrlMutation.mutateAsync({
+                    fileType: croppedImage.type,
+                });
+                uploadUrl = uploadData.uploadUrl;
+                key = uploadData.key;
+            }
+
+            // Upload to MinIO using presigned URL
+            const uploadResponse = await fetch(uploadUrl, {
+                method: "PUT",
+                body: croppedImage,
+                headers: {
+                    "Content-Type": croppedImage.type,
+                },
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error("Failed to upload image");
+            }
+
+            // Confirm upload and get the image URL
+            if (userId) {
+                const confirmData = await adminConfirmUploadMutation.mutateAsync({
+                    userId,
+                    key,
+                });
+                imageUrl = confirmData.imageUrl;
+            } else {
+                const confirmData = await confirmUploadMutation.mutateAsync({ key });
+                imageUrl = confirmData.imageUrl;
+            }
+
+            // Update form data with the image URL and force refresh preview
+            if (imageUrl) {
+                // Add cache buster to force image reload
+                const imageUrlWithCache = `${imageUrl}?t=${Date.now()}`;
+                setImagePreview(imageUrlWithCache);
+                setFormData((prev) => ({ ...prev, profileImage: imageUrl }));
+            }
+
+            success("Profile picture uploaded successfully");
+        } catch (err) {
+            console.error("Error uploading image:", err);
+            error("Failed to upload profile picture", {
+                description: "Please try again later.",
+            });
+        } finally {
+            setIsUploadingImage(false);
         }
-
-        // Validate file size (5MB limit)
-        if (file.size > 5 * 1024 * 1024) {
-            setErrors((prev) => ({
-                ...prev,
-                image: "Image size must be less than 5MB",
-            }));
-            return;
-        }
-
-        setImageFile(file);
-
-        // Create preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const result = e.target?.result as string;
-            setImagePreview(result);
-            setFormData((prev) => ({ ...prev, image: result }));
-        };
-        reader.readAsDataURL(file);
-
-        // Clear any previous errors
-        setErrors((prev) => ({ ...prev, image: "" }));
     };
 
-    const removeImage = () => {
-        setImagePreview("");
-        setImageFile(null);
-        setFormData((prev) => ({ ...prev, image: "" }));
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+    const handleDeleteImage = async () => {
+        setIsDeletingImage(true);
+        try {
+            // Use admin endpoint if userId is provided, otherwise use regular endpoint
+            if (userId) {
+                await adminDeleteProfileImageMutation.mutateAsync({ userId });
+            } else {
+                await deleteProfileImageMutation.mutateAsync();
+            }
+
+            // Clear the image preview and form data
+            setImagePreview("");
+            setFormData((prev) => ({ ...prev, profileImage: "" }));
+
+            success("Profile picture deleted successfully");
+        } catch (err) {
+            console.error("Error deleting image:", err);
+            error("Failed to delete profile picture", {
+                description: "Please try again later.",
+            });
+        } finally {
+            setIsDeletingImage(false);
+            setIsDeleteDialogOpen(false);
         }
     };
 
@@ -185,7 +249,7 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
                 name: formData.name.trim(),
                 email: formData.email.trim().toLowerCase(),
                 profileId: formData.profileId.trim(),
-                image: formData.image?.trim() || undefined,
+                profileImage: formData.profileImage?.trim() || undefined,
                 role: formData.role,
                 phoneNumber: formData.phoneNumber.trim(),
                 status: formData.status,
@@ -236,15 +300,30 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
                             )}
                         </Avatar>
                         {imagePreview && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 text-white border-red-500"
-                                onClick={removeImage}
+                            <ConfirmationDialog
+                                title="Delete Profile Picture"
+                                message="Are you sure you want to delete this profile picture? This action cannot be undone."
+                                onAccept={handleDeleteImage}
+                                confirmButtonText="Delete"
+                                cancelButtonText="Cancel"
+                                isOpen={isDeleteDialogOpen}
+                                onOpenChange={setIsDeleteDialogOpen}
                             >
-                                <X className="h-4 w-4" />
-                            </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-red-500 hover:bg-red-600 text-white border-red-500"
+                                    onClick={() => setIsDeleteDialogOpen(true)}
+                                    disabled={isDeletingImage}
+                                >
+                                    {isDeletingImage ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <X className="h-4 w-4" />
+                                    )}
+                                </Button>
+                            </ConfirmationDialog>
                         )}
                     </div>
                     <div className="flex-1">
@@ -259,23 +338,25 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isLoading}
+                                onClick={() => setIsUploadModalOpen(true)}
+                                disabled={isLoading || isUploadingImage}
                                 className="flex items-center gap-2"
                             >
-                                <Camera className="h-4 w-4" />
-                                {imagePreview ? "Change Photo" : "Upload Photo"}
+                                {isUploadingImage ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Uploading...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Camera className="h-4 w-4" />
+                                        {imagePreview ? "Change Photo" : "Upload Photo"}
+                                    </>
+                                )}
                             </Button>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageUpload}
-                                className="hidden"
-                            />
                         </div>
-                        {errors.image && (
-                            <p className="text-sm text-red-500 mt-2">{errors.image}</p>
+                        {errors.profileImage && (
+                            <p className="text-sm text-red-500 mt-2">{errors.profileImage}</p>
                         )}
                     </div>
                 </div>
@@ -493,6 +574,7 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
                     type="submit"
                     disabled={
                         isLoading ||
+                        isUploadingImage ||
                         !formData.name.trim() ||
                         !formData.email.trim() ||
                         !formData.profileId.trim() ||
@@ -503,6 +585,13 @@ export function UserForm({ initialData, onSubmit, onCancel }: UserFormProps) {
                     {isLoading ? "Saving..." : initialData ? "Update User" : "Create User"}
                 </Button>
             </div>
+
+            {/* Image Upload Modal */}
+            <ImageUploadCropModal
+                open={isUploadModalOpen}
+                onOpenChange={setIsUploadModalOpen}
+                onImageCropped={handleImageCropped}
+            />
         </form>
     );
 }
