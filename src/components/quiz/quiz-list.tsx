@@ -235,7 +235,7 @@ export default function QuizList({
                         value={filterStatus}
                         onValueChange={(value) => setFilterStatus(value as FilterStatus)}
                     >
-                        <SelectTrigger className="w-[160px]">
+                        <SelectTrigger className="w-40">
                             <Filter className="mr-2 h-4 w-4" />
                             <SelectValue placeholder="Filter status" />
                         </SelectTrigger>
@@ -546,11 +546,11 @@ function QuizCard({
             <CardContent className="flex-1 flex flex-col justify-between gap-4">
                 <div className="space-y-3 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                        <Calendar className="h-4 w-4 flex-shrink-0 text-blue-500 dark:text-blue-400" />
+                        <Calendar className="h-4 w-4 shrink-0 text-blue-500 dark:text-blue-400" />
                         <span>{format(new Date(quiz.startTime), "MMM dd, yyyy")}</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
-                        <Clock className="h-4 w-4 flex-shrink-0 text-green-500 dark:text-green-400" />
+                        <Clock className="h-4 w-4 shrink-0 text-green-500 dark:text-green-400" />
                         <span>
                             {format(new Date(quiz.startTime), "hh:mm a")} -{" "}
                             {format(new Date(quiz.endTime), "hh:mm a")}
@@ -558,13 +558,13 @@ function QuizCard({
                     </div>
                     {quiz.questionCount !== undefined && (
                         <div className="flex items-center gap-2 text-muted-foreground">
-                            <ClipboardList className="h-4 w-4 flex-shrink-0 text-purple-500 dark:text-purple-400" />
+                            <ClipboardList className="h-4 w-4 shrink-0 text-purple-500 dark:text-purple-400" />
                             <span>{quiz.questionCount} Questions</span>
                         </div>
                     )}
                     {quiz.submissionCount !== undefined && (
                         <div className="flex items-center gap-2 text-muted-foreground">
-                            <Users className="h-4 w-4 flex-shrink-0 text-orange-500 dark:text-orange-400" />
+                            <Users className="h-4 w-4 shrink-0 text-orange-500 dark:text-orange-400" />
                             <span>{quiz.submissionCount} Submissions</span>
                         </div>
                     )}

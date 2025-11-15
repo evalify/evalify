@@ -19,7 +19,8 @@ export default function Layout({
         if (!open) {
             toggleSidebar();
         }
-    });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div>

@@ -110,7 +110,7 @@ const studentNavItems = [
     },
     {
         title: "Quiz",
-        url: "/quiz",
+        url: "/student/quiz",
         icon: PenTool,
         color: "text-amber-500",
     },
@@ -257,10 +257,7 @@ export function AppSidebar() {
                     <SidebarSeparator className="bg-linear-to-r from-transparent via-sidebar-border to-transparent mx-2" />
                 </AuthGuard>
 
-                <AuthGuard
-                    requiredGroups={[UserType.ADMIN, UserType.MANAGER]}
-                    fallbackComponent={null}
-                >
+                <AuthGuard requiredGroups={[UserType.ADMIN]} fallbackComponent={null}>
                     <SidebarGroup className="px-2 py-4">
                         <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-2 group-data-[collapsible=icon]:sr-only">
                             Administration
