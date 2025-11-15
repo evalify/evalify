@@ -1,5 +1,19 @@
-export { auth as proxy } from "@/lib/auth/auth";
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth/auth";
+
+export default auth((req) => {
+    const { pathname } = req.nextUrl;
+
+    if (
+        pathname.startsWith("/api/eval") &&
+        req.headers.get("API_KEY") !== process.env.EVALUATION_SERVICE_API_KEY
+    ) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    return NextResponse.next();
+});
 
 export const config = {
-    matcher: ["/((?!api|_next/static|_next/image|.*\\.png$).*)"],
+    matcher: ["/((?!_next/static|_next/image|.*\\.png$).*)", "/api/eval/:path*"],
 };
