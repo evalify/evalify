@@ -8,6 +8,7 @@ import {
     text,
     primaryKey,
     json,
+    boolean,
 } from "drizzle-orm/pg-core";
 import { pgTable } from "drizzle-orm/pg-core";
 import { timestamps } from "../utils";
@@ -43,6 +44,7 @@ export const quizResponseTable = pgTable(
         response: json("response"),
         score: decimal("score"),
         violations: text("violations").array(),
+        isViolated: boolean("is_violated").notNull().default(false),
 
         submissionStatus: submissionStatusEnum("submission_status")
             .notNull()
@@ -58,5 +60,6 @@ export const quizResponseTable = pgTable(
         index("idx_quiz_response_student_id").on(table.studentId),
         index("idx_quiz_response_submission_status").on(table.submissionStatus),
         index("idx_quiz_response_evaluation_status").on(table.evaluationStatus),
+        index("idx_quiz_response_is_violated").on(table.isViolated),
     ]
 );
