@@ -31,3 +31,5 @@
 - Use lucide icons from `lucide-react` package for icons in the UI.
 - Make sure UI works well in both light and dark modes.
 - use `src/components/ui/custom-alert-dialog.tsx` for alert dialogs.
+- security is important. make sure to validate and sanitize user inputs properly.
+- Make sure every necessary thing is validated on both client and server sides.

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,8 +22,27 @@ type QuizStatus = "active" | "completed" | "missed" | "upcoming";
 type TabStatus = QuizStatus | "all";
 
 export default function QuizPage() {
-    const [activeTab, setActiveTab] = useState<TabStatus>("all");
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const statusParam = searchParams.get("status") as TabStatus | null;
+    const initialStatus: TabStatus =
+        statusParam && ["all", "active", "upcoming", "completed", "missed"].includes(statusParam)
+            ? statusParam
+            : "all";
+
+    const [activeTab, setActiveTab] = useState<TabStatus>(initialStatus);
     const [searchTerm, setSearchTerm] = useState("");
+
+    // Update URL when tab changes
+    useEffect(() => {
+        const params = new URLSearchParams();
+        if (activeTab !== "all") {
+            params.set("status", activeTab);
+        }
+        const newUrl = params.toString() ? `?${params.toString()}` : "/student/quiz";
+        router.replace(newUrl, { scroll: false });
+    }, [activeTab, router]);
 
     // Fetch all quizzes for the student
     const {

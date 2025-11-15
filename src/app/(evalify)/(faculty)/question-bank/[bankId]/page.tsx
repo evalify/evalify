@@ -104,7 +104,8 @@ export default function QuestionBankPage() {
         if (open) {
             toggleSidebar();
         }
-    });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Fetch bank details
     const { data: bank, isLoading: isBankLoading } = trpc.bank.get.useQuery({ id: bankId });
