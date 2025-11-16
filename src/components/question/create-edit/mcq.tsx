@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Save, X, ListChecks, FileText, Edit3, Check } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 interface MCQComponentProps {
     value: MCQQuestion | MMCQQuestion;
@@ -15,6 +16,7 @@ interface MCQComponentProps {
 }
 
 export default function MCQComponent({ value, onChange }: MCQComponentProps) {
+    const { error: showErrorToast } = useToast();
     const [isCreatingNewOption, setIsCreatingNewOption] = useState(false);
     const [editingOptionId, setEditingOptionId] = useState<string | null>(null);
     const [editor, setEditor] = useState<string>("");
@@ -72,6 +74,22 @@ export default function MCQComponent({ value, onChange }: MCQComponentProps) {
 
     const handleSaveOption = () => {
         if (!editor.trim()) return;
+
+        // Check for exact duplicate options (case-sensitive)
+        const isDuplicate = currentOptions.some((opt) => {
+            // When editing, exclude the current option being edited
+            if (editingOptionId && opt.id === editingOptionId) {
+                return false;
+            }
+            return opt.optionText === editor;
+        });
+
+        if (isDuplicate) {
+            showErrorToast("This option already exists. Each option must be unique.", {
+                description: "Please enter a different option text.",
+            });
+            return;
+        }
 
         if (editingOptionId) {
             // Update existing option
