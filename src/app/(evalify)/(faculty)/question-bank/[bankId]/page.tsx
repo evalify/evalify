@@ -295,6 +295,19 @@ export default function QuestionBankPage() {
         }
     };
 
+    const handleSelectAllTopics = () => {
+        const allTopicIds = topics ? topics.map((t) => t.id) : [];
+        // Include NO_TOPIC_ID as well
+        const allIds = [...allTopicIds, NO_TOPIC_ID];
+        router.push(`/question-bank/${bankId}?topics=${allIds.join(",")}`);
+        track("topics_select_all", { bankId, count: allIds.length });
+    };
+
+    const handleDeselectAllTopics = () => {
+        router.push(`/question-bank/${bankId}`);
+        track("topics_deselect_all", { bankId });
+    };
+
     const handleCreateQuestion = () => {
         router.push(`/question-bank/${bankId}/question/create`);
     };
@@ -332,15 +345,51 @@ export default function QuestionBankPage() {
         );
     }
 
+    // Check if all topics are selected
+    const allTopicIds = topics ? [...topics.map((t) => t.id), NO_TOPIC_ID] : [];
+    const allTopicsSelected =
+        allTopicIds.length > 0 && allTopicIds.every((id) => selectedTopics.includes(id));
+
     return (
         <div className="flex h-[90vh] overflow-hidden">
             {/* Left Sidebar - Topics */}
             <div className="w-80 border-r bg-background flex flex-col">
                 <div className="p-4 border-b">
-                    <h2 className="text-lg font-semibold mb-1">Topics</h2>
-                    <p className="text-xs text-muted-foreground">
-                        Select topics to filter questions
-                    </p>
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="flex-1">
+                            <h2 className="text-lg font-semibold mb-1">Topics</h2>
+                            <p className="text-xs text-muted-foreground">
+                                Select topics to filter questions
+                            </p>
+                        </div>
+
+                        {/* Select All / Deselect All toggle button */}
+                        {topics && topics.length > 0 && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={
+                                    allTopicsSelected
+                                        ? handleDeselectAllTopics
+                                        : handleSelectAllTopics
+                                }
+                                className="h-7 text-xs px-2 shrink-0 border border-border/80"
+                                disabled={isTopicsLoading}
+                            >
+                                {allTopicsSelected ? (
+                                    <>
+                                        <X className="h-3 w-3 mr-1" />
+                                        Clear
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check className="h-3 w-3 mr-1" />
+                                        All
+                                    </>
+                                )}
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-2">
