@@ -33,7 +33,6 @@ export function SemesterManagersModal({ semesterId, onClose }: SemesterManagersM
     const utils = trpc.useUtils();
     const addManager = trpc.semester.addManager.useMutation({
         onError: (err) => {
-            console.error("Add manager error:", err);
             error(err.message || "Failed to add manager to semester");
         },
     });
@@ -74,8 +73,7 @@ export function SemesterManagersModal({ semesterId, onClose }: SemesterManagersM
 
             setSelectedManagerIds([]);
             onClose();
-        } catch (err) {
-            console.error("Error adding managers:", err);
+        } catch (_err) {
         } finally {
             setIsLoading(false);
         }

@@ -68,8 +68,7 @@ export function DepartmentForm({ initialData, onSubmit, onCancel }: DepartmentFo
                 name: formData.name.trim(),
                 isActive: formData.isActive,
             });
-        } catch (error) {
-            console.error("Error submitting department form:", error);
+        } catch {
             setErrors({
                 submit: "Failed to save department. Please try again.",
             });

@@ -32,10 +32,11 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
         courseId,
     });
 
-    const { data: availableData } = trpc.course.getAvailableBatches.useQuery({
-        courseId,
-        searchTerm: searchTerm || undefined,
-    });
+    const { data: availableData, isLoading: loadingAvailable } =
+        trpc.course.getAvailableBatches.useQuery({
+            courseId,
+            searchTerm: searchTerm || undefined,
+        });
 
     const batches = batchesData || [];
     const availableBatches = availableData || [];
@@ -188,6 +189,7 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
                             <input
                                 type="text"
                                 placeholder="Search batches by name, section, or year..."
+                                aria-label="Search batches"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="flex h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -196,7 +198,11 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
 
                         {/* Available Batches */}
                         <div className="space-y-3 max-h-64 overflow-y-auto">
-                            {availableBatches.length === 0 ? (
+                            {loadingAvailable ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Loading available batches...
+                                </p>
+                            ) : availableBatches.length === 0 ? (
                                 <Alert>
                                     <AlertTriangle className="h-4 w-4" />
                                     <AlertDescription>

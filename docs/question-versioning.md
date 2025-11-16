@@ -37,10 +37,6 @@ interface VersionedJson<T> {
 
 ### MCQ & MMCQ
 
-## Question Type Structure
-
-### MCQ & MMCQ
-
 **Question Data (v1):**
 
 ```typescript

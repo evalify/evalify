@@ -1,6 +1,6 @@
 "use client";
 
-import { NavigationConfig } from "./use-navigation";
+import { NavigationConfig } from "./use-navigation-config";
 
 /**
  * Utility function to create navigation configuration with better type safety

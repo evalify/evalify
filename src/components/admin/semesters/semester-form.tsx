@@ -90,8 +90,7 @@ export function SemesterForm({ initialData, onSubmit, onCancel }: SemesterFormPr
                 departmentId: formData.departmentId,
                 isActive: formData.isActive,
             });
-        } catch (error) {
-            console.error("Error submitting form:", error);
+        } catch (_error) {
         } finally {
             setIsLoading(false);
         }

@@ -58,6 +58,9 @@ export function BatchManagement() {
     // Queries
     const { data: batchesData, isLoading: batchesLoading } = trpc.batch.list.useQuery({
         searchTerm: searchTerm || undefined,
+        departmentId: departmentFilter !== "ALL" ? departmentFilter : undefined,
+        isActive: statusFilter !== "ALL" ? statusFilter : undefined,
+        year: yearFilter !== "ALL" ? parseInt(yearFilter, 10) : undefined,
         limit,
         offset: (currentPage - 1) * limit,
     });
@@ -66,7 +69,7 @@ export function BatchManagement() {
         {}
     );
 
-    const batches = useMemo(() => batchesData?.batches || [], [batchesData]);
+    const batches = useMemo(() => batchesData?.batches || [], [batchesData?.batches]);
     const departments = departmentsData?.departments || [];
     const isLoading = batchesLoading || departmentsLoading;
     const total = batchesData?.total || 0;
@@ -105,38 +108,6 @@ export function BatchManagement() {
             error(err.message || "Failed to delete batch");
         },
     });
-
-    // Filter batches based on search, department, year, and status
-    const filteredBatches = useMemo(() => {
-        let filtered = batches;
-
-        if (searchTerm) {
-            filtered = filtered.filter(
-                (batch) =>
-                    batch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    batch.section.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    batch.joinYear.toString().includes(searchTerm) ||
-                    batch.graduationYear.toString().includes(searchTerm)
-            );
-        }
-
-        if (departmentFilter !== "ALL") {
-            filtered = filtered.filter((batch) => batch.departmentId === departmentFilter);
-        }
-
-        if (yearFilter !== "ALL") {
-            const filterYear = parseInt(yearFilter);
-            filtered = filtered.filter(
-                (batch) => batch.joinYear === filterYear || batch.graduationYear === filterYear
-            );
-        }
-
-        if (statusFilter !== "ALL") {
-            filtered = filtered.filter((batch) => batch.isActive === statusFilter);
-        }
-
-        return filtered;
-    }, [batches, searchTerm, departmentFilter, yearFilter, statusFilter]);
 
     // Get unique years for filtering (both join and graduation years)
     const availableYears = useMemo(() => {
@@ -448,7 +419,7 @@ export function BatchManagement() {
                 </CardHeader>
                 <CardContent>
                     <DataTable
-                        data={filteredBatches}
+                        data={batches}
                         columns={tableColumns}
                         loading={isLoading}
                         onEdit={(batch) => {

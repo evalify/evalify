@@ -45,7 +45,7 @@ export function ShareBankDialog({ bank, isOpen, onClose }: ShareBankDialogProps)
             searchTerm: searchQuery,
         },
         {
-            enabled: searchQuery.length >= 1,
+            enabled: searchQuery.length >= 2,
         }
     );
 
@@ -120,6 +120,7 @@ export function ShareBankDialog({ bank, isOpen, onClose }: ShareBankDialogProps)
 
     const parentRef = useRef<HTMLDivElement>(null);
 
+    // eslint-disable-next-line react-hooks/incompatible-library
     const virtualizer = useVirtualizer({
         count: filteredResults.length,
         getScrollElement: () => parentRef.current,
@@ -131,7 +132,12 @@ export function ShareBankDialog({ bank, isOpen, onClose }: ShareBankDialogProps)
         <Dialog
             open={isOpen}
             onOpenChange={(open) => {
-                if (!open) onClose();
+                if (!open) {
+                    setSelectedUsers([]);
+                    setSearchQuery("");
+                    setAccessLevel("WRITE");
+                    onClose();
+                }
             }}
         >
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

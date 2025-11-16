@@ -7,7 +7,7 @@
 - Drizzle (ORM)
 - minIO (object storage)
 - Redis (caching)
-- ShandCNUI (UI components)
+- shadcn/ui (UI components)
 - Posthog (analytics)
 
 ## Instructions
@@ -27,7 +27,7 @@
 - Handle errors gracefully and provide meaningful feedback to users.
 - properly document complex functions and components with comments.
 - properly give informative messages in the UI for better user experience. you can add tooltips where necessary.
-- Always Use shadCNUI components for building the UI. follow the design system.
+- Always Use shadcn/ui components for building the UI. follow the design system.
 - Use lucide icons from `lucide-react` package for icons in the UI.
 - Make sure UI works well in both light and dark modes.
 - use `src/components/ui/custom-alert-dialog.tsx` for alert dialogs.

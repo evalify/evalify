@@ -8,6 +8,20 @@ import { eq } from "drizzle-orm";
 
 const PROFILE_IMAGES_BUCKET = "profile-images";
 
+// Strict whitelist of allowed MIME types
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+
+/**
+ * Validate that the file type is in the allowed whitelist
+ */
+function validateMimeType(fileType: string): void {
+    if (!ALLOWED_MIME_TYPES.includes(fileType as (typeof ALLOWED_MIME_TYPES)[number])) {
+        throw new Error(
+            `Invalid file type: ${fileType}. Only JPEG, PNG, and WebP images are allowed.`
+        );
+    }
+}
+
 /**
  * Ensure the profile images bucket exists
  */
@@ -34,6 +48,9 @@ export const profileImageRouter = createTRPCRouter({
         )
         .mutation(async ({ ctx, input }) => {
             try {
+                // Validate MIME type against whitelist
+                validateMimeType(input.fileType);
+
                 await ensureProfileImagesBucket();
 
                 const userId = ctx.session.user.id;
@@ -194,6 +211,9 @@ export const profileImageRouter = createTRPCRouter({
         )
         .mutation(async ({ ctx, input }) => {
             try {
+                // Validate MIME type against whitelist
+                validateMimeType(input.fileType);
+
                 await ensureProfileImagesBucket();
 
                 const fileExtension = input.fileType.split("/")[1] || "jpg";

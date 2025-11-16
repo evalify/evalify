@@ -159,12 +159,25 @@ const fillTheBlankConfigSchema = z.object({
     evaluationType: z.enum(["NORMAL", "STRICT", "LENIENT"]),
 });
 
-const descriptiveConfigSchema = z.object({
-    modelAnswer: z.string().optional(),
-    keywords: z.array(z.string()).optional(),
-    minWords: z.number().optional(),
-    maxWords: z.number().optional(),
-});
+const descriptiveConfigSchema = z
+    .object({
+        modelAnswer: z.string().optional(),
+        keywords: z.array(z.string()).optional(),
+        minWords: z.number().int().nonnegative().optional(),
+        maxWords: z.number().int().nonnegative().optional(),
+    })
+    .refine(
+        (data) => {
+            if (data.minWords !== undefined && data.maxWords !== undefined) {
+                return data.minWords <= data.maxWords;
+            }
+            return true;
+        },
+        {
+            message: "Minimum words must be less than or equal to maximum words",
+            path: ["minWords"],
+        }
+    );
 
 const matchOptionsSchema = z.object({
     id: z.string(),
@@ -702,11 +715,13 @@ export const questionRouter = createTRPCRouter({
                         type: z.literal("MCQ"),
                         questionData: mcqDataSchema,
                         solution: mcqSolutionSchema,
+                        explanation: z.string().optional(),
                     }),
                     z.object({
                         type: z.literal("MMCQ"),
                         questionData: mmcqDataSchema,
                         solution: mmcqSolutionSchema,
+                        explanation: z.string().optional(),
                     }),
                     z.object({
                         type: z.literal("TRUE_FALSE"),
@@ -897,11 +912,13 @@ export const questionRouter = createTRPCRouter({
                                 type: z.literal("MCQ"),
                                 questionData: mcqDataSchema.optional(),
                                 solution: mcqSolutionSchema.optional(),
+                                explanation: z.string().optional(),
                             }),
                             z.object({
                                 type: z.literal("MMCQ"),
                                 questionData: mmcqDataSchema.optional(),
                                 solution: mmcqSolutionSchema.optional(),
+                                explanation: z.string().optional(),
                             }),
                             z.object({
                                 type: z.literal("TRUE_FALSE"),

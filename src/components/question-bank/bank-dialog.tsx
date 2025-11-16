@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -46,7 +46,7 @@ export function BankDialog({
     const utils = trpc.useUtils();
     const { error, success } = useToast();
 
-    const getInitialFormData = (): BankFormData => {
+    const getInitialFormData = useCallback((): BankFormData => {
         if (bank && mode === "edit") {
             return {
                 name: bank.name ?? "",
@@ -59,11 +59,25 @@ export function BankDialog({
             courseCode: "",
             semester: 1,
         };
-    };
+    }, [bank, mode]);
 
     const [formData, setFormData] = useState<BankFormData>(getInitialFormData);
 
     const [errors, setErrors] = useState<Partial<Record<keyof BankFormData, string>>>({});
+
+    // Reset form data when dialog opens or mode/bank changes
+    // Using key prop on Dialog would be better, but we update state on visibility change
+    useEffect(() => {
+        if (isOpen) {
+            const newFormData = getInitialFormData();
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setFormData(newFormData);
+            // Clear errors when opening in create mode
+            if (mode === "create") {
+                setErrors({});
+            }
+        }
+    }, [isOpen, getInitialFormData, mode]);
 
     const resetForm = () => {
         setFormData({

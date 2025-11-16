@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,13 @@ export function DepartmentManagement() {
     const departments = useMemo(() => departmentsData?.departments || [], [departmentsData]);
     const total = departmentsData?.total || 0;
     const totalPages = Math.ceil(total / limit);
+
+    // Clamp currentPage when totalPages shrinks (e.g., after deletions or limit changes)
+    useEffect(() => {
+        if (totalPages > 0 && currentPage > totalPages) {
+            setCurrentPage(Math.max(1, Math.min(currentPage, totalPages)));
+        }
+    }, [totalPages, currentPage, total, limit]);
 
     // Mutations
     const createDepartment = trpc.department.create.useMutation({

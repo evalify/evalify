@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import CourseList, { type Course } from "@/components/quiz/course-list";
 import { useAnalytics } from "@/hooks/use-analytics";
@@ -21,15 +21,16 @@ export default function FacultyCoursesPage() {
 
     const { data, isLoading, error } = trpc.facultyCourse.list.useQuery({
         searchTerm: searchTerm || undefined,
+        type: filterType,
         isActive: filterStatus === "ALL" ? "ALL" : filterStatus,
         limit: pageSize,
         offset: (currentPage - 1) * pageSize,
     });
 
     // Track page view
-    useState(() => {
+    useEffect(() => {
         track("faculty_courses_page_viewed");
-    });
+    }, [track]);
 
     const handleSearch = (search: string) => {
         setSearchTerm(search);

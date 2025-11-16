@@ -1,8 +1,8 @@
 "use client";
 
-import { use, useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import {
     Clock,
     MapPin,
@@ -39,15 +39,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc/client";
 
-type Props = {
-    params: Promise<{
-        quizId: string;
-    }>;
-};
-
-const QuizInstructionsPage = (props: Props) => {
-    const { params } = props;
-    const { quizId } = use(params);
+const QuizInstructionsPage = () => {
+    const params = useParams();
+    const quizId = params.quizId as string;
     const router = useRouter();
     const [currentTime, setCurrentTime] = useState(Date.now());
     const [showPasswordDialog, setShowPasswordDialog] = useState(false);

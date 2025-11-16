@@ -3,11 +3,11 @@
 import { use } from "react";
 import QuizList from "@/components/quiz/quiz-list";
 import { Button } from "@/components/ui/button";
-import { Plus, BookOpen, GraduationCap } from "lucide-react";
+import { Plus, BookOpen, GraduationCap, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
-import Loading from "@/app/loading";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 type Props = {
     params: Promise<{
@@ -20,10 +20,9 @@ export default function QuizPage({ params }: Props) {
     const { courseId } = use(params);
 
     // Fetch course info
-    const { data: courseInfo, isLoading: isCourseLoading } =
-        trpc.facultyQuiz.getCourseInfo.useQuery({
-            courseId,
-        });
+    const { data: courseInfo } = trpc.facultyQuiz.getCourseInfo.useQuery({
+        courseId,
+    });
 
     // Fetch quizzes
     const { data: quizData, isLoading: isQuizzesLoading } = trpc.facultyQuiz.listByCourse.useQuery({
@@ -36,8 +35,19 @@ export default function QuizPage({ params }: Props) {
         router.push(`/course/${courseId}/quiz/create/manage`);
     };
 
-    if (isCourseLoading) {
-        return <Loading />;
+    if (!courseInfo) {
+        return (
+            <div className="p-6">
+                <Card className="border-destructive">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-2 text-destructive">
+                            <AlertCircle className="h-5 w-5" />
+                            <p>Failed to load course information</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
 
     return (

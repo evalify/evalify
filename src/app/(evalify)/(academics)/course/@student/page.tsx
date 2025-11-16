@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import CourseList, { type Course } from "@/components/quiz/course-list";
 import { useAnalytics } from "@/hooks/use-analytics";
@@ -27,9 +27,9 @@ export default function StudentCoursesPage() {
     });
 
     // Track page view
-    useState(() => {
+    useEffect(() => {
         track("student_courses_page_viewed");
-    });
+    }, [track]);
 
     const handleSearch = (search: string) => {
         setSearchTerm(search);

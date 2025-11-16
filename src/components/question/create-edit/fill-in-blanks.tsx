@@ -68,7 +68,13 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
                 },
             });
         }
-    }, [value.question, detectedBlanks, value.blankConfig, onChange, value]);
+    }, [
+        detectedBlanks,
+        value.blankConfig?.blankCount,
+        value.blankConfig?.evaluationType,
+        onChange,
+        value,
+    ]);
 
     const handleQuestionChange = (content: string) => {
         onChange({ ...value, question: content });
