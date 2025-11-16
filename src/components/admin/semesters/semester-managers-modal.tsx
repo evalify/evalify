@@ -51,29 +51,60 @@ export function SemesterManagersModal({ semesterId, onClose }: SemesterManagersM
 
         setIsLoading(true);
         try {
-            await Promise.all(
+            // Use Promise.allSettled to handle partial failures
+            const results = await Promise.allSettled(
                 selectedManagerIds.map((managerId) =>
                     addManager.mutateAsync({ semesterId, managerId })
                 )
             );
 
-            utils.semester.getManagers.invalidate({ semesterId });
-            utils.semester.getAvailableManagers.invalidate({ semesterId });
+            // Count successes and failures
+            const fulfilled = results.filter((r) => r.status === "fulfilled");
+            const rejected = results.filter((r) => r.status === "rejected");
 
-            success(
-                `Successfully added ${selectedManagerIds.length} manager${
-                    selectedManagerIds.length !== 1 ? "s" : ""
-                } to semester`
-            );
+            // Invalidate queries if at least one success
+            if (fulfilled.length > 0) {
+                utils.semester.getManagers.invalidate({ semesterId });
+                utils.semester.getAvailableManagers.invalidate({ semesterId });
 
-            track("semester_managers_added", {
-                semesterId,
-                count: selectedManagerIds.length,
-            });
+                success(
+                    `Successfully added ${fulfilled.length} manager${
+                        fulfilled.length !== 1 ? "s" : ""
+                    } to semester`
+                );
 
-            setSelectedManagerIds([]);
-            onClose();
-        } catch (_err) {
+                track("semester_managers_added", {
+                    semesterId,
+                    count: fulfilled.length,
+                });
+            }
+
+            // Show error toast for failures
+            if (rejected.length > 0) {
+                const errorMessages = rejected
+                    .map((r) => {
+                        if (r.status === "rejected" && r.reason instanceof Error) {
+                            return r.reason.message;
+                        }
+                        return "Unknown error";
+                    })
+                    .filter((msg, index, self) => self.indexOf(msg) === index); // Remove duplicates
+
+                error(
+                    `Failed to add ${rejected.length} manager${
+                        rejected.length !== 1 ? "s" : ""
+                    }: ${errorMessages.join(", ")}`
+                );
+            }
+
+            // Only clear and close if at least one success
+            if (fulfilled.length > 0) {
+                setSelectedManagerIds([]);
+                onClose();
+            }
+        } catch (err) {
+            // This should not happen with Promise.allSettled, but handle just in case
+            error("An unexpected error occurred while adding managers");
         } finally {
             setIsLoading(false);
         }
@@ -138,9 +169,6 @@ export function SemesterManagersModal({ semesterId, onClose }: SemesterManagersM
                                                 checked={selectedManagerIds.includes(
                                                     managerUser.id
                                                 )}
-                                                onCheckedChange={() =>
-                                                    toggleManagerSelection(managerUser.id)
-                                                }
                                             />
                                             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
                                                 <UserCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />

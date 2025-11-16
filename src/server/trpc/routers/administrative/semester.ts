@@ -694,4 +694,24 @@ export const semesterRouter = createTRPCRouter({
             throw error;
         }
     }),
+
+    /**
+     * Get all available years from semesters
+     * Used for filtering dropdowns
+     */
+    getAvailableYears: adminProcedure.query(async () => {
+        try {
+            const years = await db
+                .selectDistinct({ year: semestersTable.year })
+                .from(semestersTable)
+                .orderBy(desc(semestersTable.year));
+
+            logger.info({ count: years.length }, "Available years retrieved");
+
+            return years.map((y) => y.year);
+        } catch (error) {
+            logger.error({ error }, "Error getting available years");
+            throw error;
+        }
+    }),
 });

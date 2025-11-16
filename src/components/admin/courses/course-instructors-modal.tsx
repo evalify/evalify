@@ -32,10 +32,11 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
             courseId,
         });
 
-    const { data: availableData } = trpc.course.getAvailableFacultyAndManagers.useQuery({
-        courseId,
-        searchTerm: searchTerm || undefined,
-    });
+    const { data: availableData, isLoading: loadingAvailableFaculty } =
+        trpc.course.getAvailableFacultyAndManagers.useQuery({
+            courseId,
+            searchTerm: searchTerm || undefined,
+        });
 
     const instructors = instructorsData || [];
     const availableFaculty = availableData || [];
@@ -186,7 +187,11 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
 
                         {/* Available Faculty */}
                         <div className="space-y-3 max-h-64 overflow-y-auto">
-                            {availableFaculty.length === 0 ? (
+                            {loadingAvailableFaculty ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Loading available faculty...
+                                </p>
+                            ) : availableFaculty.length === 0 ? (
                                 <Alert>
                                     <AlertTriangle className="h-4 w-4" />
                                     <AlertDescription>

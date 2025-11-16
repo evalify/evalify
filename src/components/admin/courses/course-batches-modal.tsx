@@ -89,6 +89,8 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
     };
 
     const confirmRemoveBatch = async () => {
+        // Early guard to prevent duplicate requests while mutation is in flight
+        if (isLoading || removeBatch.isPending) return;
         if (!batchToRemove) return;
 
         setIsLoading(true);
@@ -272,6 +274,7 @@ export function CourseBatchesModal({ courseId, onClose }: CourseBatchesModalProp
                 onAccept={confirmRemoveBatch}
                 confirmButtonText="Remove"
                 cancelButtonText="Cancel"
+                isLoading={isLoading}
             />
         </div>
     );

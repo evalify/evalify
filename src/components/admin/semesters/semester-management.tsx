@@ -75,12 +75,18 @@ export function SemesterManagement() {
         track("semester_courses_viewed", { semesterId: semester.id });
     };
 
-    // Queries
+    // Queries - server-side filtering
     const semestersData = trpc.semester.list.useQuery({
         searchTerm: searchTerm || undefined,
+        isActive: statusFilter !== "ALL" ? statusFilter : undefined,
+        year: yearFilter !== "ALL" ? parseInt(yearFilter, 10) : undefined,
         limit,
         offset: (currentPage - 1) * limit,
     });
+
+    // Get available years for filter dropdown
+    const { data: availableYearsData } = trpc.semester.getAvailableYears.useQuery();
+    const availableYears = availableYearsData || [];
 
     const semesters = useMemo(
         () => semestersData?.data?.semesters || [],
@@ -217,35 +223,6 @@ export function SemesterManagement() {
         },
     });
 
-    // Filter semesters based on search, status, and year
-    const filteredSemesters = useMemo(() => {
-        let filtered = semesters;
-
-        if (searchTerm) {
-            filtered = filtered.filter(
-                (semester) =>
-                    semester.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    semester.year.toString().includes(searchTerm)
-            );
-        }
-
-        if (statusFilter !== "ALL") {
-            filtered = filtered.filter((semester) => semester.isActive === statusFilter);
-        }
-
-        if (yearFilter !== "ALL") {
-            filtered = filtered.filter((semester) => semester.year.toString() === yearFilter);
-        }
-
-        return filtered;
-    }, [semesters, searchTerm, statusFilter, yearFilter]);
-
-    // Get unique years for filtering
-    const availableYears = useMemo(() => {
-        const years = [...new Set(semesters.map((s) => s.year))].sort((a, b) => b - a);
-        return years;
-    }, [semesters]);
-
     const handleCreate = async (data: {
         name: string;
         year: number;
@@ -360,7 +337,7 @@ export function SemesterManagement() {
         setStatusFilter("ALL");
         setYearFilter("ALL");
         setCurrentPage(1);
-        track("Semester Filters Reset");
+        track("semester_filters_reset");
     };
 
     // Table columns
@@ -572,7 +549,7 @@ export function SemesterManagement() {
                 </CardHeader>
                 <CardContent>
                     <DataTable
-                        data={filteredSemesters}
+                        data={semesters}
                         columns={tableColumns}
                         onEdit={openEditModal}
                         onDelete={handleDelete}

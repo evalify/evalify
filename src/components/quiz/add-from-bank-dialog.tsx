@@ -189,7 +189,7 @@ export function AddFromBankDialog({
     const toggleSelectAll = () => {
         if (!filteredQuestions) return;
         const bankQuestionIds = filteredQuestions
-            .map((q) => q.bankQuestionId)
+            .map((q) => (q as Question & { bankQuestionId?: string }).bankQuestionId)
             .filter((id): id is string => !!id);
         if (selectedQuestionIds.length === bankQuestionIds.length) {
             setSelectedQuestionIds([]);
@@ -215,8 +215,11 @@ export function AddFromBankDialog({
 
         const filtered = questionsData.filter((question) => {
             // Filter out already added questions
+            const questionWithBankId = question as Question & { bankQuestionId?: string };
             const bankQuestionId =
-                typeof question.bankQuestionId === "string" ? question.bankQuestionId : null;
+                typeof questionWithBankId.bankQuestionId === "string"
+                    ? questionWithBankId.bankQuestionId
+                    : null;
             if (bankQuestionId && alreadyAddedBankQuestionIds.has(bankQuestionId)) {
                 console.log("❌ Filtering out duplicate question:", bankQuestionId);
                 return false;
@@ -268,7 +271,7 @@ export function AddFromBankDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="!max-w-[98vw] w-[98vw] h-[98vh] flex flex-col p-0 gap-0 overflow-auto">
+            <DialogContent className="max-w-[98vw]! w-[98vw] h-[98vh] flex flex-col p-0 gap-0 overflow-auto">
                 {/* Header with gradient */}
                 <div className="relative overflow-hidden border-b bg-background z-10 shrink-0">
                     <div className="absolute inset-0 bg-linear-to-br from-primary/20 via-primary/10 to-transparent" />
@@ -873,9 +876,13 @@ export function AddFromBankDialog({
                                 ) : filteredQuestions && filteredQuestions.length > 0 ? (
                                     <div className="grid grid-cols-1 gap-6">
                                         {filteredQuestions.map((question, index) => {
+                                            const questionWithBankId = question as Question & {
+                                                bankQuestionId?: string;
+                                            };
                                             const bankQId =
-                                                typeof question.bankQuestionId === "string"
-                                                    ? question.bankQuestionId
+                                                typeof questionWithBankId.bankQuestionId ===
+                                                "string"
+                                                    ? questionWithBankId.bankQuestionId
                                                     : null;
                                             const qId =
                                                 typeof question.id === "string"

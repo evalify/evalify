@@ -32,6 +32,8 @@ interface CustomAlertDialogProps {
     isOpen?: boolean;
     /** Optional: Callback for when the open state changes (only for controlled mode). */
     onOpenChange?: (open: boolean) => void;
+    /** Optional: Whether the action is in progress. Disables the confirm button when true. */
+    isLoading?: boolean;
 }
 
 /**
@@ -48,6 +50,7 @@ export function ConfirmationDialog({
     children,
     isOpen,
     onOpenChange,
+    isLoading = false,
 }: CustomAlertDialogProps) {
     // If isOpen and onOpenChange are provided, we are in controlled mode
     const isControlled = isOpen !== undefined && onOpenChange !== undefined;
@@ -84,11 +87,11 @@ export function ConfirmationDialog({
                     <AlertDialogDescription>{message}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => handleOpenChange(false)}>
+                    <AlertDialogCancel onClick={() => handleOpenChange(false)} disabled={isLoading}>
                         {cancelButtonText}
                     </AlertDialogCancel>
-                    <AlertDialogAction onClick={handleAccept}>
-                        {confirmButtonText}
+                    <AlertDialogAction onClick={handleAccept} disabled={isLoading}>
+                        {isLoading ? "Processing..." : confirmButtonText}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

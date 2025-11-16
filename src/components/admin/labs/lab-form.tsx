@@ -33,7 +33,12 @@ export function LabForm({ labId, onSuccess, onCancel }: LabFormProps) {
     const utils = trpc.useUtils();
 
     // Queries
-    const { data: lab } = trpc.lab.get.useQuery({ id: labId! }, { enabled: !!labId });
+    const {
+        data: lab,
+        isLoading: isLoadingLab,
+        isError: isLabError,
+    } = trpc.lab.get.useQuery({ id: labId! }, { enabled: !!labId });
+
     const { data: blocks } = trpc.lab.getUniqueBlocks.useQuery();
 
     // Mutations
@@ -160,10 +165,18 @@ export function LabForm({ labId, onSuccess, onCancel }: LabFormProps) {
         }
     };
 
-    if (isEditing && !lab) {
+    if (isEditing && isLoadingLab) {
         return (
             <div className="flex items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+            </div>
+        );
+    }
+
+    if (isEditing && (isLabError || !lab)) {
+        return (
+            <div className="p-8 text-center text-sm text-red-600">
+                Failed to load lab details. Please try again or go back.
             </div>
         );
     }

@@ -1,7 +1,10 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { X } from "lucide-react";
 import { useEffect } from "react";
+import { useModalManager } from "@/contexts/modal-manager-context";
 
 interface ModalProps {
     isOpen: boolean;
@@ -12,8 +15,6 @@ interface ModalProps {
     Backdrop?: boolean;
 }
 
-let openModalCount = 0;
-
 export function Modal({
     isOpen,
     onClose,
@@ -22,6 +23,8 @@ export function Modal({
     size = "md",
     Backdrop = false,
 }: ModalProps) {
+    const modalManager = useModalManager();
+
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
@@ -31,22 +34,22 @@ export function Modal({
 
         if (isOpen) {
             document.addEventListener("keydown", handleEscape);
-            openModalCount++;
-            if (openModalCount === 1) {
-                document.body.style.overflow = "hidden";
+
+            // Use context-based modal manager to track open modals
+            if (modalManager) {
+                modalManager.incrementModalCount();
             }
         }
 
         return () => {
             document.removeEventListener("keydown", handleEscape);
             if (isOpen) {
-                openModalCount--;
-                if (openModalCount === 0) {
-                    document.body.style.overflow = "unset";
+                if (modalManager) {
+                    modalManager.decrementModalCount();
                 }
             }
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, modalManager]);
 
     if (!isOpen) return null;
 
