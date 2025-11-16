@@ -3,22 +3,29 @@ import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { quizQuestionsTable, questionsTable } from "@/db/schema";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ quizId: string }> }) {
     try {
-        const url = new URL(req.url);
-        const quizId = url.pathname.split("/").slice(-2, -1)[0];
-
-        if (!quizId) {
-            return NextResponse.json({ error: "Quiz ID is required" }, { status: 400 });
-        }
+        const { quizId } = await params;
 
         // Fetch all questions for the quiz
         const quizQuestions = await db
             .select({
                 questionId: quizQuestionsTable.questionId,
                 orderIndex: quizQuestionsTable.orderIndex,
+                id: questionsTable.id,
+                type: questionsTable.type,
+                marks: questionsTable.marks,
+                negativeMarks: questionsTable.negativeMarks,
+                difficulty: questionsTable.difficulty,
+                courseOutcome: questionsTable.courseOutcome,
+                bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
                 question: questionsTable.question,
                 questionData: questionsTable.questionData,
+                explaination: questionsTable.explaination,
+                solution: questionsTable.solution,
+                createdById: questionsTable.createdById,
+                created_at: questionsTable.created_at,
+                updated_at: questionsTable.updated_at,
             })
             .from(quizQuestionsTable)
             .innerJoin(questionsTable, eq(quizQuestionsTable.questionId, questionsTable.id))
