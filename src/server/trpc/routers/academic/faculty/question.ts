@@ -30,7 +30,7 @@ import {
     QUESTION_VERSIONS,
     unwrapVersion,
 } from "@/lib/versioning/question-versioning";
-import { QuestionType } from "@/types/questions";
+import { QuestionType, type Question } from "@/types/questions";
 
 const managerOrFacultyProcedure = createCustomProcedure([UserType.MANAGER, UserType.STAFF]);
 
@@ -38,12 +38,6 @@ const managerOrFacultyProcedure = createCustomProcedure([UserType.MANAGER, UserT
 type TopicLink = {
     topicId: string;
     topicName: string;
-};
-
-type TransformedQuestion = Record<string, unknown> & {
-    id: string;
-    type: string;
-    topics: TopicLink[];
 };
 
 type TrueFalseSolution = {
@@ -75,6 +69,10 @@ type MatchingData = {
 type MatchingSolution = {
     options?: Array<{ id: string; matchPairIds?: string[] }>;
 };
+
+// Type for transformed question with topics and unwrapped data
+// Using Record to allow flexible properties for different question types
+type TransformedQuestion = Record<string, unknown>;
 
 const questionTypeEnum = z.enum([
     "MCQ",
@@ -296,7 +294,7 @@ export const questionRouter = createTRPCRouter({
 
                 // Fetch topics for each question
                 const questionsWithTopics = await Promise.all(
-                    questions.map(async (question): Promise<TransformedQuestion> => {
+                    questions.map(async (question): Promise<Question> => {
                         const topics: TopicLink[] = await db
                             .select({
                                 topicId: topicQuestionsTable.topicId,
@@ -371,7 +369,7 @@ export const questionRouter = createTRPCRouter({
                             }
                         }
 
-                        return transformed;
+                        return transformed as unknown as Question;
                     })
                 );
 
@@ -381,7 +379,7 @@ export const questionRouter = createTRPCRouter({
                         topicIds: input.topicIds,
                         count: questionsWithTopics.length,
                         bankQuestionIds: questionsWithTopics
-                            .map((q) => q.bankQuestionId)
+                            .map((q) => (q as unknown as TransformedQuestion).bankQuestionId)
                             .filter(Boolean),
                     },
                     "Questions listed by topics"
@@ -462,7 +460,7 @@ export const questionRouter = createTRPCRouter({
 
                 // Fetch topics for each question and transform data
                 const questionsWithTopics = await Promise.all(
-                    questions.map(async (question): Promise<TransformedQuestion> => {
+                    questions.map(async (question): Promise<Question> => {
                         const topicLinks: TopicLink[] = await db
                             .select({
                                 topicId: topicsTable.id,
@@ -542,7 +540,7 @@ export const questionRouter = createTRPCRouter({
                             transformedQuestion.explanation = solutionData?.explanation;
                         }
 
-                        return transformedQuestion;
+                        return transformedQuestion as unknown as Question;
                     })
                 );
 
@@ -700,7 +698,7 @@ export const questionRouter = createTRPCRouter({
 
                 logger.info({ questionId: input.questionId }, "Question retrieved");
 
-                return transformedQuestion;
+                return transformedQuestion as unknown as Question;
             } catch (error) {
                 logger.error({ error, questionId: input.questionId }, "Error getting question");
                 throw error;

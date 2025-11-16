@@ -264,6 +264,13 @@ export default function QuizQuestionsPage() {
                         </div>
                         <div className="flex gap-2">
                             <Button
+                                onClick={() => handleAddQuestion()}
+                                className="flex items-center gap-2"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Question
+                            </Button>
+                            <Button
                                 variant="outline"
                                 onClick={() => setCreateSectionOpen(true)}
                                 className="flex items-center gap-2"

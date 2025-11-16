@@ -5,6 +5,7 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { type ThemeProviderProps } from "next-themes";
 import { TRPCProvider } from "@/lib/trpc/client";
 import { Toaster } from "sonner";
+import { ModalManagerProvider } from "@/contexts/modal-manager-context";
 
 export interface ProvidersProps {
     children: React.ReactNode;
@@ -21,8 +22,10 @@ export function Providers({ children }: ProvidersProps) {
         >
             <SessionProvider>
                 <TRPCProvider>
-                    {children}
-                    <Toaster position="bottom-right" richColors expand={true} />
+                    <ModalManagerProvider>
+                        {children}
+                        <Toaster position="bottom-right" richColors expand={true} />
+                    </ModalManagerProvider>
                 </TRPCProvider>
             </SessionProvider>
         </NextThemesProvider>

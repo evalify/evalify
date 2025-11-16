@@ -200,7 +200,6 @@ export function SemesterBulkForm({ onSubmit, onCancel }: SemesterBulkFormProps) 
 
             await onSubmit(semestersToCreate);
         } catch (error) {
-            console.error("Error submitting bulk form:", error);
         } finally {
             setIsLoading(false);
         }

@@ -449,7 +449,7 @@ export default function QuestionPage() {
 
     return (
         <QuestionForm
-            initialData={isCreateMode ? undefined : (questionData as unknown as Question)}
+            initialData={isCreateMode ? undefined : questionData}
             onSave={handleSave}
             onSaveAndContinue={isCreateMode ? handleSaveAndContinue : undefined}
             onCancel={handleCancel}

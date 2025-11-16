@@ -97,7 +97,6 @@ export function LabManagement() {
             await deleteLab.mutateAsync({ id: labToDelete });
             track("Lab Deleted", { labId: labToDelete });
         } catch (error) {
-            console.error("Error deleting lab:", error);
             track("Lab Delete Error", {
                 error: error instanceof Error ? error.message : "Unknown error",
             });

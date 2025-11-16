@@ -24,7 +24,7 @@ export function CourseAssignment({
 
     const handleImplementationAlert = (feature: string) => {
         error(
-            `${feature} is not yet implemented. Please add the required relationship tables (courseStudents, courseBatches, courseInstructors) to your database schema and implement the corresponding CRUD operations.`,
+            `${feature} is not yet implemented. Please implement the corresponding CRUD operations in the tRPC course router (src/server/trpc/routers/administrative/course.ts) using the existing Drizzle relationship tables (courseStudentsTable, courseBatchesTable, courseInstructorsTable).`,
             { duration: 6000 }
         );
     };
@@ -53,19 +53,22 @@ export function CourseAssignment({
                             Relationship Management Not Yet Implemented
                         </h3>
                         <p className="text-yellow-700 dark:text-yellow-300 text-sm mb-3">
-                            To enable course assignments, you need to add relationship tables to
-                            your Convex schema:
+                            The Drizzle schema relationship tables are already defined. To enable
+                            course assignments, implement the CRUD operations in the tRPC course
+                            router:
                         </p>
                         <ul className="text-yellow-700 dark:text-yellow-300 text-sm space-y-1 mb-4">
                             <li>
-                                • <code>courseStudents</code> - Link courses to individual students
+                                • <code>courseStudentsTable</code> - Link courses to individual
+                                students (src/db/schema/course/course-student.ts)
                             </li>
                             <li>
-                                • <code>courseBatches</code> - Link courses to student batches
+                                • <code>courseBatchesTable</code> - Link courses to student batches
+                                (src/db/schema/course/course-batch.ts)
                             </li>
                             <li>
-                                • <code>courseInstructors</code> - Link courses to faculty
-                                instructors
+                                • <code>courseInstructorsTable</code> - Link courses to faculty
+                                instructors (src/db/schema/course/course-instructor.ts)
                             </li>
                         </ul>
                         <Button
@@ -142,36 +145,69 @@ export function CourseAssignment({
 
             {/* Schema Example */}
             <Card className="p-6 bg-gray-50 dark:bg-gray-900">
-                <h3 className="font-semibold mb-3">Required Schema Additions</h3>
+                <h3 className="font-semibold mb-3">Required Schema Definitions (Drizzle ORM)</h3>
                 <pre className="text-sm bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-x-auto">
-                    {`// Add to convex/schema.ts
+                    {`// src/db/schema/course/course-student.ts
+import { index, uuid, primaryKey, pgTable } from "drizzle-orm/pg-core";
+import { coursesTable } from "./course";
+import { usersTable } from "../user/user";
+import { timestamps } from "../utils";
 
-const courseStudentSchema = defineTable({
-  courseId: v.id("courses"),
-  studentId: v.id("users"),
-  enrolledAt: v.number(),
-  isActive: statusValidator,
-})
-  .index("by_course", ["courseId"])
-  .index("by_student", ["studentId"]);
+export const courseStudentsTable = pgTable(
+  "course_students",
+  {
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => coursesTable.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    ...timestamps, // created_at, updated_at
+  },
+  (table) => [
+    primaryKey({ columns: [table.courseId, table.studentId] }),
+    index("idx_course_students_course_id").on(table.courseId),
+    index("idx_course_students_student_id").on(table.studentId),
+  ]
+);
 
-const courseBatchSchema = defineTable({
-  courseId: v.id("courses"),
-  batchId: v.id("batches"),
-  assignedAt: v.number(),
-  isActive: statusValidator,
-})
-  .index("by_course", ["courseId"])
-  .index("by_batch", ["batchId"]);
+// src/db/schema/course/course-batch.ts
+export const courseBatchesTable = pgTable(
+  "course_batches",
+  {
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => coursesTable.id, { onDelete: "cascade" }),
+    batchId: uuid("batch_id")
+      .notNull()
+      .references(() => batchesTable.id, { onDelete: "cascade" }),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.courseId, table.batchId] }),
+    index("idx_course_batches_course_id").on(table.courseId),
+    index("idx_course_batches_batch_id").on(table.batchId),
+  ]
+);
 
-const courseInstructorSchema = defineTable({
-  courseId: v.id("courses"),
-  instructorId: v.id("users"),
-  assignedAt: v.number(),
-  isActive: statusValidator,
-})
-  .index("by_course", ["courseId"])
-  .index("by_instructor", ["instructorId"]);`}
+// src/db/schema/course/course-instructor.ts
+export const courseInstructorsTable = pgTable(
+  "course_instructors",
+  {
+    courseId: uuid("course_id")
+      .notNull()
+      .references(() => coursesTable.id, { onDelete: "cascade" }),
+    instructorId: uuid("instructor_id")
+      .notNull()
+      .references(() => usersTable.id, { onDelete: "cascade" }),
+    ...timestamps,
+  },
+  (table) => [
+    primaryKey({ columns: [table.courseId, table.instructorId] }),
+    index("idx_course_instructors_course_id").on(table.courseId),
+    index("idx_course_instructors_instructor_id").on(table.instructorId),
+  ]
+);`}
                 </pre>
             </Card>
         </div>

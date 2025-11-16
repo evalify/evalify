@@ -14,13 +14,58 @@ const buildRemotePatterns = () => {
         });
     } else if (process.env.MINIO_ENDPOINT && process.env.MINIO_PORT) {
         // Use environment variables for production MinIO endpoint
-        const url = new URL(process.env.MINIO_ENDPOINT);
-        patterns.push({
-            protocol: url.protocol.replace(":", "") as "http" | "https",
-            hostname: url.hostname,
-            port: process.env.MINIO_PORT,
-            pathname: "/profile-images/**",
-        });
+        try {
+            // Validate MINIO_ENDPOINT is a valid URL
+            const endpoint = process.env.MINIO_ENDPOINT.trim();
+            if (!endpoint) {
+                throw new Error("MINIO_ENDPOINT is empty");
+            }
+
+            const url = new URL(endpoint);
+
+            // Validate protocol is http or https
+            if (url.protocol !== "http:" && url.protocol !== "https:") {
+                throw new Error(
+                    `Unsupported MINIO_ENDPOINT protocol: "${url.protocol}". Only "http:" and "https:" are supported.`
+                );
+            }
+
+            // Validate hostname exists
+            if (!url.hostname) {
+                throw new Error(`MINIO_ENDPOINT does not contain a valid hostname: "${endpoint}"`);
+            }
+
+            // Validate MINIO_PORT is numeric
+            const port = process.env.MINIO_PORT.trim();
+            if (!port) {
+                throw new Error("MINIO_PORT is empty");
+            }
+
+            const portNumber = parseInt(port, 10);
+            if (isNaN(portNumber) || portNumber < 1 || portNumber > 65535) {
+                throw new Error(`MINIO_PORT must be a valid port number (1-65535), got: "${port}"`);
+            }
+
+            // Convert protocol safely: "http:" -> "http", "https:" -> "https"
+            const protocol = url.protocol.replace(":", "") as "http" | "https";
+
+            patterns.push({
+                protocol,
+                hostname: url.hostname,
+                port: port,
+                pathname: "/profile-images/**",
+            });
+        } catch (error) {
+            // Provide clear build-time error
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Unknown error parsing MinIO configuration";
+            throw new Error(
+                `[next.config.ts] Failed to configure MinIO remote pattern: ${message}. ` +
+                    `Please check MINIO_ENDPOINT and MINIO_PORT environment variables.`
+            );
+        }
     }
 
     return patterns;

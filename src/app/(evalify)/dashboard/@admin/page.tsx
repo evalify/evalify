@@ -306,7 +306,10 @@ export default function AdminDashboard() {
                             <div className="flex items-center gap-2">
                                 <span className="font-medium">{stats.students}</span>
                                 <Badge variant="secondary">
-                                    {Math.round((stats.students / stats.totalUsers) * 100)}%
+                                    {stats.totalUsers
+                                        ? Math.round((stats.students / stats.totalUsers) * 100)
+                                        : 0}
+                                    %
                                 </Badge>
                             </div>
                         </div>

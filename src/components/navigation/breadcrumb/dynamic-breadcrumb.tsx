@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { cn } from "@/lib/utils";
 import { useNavigation } from "../hooks/use-navigation";
-import { NavigationConfig } from "../hooks/use-navigation-config";
+import { NavigationConfig } from "../navigation-config";
 
 interface DynamicBreadcrumbProps {
     customConfig?: NavigationConfig;
