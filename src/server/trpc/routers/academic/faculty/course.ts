@@ -29,6 +29,7 @@ export const facultyCourseRouter = createTRPCRouter({
         .input(
             z.object({
                 searchTerm: z.string().optional(),
+                type: z.enum(["CORE", "ELECTIVE", "MICRO_CREDENTIAL", "ALL"]).default("ALL"),
                 isActive: z.enum(["ACTIVE", "INACTIVE", "ALL"]).default("ACTIVE"),
                 limit: z.number().min(1).max(100).default(12),
                 offset: z.number().min(0).default(0),
@@ -78,6 +79,10 @@ export const facultyCourseRouter = createTRPCRouter({
 
                 // Build conditions for filtering
                 const conditions = [inArray(coursesTable.id, allCourseIds)];
+
+                if (input.type !== "ALL") {
+                    conditions.push(eq(coursesTable.type, input.type));
+                }
 
                 if (input.isActive !== "ALL") {
                     conditions.push(eq(coursesTable.isActive, input.isActive));

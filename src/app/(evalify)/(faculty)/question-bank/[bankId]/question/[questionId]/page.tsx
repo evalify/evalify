@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useQuestionNavigation } from "@/contexts/question-navigation-context";
+import { logger } from "@/lib/logger";
 
 export default function QuestionPage() {
     const router = useRouter();
@@ -105,6 +106,7 @@ export default function QuestionPage() {
                     bankId,
                     type: question.type,
                     question: question.question,
+                    explanation: question.explanation,
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
@@ -186,6 +188,9 @@ export default function QuestionPage() {
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     options: matchQuestion.options,
                 });
+            } else {
+                error(`Question type "${question.type}" is not yet supported`);
+                logger.error("Unsupported question type in create", { type: question.type });
             }
         } else {
             track("question_updated", {
@@ -205,6 +210,7 @@ export default function QuestionPage() {
                     bankId,
                     type: question.type,
                     question: question.question,
+                    explanation: question.explanation,
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
@@ -288,6 +294,12 @@ export default function QuestionPage() {
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     options: matchQuestion.options,
                 });
+            } else {
+                error(`Question type "${question.type}" is not yet supported`);
+                logger.error("Unsupported question type in update", {
+                    type: question.type,
+                    questionId,
+                });
             }
         }
     };
@@ -312,6 +324,7 @@ export default function QuestionPage() {
                 bankId,
                 type: question.type,
                 question: question.question,
+                explanation: question.explanation,
                 marks: question.marks,
                 negativeMarks: question.negativeMarks,
                 difficulty: question.difficulty,
@@ -393,6 +406,11 @@ export default function QuestionPage() {
                 topicIds: (question.topics || []).map((t) => t.topicId),
                 options: matchQuestion.options,
             } as never);
+        } else {
+            error(`Question type "${question.type}" is not yet supported`);
+            logger.error("Unsupported question type in create-and-continue", {
+                type: question.type,
+            });
         }
     };
 

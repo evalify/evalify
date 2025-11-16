@@ -57,7 +57,7 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
-**To run Drizzle Studio**
+### To run Drizzle Studio
 
 ```bash
 pnpm db:studio

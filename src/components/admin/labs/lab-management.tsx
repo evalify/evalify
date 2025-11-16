@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../../ui/button";
@@ -65,6 +65,15 @@ export function LabManagement() {
     const labs = labsResult?.data?.labs || [];
     const total = labsResult?.data?.total || 0;
     const totalPages = Math.ceil(total / limit);
+
+    // Clamp currentPage to valid range when data changes
+    useEffect(() => {
+        if (totalPages > 0 && currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        } else if (totalPages === 0 && currentPage !== 1) {
+            setCurrentPage(1);
+        }
+    }, [totalPages, currentPage]);
 
     const handleCreateSuccess = () => {
         setShowCreateModal(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,11 +74,11 @@ export function CourseForm({
                 code: initialData.code,
                 image: initialData.image || "",
                 type: initialData.type,
-                semesterId: initialData.semesterId,
+                semesterId: fixedSemesterId || initialData.semesterId,
                 isActive: initialData.isActive,
             });
         }
-    }, [initialData]);
+    }, [initialData, fixedSemesterId]);
 
     const validateForm = (): boolean => {
         const newErrors: Record<string, string> = {};
@@ -109,7 +109,7 @@ export function CourseForm({
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!validateForm()) {
@@ -227,36 +227,6 @@ export function CourseForm({
                     </select>
                 </div>
 
-                {/* Semester */}
-                {!fixedSemesterId && semesters && (
-                    <div className="space-y-2">
-                        <Label htmlFor="semesterId" className="text-sm font-medium">
-                            Semester
-                        </Label>
-                        <select
-                            id="semesterId"
-                            value={formData.semesterId}
-                            onChange={(e) => handleInputChange("semesterId", e.target.value)}
-                            className={`w-full px-3 py-2 border rounded-md bg-background text-foreground ${
-                                errors.semesterId ? "border-red-500" : "border-input"
-                            }`}
-                            disabled={isLoading}
-                        >
-                            <option value="">Select a semester</option>
-                            {semesters
-                                .filter((semester) => semester.isActive === "ACTIVE")
-                                .map((semester) => (
-                                    <option key={semester.id} value={semester.id}>
-                                        {semester.name} ({semester.year})
-                                    </option>
-                                ))}
-                        </select>
-                        {errors.semesterId && (
-                            <p className="text-sm text-red-500">{errors.semesterId}</p>
-                        )}
-                    </div>
-                )}
-
                 {/* Course Image (Optional) */}
                 <div className="space-y-2">
                     <Label htmlFor="image" className="text-sm font-medium">
@@ -314,7 +284,7 @@ export function CourseForm({
                         !formData.name.trim() ||
                         !formData.description.trim() ||
                         !formData.code.trim() ||
-                        !formData.semesterId
+                        (!fixedSemesterId && !formData.semesterId)
                     }
                     className="flex-1"
                 >

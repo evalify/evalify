@@ -29,6 +29,7 @@ type BaseQuestionInput = {
     courseOutcome?: CourseOutcome | null;
     bloomTaxonomyLevel?: BloomsLevel | null;
     topicIds?: string[] | null;
+    explanation?: string;
 };
 
 type MCQQuestionInput = BaseQuestionInput & {
@@ -46,25 +47,22 @@ type MMCQQuestionInput = BaseQuestionInput & {
 type TrueFalseQuestionInput = BaseQuestionInput & {
     type: "TRUE_FALSE";
     trueFalseAnswer: boolean;
-    explanation?: string;
 };
 
 type FillTheBlankQuestionInput = BaseQuestionInput & {
     type: "FILL_THE_BLANK";
     blankConfig: FillInBlanksConfig;
-    explanation?: string;
 };
 
 type DescriptiveQuestionInput = BaseQuestionInput & {
     type: "DESCRIPTIVE";
     descriptiveConfig: DescriptiveConfig;
-    explanation?: string;
+    guidelines?: string;
 };
 
 type MatchingQuestionInput = BaseQuestionInput & {
     type: "MATCHING";
     options: MatchOptions[];
-    explanation?: string;
 };
 
 type CreateQuestionInput =
@@ -156,6 +154,7 @@ export default function QuizQuestionPage() {
             difficulty: question.difficulty,
             bloomTaxonomyLevel: question.bloomsLevel,
             courseOutcome: question.courseOutcome,
+            explanation: question.explanation,
             topicIds: (question.topics || []).map((t) => t.topicId),
         };
 
@@ -185,7 +184,6 @@ export default function QuizQuestionPage() {
             const input: CreateQuestionInput = {
                 ...baseInput,
                 type: question.type,
-                explanation: question.explanation,
                 trueFalseAnswer: tfQuestion.trueFalseAnswer,
             };
 
@@ -202,7 +200,6 @@ export default function QuizQuestionPage() {
             const input: CreateQuestionInput = {
                 ...baseInput,
                 type: question.type,
-                explanation: question.explanation,
                 blankConfig: fibQuestion.blankConfig,
             };
 
@@ -219,7 +216,6 @@ export default function QuizQuestionPage() {
             const input: CreateQuestionInput = {
                 ...baseInput,
                 type: question.type,
-                explanation: question.explanation,
                 descriptiveConfig: descQuestion.descriptiveConfig,
             };
 
@@ -236,7 +232,6 @@ export default function QuizQuestionPage() {
             const input: CreateQuestionInput = {
                 ...baseInput,
                 type: question.type,
-                explanation: question.explanation,
                 options: matchQuestion.options,
             };
 
@@ -266,6 +261,7 @@ export default function QuizQuestionPage() {
             bloomTaxonomyLevel: question.bloomsLevel,
             courseOutcome: question.courseOutcome,
             topicIds: (question.topics || []).map((t) => t.topicId),
+            explanation: question.explanation,
         };
 
         if (question.type === "MCQ" || question.type === "MMCQ") {
@@ -290,7 +286,6 @@ export default function QuizQuestionPage() {
             const input: CreateQuestionInput = {
                 ...baseInput,
                 type: question.type,
-                explanation: question.explanation,
                 trueFalseAnswer: tfQuestion.trueFalseAnswer,
             };
 
@@ -303,7 +298,6 @@ export default function QuizQuestionPage() {
             const input: CreateQuestionInput = {
                 ...baseInput,
                 type: question.type,
-                explanation: question.explanation,
                 blankConfig: fibQuestion.blankConfig,
             };
 
@@ -316,7 +310,6 @@ export default function QuizQuestionPage() {
             const input: CreateQuestionInput = {
                 ...baseInput,
                 type: question.type,
-                explanation: question.explanation,
                 descriptiveConfig: descQuestion.descriptiveConfig,
             };
 
@@ -329,7 +322,6 @@ export default function QuizQuestionPage() {
             const input: CreateQuestionInput = {
                 ...baseInput,
                 type: question.type,
-                explanation: question.explanation,
                 options: matchQuestion.options,
             };
 

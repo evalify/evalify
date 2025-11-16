@@ -40,7 +40,9 @@ export default function QuizPage() {
         if (activeTab !== "all") {
             params.set("status", activeTab);
         }
-        const newUrl = params.toString() ? `?${params.toString()}` : "/student/quiz";
+        const newUrl = params.toString()
+            ? `${window.location.pathname}?${params.toString()}`
+            : "/student/quiz";
         router.replace(newUrl, { scroll: false });
     }, [activeTab, router]);
 

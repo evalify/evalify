@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Edit, Trash2, Eye, MoreHorizontal } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-interface GridCardProps {
+export interface GridCardProps {
     title: string;
     subtitle?: string;
     status: "ACTIVE" | "INACTIVE";
@@ -26,7 +26,7 @@ export function GridCard({
     children,
 }: GridCardProps) {
     return (
-        <Card className="bg-gray-800 border-gray-700 hover:bg-gray-750 transition-colors">
+        <Card className="bg-gray-800 border-gray-700 hover:bg-gray-700 transition-colors">
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                     <div className="space-y-1">

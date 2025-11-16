@@ -45,7 +45,7 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
     const addInstructor = trpc.course.addFacultyAndManagers.useMutation({
         onSuccess: () => {
             utils.course.getInstructors.invalidate({ courseId });
-            utils.course.getAvailableFaculty.invalidate({ courseId });
+            utils.course.getAvailableFacultyAndManagers.invalidate({ courseId });
             success("Instructor added to course successfully");
         },
         onError: (err) => {
@@ -57,7 +57,7 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
     const removeInstructor = trpc.course.removeInstructor.useMutation({
         onSuccess: () => {
             utils.course.getInstructors.invalidate({ courseId });
-            utils.course.getAvailableFaculty.invalidate({ courseId });
+            utils.course.getAvailableFacultyAndManagers.invalidate({ courseId });
             success("Instructor removed from course successfully");
         },
         onError: (err) => {
@@ -71,12 +71,14 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
         try {
             await addInstructor.mutateAsync({ courseId, instructorId });
             track("course_instructor_added", { courseId, instructorId });
+        } catch {
+            /* swallow - onError handles UI */
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleRemoveInstructor = async (instructorId: string) => {
+    const handleRemoveInstructor = (instructorId: string) => {
         setInstructorToRemove(instructorId);
         setIsRemoveDialogOpen(true);
     };
@@ -88,6 +90,8 @@ export function CourseInstructorsModal({ courseId, onClose }: CourseInstructorsM
         try {
             await removeInstructor.mutateAsync({ courseId, instructorId: instructorToRemove });
             track("course_instructor_removed", { courseId, instructorId: instructorToRemove });
+        } catch {
+            /* swallow - onError handles UI */
         } finally {
             setIsLoading(false);
             setIsRemoveDialogOpen(false);

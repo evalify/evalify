@@ -58,7 +58,8 @@ export default function Page({ params }: { params: Promise<{ courseId: string }>
         if (!upcomingQuiz) return;
 
         const startTime = new Date(upcomingQuiz.startTime).getTime();
-        const timeUntilStart = startTime - currentTime;
+        const now = Date.now();
+        const timeUntilStart = startTime - now;
 
         // If quiz starts within 2 minutes, check every 5 seconds
         if (timeUntilStart > 0 && timeUntilStart <= 120000) {
@@ -85,7 +86,7 @@ export default function Page({ params }: { params: Promise<{ courseId: string }>
 
             return () => clearInterval(reloadInterval);
         }
-    }, [upcomingQuiz, currentTime, refetch, router, courseId]);
+    }, [upcomingQuiz, refetch, router, courseId]);
 
     if (error) {
         return (

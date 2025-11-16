@@ -1,5 +1,6 @@
 "use client";
 
+import { capitalizeName } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,14 +27,6 @@ interface ExcelCourseRow {
     'Course Type ["CORE", "ELECTIVE", "MICRO_CREDENTIAL"]'?: string;
     "Instructors (Pipe Separated)"?: string;
     "Batches (Pipe Separated)"?: string;
-}
-
-// Helper function to capitalize course name
-function capitalizeName(name: string): string {
-    return name
-        .split(" ")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(" ");
 }
 
 // Helper function to parse pipe-separated values
@@ -66,7 +59,6 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
             onCancel();
         },
         onError: (err) => {
-            console.error("Bulk create error:", err);
             error(err.message || "Failed to create courses");
         },
     });
@@ -82,8 +74,7 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
 
             success("Template downloaded successfully");
             track("course_bulk_template_downloaded");
-        } catch (err) {
-            console.error("Error downloading template:", err);
+        } catch (_err) {
             error("Failed to download template");
         }
     };
@@ -138,8 +129,7 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
             const validated = await validateRows(data);
             setParsedRows(validated);
             setShowConfirmation(true);
-        } catch (err) {
-            console.error("Error uploading file:", err);
+        } catch (_err) {
             error("Failed to process the file");
         } finally {
             setIsUploading(false);
@@ -304,7 +294,7 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
                 courseName,
                 courseCode,
                 courseDescription,
-                courseType: courseType!,
+                courseType: courseType || "CORE",
                 instructors,
                 batches: batchNames,
                 semesterId,
@@ -373,8 +363,7 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
 
             await bulkCreateCourses.mutateAsync({ courses: coursesToCreate });
             track("courses_bulk_created", { count: coursesToCreate.length });
-        } catch (err) {
-            console.error("Error confirming courses:", err);
+        } catch (_err) {
         } finally {
             setIsProcessing(false);
         }

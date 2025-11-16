@@ -37,7 +37,7 @@ import {
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useSession, signOut, signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
@@ -149,7 +149,13 @@ export function AppSidebar() {
     const pathname = usePathname();
     const { data: session } = useSession();
     const { open } = useSidebar();
-    const [mounted] = useState(true);
+    const [mounted, setMounted] = useState(false);
+
+    // This is a valid use case for detecting client-side mounting to prevent hydration mismatches
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setMounted(true);
+    }, []);
 
     return (
         <Sidebar collapsible="icon" side="left" className="group relative">

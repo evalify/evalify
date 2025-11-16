@@ -39,17 +39,19 @@ export default function DescriptiveComponent({ value, onChange }: DescriptiveCom
     };
 
     const handleAddKeyword = () => {
-        const currentKeywords = value.descriptiveConfig?.keywords || [];
+        const currentKeywords = value.descriptiveConfig?.keywords || [""];
         handleKeywordsChange([...currentKeywords, ""]);
     };
 
     const handleRemoveKeyword = (index: number) => {
-        const currentKeywords = value.descriptiveConfig?.keywords || [];
-        handleKeywordsChange(currentKeywords.filter((_, i) => i !== index));
+        const currentKeywords = value.descriptiveConfig?.keywords || [""];
+        const filtered = currentKeywords.filter((_, i) => i !== index);
+        // Never allow empty array - always keep at least one empty input
+        handleKeywordsChange(filtered.length === 0 ? [""] : filtered);
     };
 
     const handleKeywordChange = (index: number, keyword: string) => {
-        const currentKeywords = value.descriptiveConfig?.keywords || [];
+        const currentKeywords = value.descriptiveConfig?.keywords || [""];
         const updatedKeywords = [...currentKeywords];
         updatedKeywords[index] = keyword;
         handleKeywordsChange(updatedKeywords);
@@ -133,7 +135,7 @@ export default function DescriptiveComponent({ value, onChange }: DescriptiveCom
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => handleRemoveKeyword(index)}
-                                disabled={(value.descriptiveConfig?.keywords || []).length === 1}
+                                disabled={(value.descriptiveConfig?.keywords || [""]).length === 1}
                                 className="hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20"
                             >
                                 <Trash2 className="h-4 w-4" />
@@ -172,9 +174,9 @@ export default function DescriptiveComponent({ value, onChange }: DescriptiveCom
                                 type="number"
                                 min="0"
                                 placeholder="e.g., 50"
-                                value={value.descriptiveConfig?.minWords || ""}
+                                value={value.descriptiveConfig?.minWords ?? ""}
                                 onChange={(e) =>
-                                    handleMinWordsChange(parseInt(e.target.value) || 0)
+                                    handleMinWordsChange(parseInt(e.target.value, 10) || 0)
                                 }
                             />
                         </div>
@@ -185,9 +187,9 @@ export default function DescriptiveComponent({ value, onChange }: DescriptiveCom
                                 type="number"
                                 min="0"
                                 placeholder="e.g., 500"
-                                value={value.descriptiveConfig?.maxWords || ""}
+                                value={value.descriptiveConfig?.maxWords ?? ""}
                                 onChange={(e) =>
-                                    handleMaxWordsChange(parseInt(e.target.value) || 0)
+                                    handleMaxWordsChange(parseInt(e.target.value, 10) || 0)
                                 }
                             />
                         </div>

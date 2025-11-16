@@ -13,15 +13,19 @@ const handler = async (req: Request) => {
         req,
         router: appRouter,
         createContext: createTRPCContext,
-        onError:
-            process.env.NODE_ENV === "development"
-                ? ({ path, error }) => {
-                      logger.error(
-                          { path, error: error.message, code: error.code },
-                          `❌ tRPC failed on ${path ?? "<no-path>"}: ${error.message}`
-                      );
-                  }
-                : undefined,
+        onError: ({ path, error }) => {
+            const isDev = process.env.NODE_ENV === "development";
+            logger.error(
+                {
+                    path,
+                    code: error.code,
+                    ...(isDev && { error: error.message }),
+                },
+                isDev
+                    ? `❌ tRPC failed on ${path ?? "<no-path>"}: ${error.message}`
+                    : `tRPC error on ${path ?? "<no-path>"}`
+            );
+        },
     });
 };
 

@@ -131,13 +131,11 @@ export default function FacultyDashboard() {
 
         const courses = coursesData.courses || [];
 
-        return courses.map((course) => {
-            // Get quiz count for this course
-            const courseQuizzes =
-                quizQueries.find((q) => q.data?.quizzes?.[0]?.id)?.data?.quizzes || [];
-            const quizCount = courseQuizzes.filter((q) =>
-                allQuizzes.some((aq) => aq.id === q.id)
-            ).length;
+        return courses.map((course, index) => {
+            // Get quiz count for this course by matching the index
+            // quizQueries is in the same order as courseIds/courses
+            const courseQuizzes = quizQueries[index]?.data?.quizzes || [];
+            const quizCount = courseQuizzes.length;
 
             // Get student count for this course
             const courseStudentData = studentsData.find((s) => s.courseId === course.id);
@@ -154,7 +152,7 @@ export default function FacultyDashboard() {
                 studentCount,
             };
         });
-    }, [coursesData, studentsData, quizQueries, allQuizzes]);
+    }, [coursesData, studentsData, quizQueries]);
 
     const isLoading = isLoadingCourses || isLoadingBanks || isLoadingStudents || isLoadingQuizzes;
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useAnalytics } from "@/hooks/use-analytics";
@@ -19,14 +20,12 @@ export function CourseAssignment({
     onClose,
 }: CourseAssignmentProps) {
     const { track: _track } = useAnalytics();
+    const { error } = useToast();
 
     const handleImplementationAlert = (feature: string) => {
-        alert(
-            `${feature} requires implementing relationship tables in the Convex schema:\n\n` +
-                "1. courseStudents - for student assignments\n" +
-                "2. courseBatches - for batch assignments\n" +
-                "3. courseInstructors - for instructor assignments\n\n" +
-                "Add these tables to convex/schema.ts and implement the corresponding CRUD operations."
+        error(
+            `${feature} is not yet implemented. Please add the required relationship tables (courseStudents, courseBatches, courseInstructors) to your database schema and implement the corresponding CRUD operations.`,
+            { duration: 6000 }
         );
     };
 

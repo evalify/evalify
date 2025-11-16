@@ -2,22 +2,13 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useCallback, useMemo } from "react";
+import { NavigationConfig } from "./use-navigation-config";
 
 export interface BreadcrumbSegment {
     label: string;
     href: string;
     isCurrentPage?: boolean;
     isDynamicSegment?: boolean; // New property to identify dynamic segments
-}
-
-export interface NavigationConfig {
-    [key: string]: {
-        label: string;
-        parent?: string;
-        dynamicSegments?: {
-            [key: string]: string; // segment pattern -> label
-        };
-    };
 }
 
 const defaultNavigationConfig: NavigationConfig = {
@@ -79,7 +70,7 @@ const defaultNavigationConfig: NavigationConfig = {
 // Helper functions
 const isUUID = (str: string): boolean => {
     const uuidRegex = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
-    return uuidRegex.test(str.replace(/\s/g, ""));
+    return uuidRegex.test(str);
 };
 
 const isNumericId = (str: string): boolean => {

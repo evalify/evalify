@@ -23,9 +23,10 @@ export function NavigationControls({ className, showLabels = false }: Navigation
                 disabled={!canGoBack}
                 className="h-8 w-8 p-0"
                 title="Go back"
+                aria-label="Go back"
             >
                 <ArrowLeft className="h-4 w-4" />
-                {showLabels && <span className="sr-only">Back</span>}
+                <span className={showLabels ? "ml-2" : "sr-only"}>Back</span>
             </Button>
 
             <Button
@@ -35,9 +36,10 @@ export function NavigationControls({ className, showLabels = false }: Navigation
                 disabled={!canGoForward}
                 className="h-8 w-8 p-0"
                 title="Go forward"
+                aria-label="Go forward"
             >
                 <ArrowRight className="h-4 w-4" />
-                {showLabels && <span className="sr-only">Forward</span>}
+                <span className={showLabels ? "ml-2" : "sr-only"}>Forward</span>
             </Button>
         </div>
     );

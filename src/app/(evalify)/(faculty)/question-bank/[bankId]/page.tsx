@@ -226,7 +226,10 @@ export default function QuestionBankPage() {
     const deleteQuestionMutation = trpc.question.delete.useMutation({
         onSuccess: (data) => {
             success("Question deleted successfully!");
-            utils.question.listByTopics.invalidate({ bankId, topicIds: selectedTopics });
+            utils.question.listByTopics.invalidate({
+                bankId,
+                topicIds: selectedTopics.filter((id) => id !== NO_TOPIC_ID),
+            });
             utils.question.listByBank.invalidate({ bankId });
             setQuestionToDelete(null);
             track("question_deleted", { bankId, questionId: data.id });

@@ -48,7 +48,6 @@ export function CourseStudentsModal({ courseId, onClose }: CourseStudentsModalPr
             success("Student added to course successfully");
         },
         onError: (err) => {
-            console.error("Add student error:", err);
             error(err.message || "Failed to add student to course");
         },
     });
@@ -60,7 +59,6 @@ export function CourseStudentsModal({ courseId, onClose }: CourseStudentsModalPr
             success("Student removed from course successfully");
         },
         onError: (err) => {
-            console.error("Remove student error:", err);
             error(err.message || "Failed to remove student from course");
         },
     });

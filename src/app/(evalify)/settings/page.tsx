@@ -19,8 +19,8 @@ import {
     Bell,
     Palette,
     Monitor,
-    Smartphone,
-    Eye,
+    Sun,
+    Moon,
     Camera,
     Trash2,
     Loader2,
@@ -32,8 +32,11 @@ import { trpc } from "@/lib/trpc/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
 
-function capitalizeWord(word: string) {
-    return word.charAt(0).toUpperCase() + word.slice(1);
+function capitalizeWord(text: string) {
+    return text
+        .split(" ")
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(" ");
 }
 
 export default function SettingsPage() {
@@ -186,7 +189,7 @@ export default function SettingsPage() {
                                             </AvatarFallback>
                                         </Avatar>
                                         <Badge className="absolute -bottom-1 -right-1 bg-primary border-0">
-                                            {session?.user.groups[0].toUpperCase() || "User"}
+                                            {session?.user?.groups?.[0]?.toUpperCase() || "User"}
                                         </Badge>
 
                                         {/* Camera overlay on hover */}
@@ -426,13 +429,13 @@ export default function SettingsPage() {
                                                     >
                                                         <div className="flex items-center gap-2">
                                                             {themeOption === "light" && (
-                                                                <Monitor className="h-4 w-4" />
+                                                                <Sun className="h-4 w-4" />
                                                             )}
                                                             {themeOption === "dark" && (
-                                                                <Smartphone className="h-4 w-4" />
+                                                                <Moon className="h-4 w-4" />
                                                             )}
                                                             {themeOption === "system" && (
-                                                                <Eye className="h-4 w-4" />
+                                                                <Monitor className="h-4 w-4" />
                                                             )}
                                                             <span className="capitalize text-sm font-medium">
                                                                 {themeOption}

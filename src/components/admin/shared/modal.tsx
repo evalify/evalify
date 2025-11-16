@@ -12,6 +12,8 @@ interface ModalProps {
     Backdrop?: boolean;
 }
 
+let openModalCount = 0;
+
 export function Modal({
     isOpen,
     onClose,
@@ -29,12 +31,20 @@ export function Modal({
 
         if (isOpen) {
             document.addEventListener("keydown", handleEscape);
-            document.body.style.overflow = "hidden";
+            openModalCount++;
+            if (openModalCount === 1) {
+                document.body.style.overflow = "hidden";
+            }
         }
 
         return () => {
             document.removeEventListener("keydown", handleEscape);
-            document.body.style.overflow = "unset";
+            if (isOpen) {
+                openModalCount--;
+                if (openModalCount === 0) {
+                    document.body.style.overflow = "unset";
+                }
+            }
         };
     }, [isOpen, onClose]);
 
@@ -54,7 +64,7 @@ export function Modal({
             {/* Backdrop */}
             <div
                 className={`fixed inset-0  transition-opacity ${Backdrop ? " bg-black/50" : ""}`}
-                onClick={onClose}
+                onClick={Backdrop ? onClose : undefined}
             />
 
             {/* Modal */}

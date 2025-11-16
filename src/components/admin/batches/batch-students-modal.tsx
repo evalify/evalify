@@ -1,5 +1,6 @@
 "use client";
 
+import { getInitials } from "@/lib/utils";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
@@ -87,8 +88,7 @@ export function BatchStudentsModal({ batchId, batchName }: BatchStudentsModalPro
                 batchId,
                 studentCount: selectedStudents.size,
             });
-        } catch (error) {
-            console.error("Error adding students to batch:", error);
+        } catch (_error) {
         } finally {
             setIsAddingStudents(false);
         }
@@ -98,9 +98,7 @@ export function BatchStudentsModal({ batchId, batchName }: BatchStudentsModalPro
         try {
             await removeStudentsFromBatch.mutateAsync({ batchId, studentIds: [studentId] });
             track("batch_student_removed", { batchId, studentId });
-        } catch (error) {
-            console.error("Error removing student from batch:", error);
-        }
+        } catch (_error) {}
     };
 
     const handleSelectAll = () => {
@@ -111,15 +109,6 @@ export function BatchStudentsModal({ batchId, batchName }: BatchStudentsModalPro
             // Select all available students
             setSelectedStudents(new Set(availableStudents.map((s) => s.id)));
         }
-    };
-
-    const getInitials = (name: string) => {
-        return name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2);
     };
 
     return (
