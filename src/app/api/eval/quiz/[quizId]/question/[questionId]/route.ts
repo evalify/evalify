@@ -3,11 +3,12 @@ import { db } from "@/db";
 import { and, eq } from "drizzle-orm";
 import { questionsTable, quizQuestionsTable } from "@/db/schema";
 
-export async function GET(req: NextRequest) {
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ quizId: string; questionId: string }> }
+) {
     try {
-        const url = new URL(req.url);
-        const quizId = url.pathname.split("/").slice(-3, -2)[0];
-        const questionId = url.pathname.split("/").pop();
+        const { quizId, questionId } = await params;
 
         if (!quizId || !questionId) {
             return NextResponse.json(
@@ -16,13 +17,25 @@ export async function GET(req: NextRequest) {
             );
         }
 
-        // Fetch the specific question for the quiz
+        // Fetch the specific question for the quiz (include all question fields)
         const quizQuestion = await db
             .select({
                 questionId: quizQuestionsTable.questionId,
                 orderIndex: quizQuestionsTable.orderIndex,
+                id: questionsTable.id,
+                type: questionsTable.type,
+                marks: questionsTable.marks,
+                negativeMarks: questionsTable.negativeMarks,
+                difficulty: questionsTable.difficulty,
+                courseOutcome: questionsTable.courseOutcome,
+                bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
                 question: questionsTable.question,
                 questionData: questionsTable.questionData,
+                explaination: questionsTable.explaination,
+                solution: questionsTable.solution,
+                createdById: questionsTable.createdById,
+                created_at: questionsTable.created_at,
+                updated_at: questionsTable.updated_at,
             })
             .from(quizQuestionsTable)
             .innerJoin(questionsTable, eq(quizQuestionsTable.questionId, questionsTable.id))
