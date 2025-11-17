@@ -151,6 +151,52 @@ export function validateQuestion(question: Question | null): ValidationResult {
                                 field: `blank[${i}].answer[${answerIndex}]`,
                                 message: `Blank ${i + 1} answer ${answerIndex + 1} cannot be empty`,
                             });
+                        } else {
+                            // Validate that the answer matches the declared type
+                            const answerType = answerGroup.type;
+                            const trimmedAnswer = answer.trim();
+
+                            switch (answerType) {
+                                case "NUMBER":
+                                    if (!/^-?\d*\.?\d+$/.test(trimmedAnswer)) {
+                                        errors.push({
+                                            field: `blank[${i}].answer[${answerIndex}]`,
+                                            message: `Blank ${i + 1} answer ${answerIndex + 1} must be a valid number (type: NUMBER)`,
+                                        });
+                                    }
+                                    break;
+
+                                case "UPPERCASE":
+                                    if (
+                                        trimmedAnswer !== trimmedAnswer.toUpperCase() ||
+                                        /[a-z]/.test(trimmedAnswer)
+                                    ) {
+                                        errors.push({
+                                            field: `blank[${i}].answer[${answerIndex}]`,
+                                            message: `Blank ${i + 1} answer ${answerIndex + 1} must contain only uppercase letters (type: UPPERCASE)`,
+                                        });
+                                    }
+                                    break;
+
+                                case "LOWERCASE":
+                                    if (
+                                        trimmedAnswer !== trimmedAnswer.toLowerCase() ||
+                                        /[A-Z]/.test(trimmedAnswer)
+                                    ) {
+                                        errors.push({
+                                            field: `blank[${i}].answer[${answerIndex}]`,
+                                            message: `Blank ${i + 1} answer ${answerIndex + 1} must contain only lowercase letters (type: LOWERCASE)`,
+                                        });
+                                    }
+                                    break;
+
+                                case "TEXT":
+                                    // TEXT type accepts any input
+                                    break;
+
+                                default:
+                                    break;
+                            }
                         }
                     });
                 }

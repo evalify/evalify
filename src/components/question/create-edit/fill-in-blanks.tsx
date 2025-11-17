@@ -21,6 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 interface FillInBlanksComponentProps {
     value: FillInBlanksQuestion;
@@ -29,8 +30,62 @@ interface FillInBlanksComponentProps {
 
 const BLANK_REGEX = /_{3,}/g;
 
+/**
+ * Validates if an answer matches the declared type for a blank
+ */
+function validateAnswerType(
+    answer: string,
+    type: FillInBlanksAcceptedType
+): {
+    isValid: boolean;
+    message?: string;
+} {
+    if (!answer || answer.trim() === "") {
+        return { isValid: true }; // Empty answers are handled separately
+    }
+
+    switch (type) {
+        case FillInBlanksAcceptedType.NUMBER:
+            if (!/^-?\d*\.?\d+$/.test(answer.trim())) {
+                return {
+                    isValid: false,
+                    message: "Answer must be a valid number",
+                };
+            }
+            break;
+
+        case FillInBlanksAcceptedType.UPPERCASE:
+            if (answer !== answer.toUpperCase() || /[a-z]/.test(answer)) {
+                return {
+                    isValid: false,
+                    message: "Answer must contain only uppercase letters",
+                };
+            }
+            break;
+
+        case FillInBlanksAcceptedType.LOWERCASE:
+            if (answer !== answer.toLowerCase() || /[A-Z]/.test(answer)) {
+                return {
+                    isValid: false,
+                    message: "Answer must contain only lowercase letters",
+                };
+            }
+            break;
+
+        case FillInBlanksAcceptedType.TEXT:
+            // TEXT type accepts any input
+            break;
+
+        default:
+            break;
+    }
+
+    return { isValid: true };
+}
+
 export default function FillInBlanksComponent({ value, onChange }: FillInBlanksComponentProps) {
     const editorRef = useRef<TiptapEditorRef>(null);
+    const { error } = useToast();
 
     const blanks = (value.question || "").match(BLANK_REGEX);
     const detectedBlanks = blanks ? blanks.length : 0;
@@ -121,6 +176,15 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
     const handleAnswerChange = (blankIndex: number, answerIndex: number, answer: string) => {
         const currentAnswerGroup = value.blankConfig?.acceptableAnswers?.[blankIndex];
         if (!currentAnswerGroup) return;
+
+        // Validate the answer type
+        const validation = validateAnswerType(answer, currentAnswerGroup.type);
+        if (!validation.isValid) {
+            error(validation.message || "Invalid answer type", {
+                description: `Blank ${blankIndex + 1} expects ${currentAnswerGroup.type} type answers`,
+            });
+            return;
+        }
 
         const newAnswers = [...currentAnswerGroup.answers];
         newAnswers[answerIndex] = answer;
@@ -397,38 +461,57 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
                                             </div>
 
                                             <div className="space-y-2">
-                                                {answerGroup.answers.map((answer, answerIndex) => (
-                                                    <div key={answerIndex} className="flex gap-2">
-                                                        <Input
-                                                            placeholder={`Answer ${answerIndex + 1}`}
-                                                            value={answer}
-                                                            onChange={(e) =>
-                                                                handleAnswerChange(
-                                                                    blankIndex,
-                                                                    answerIndex,
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                        />
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() =>
-                                                                handleRemoveAnswer(
-                                                                    blankIndex,
-                                                                    answerIndex
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                answerGroup.answers.length === 1
-                                                            }
-                                                            className="hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20"
+                                                {answerGroup.answers.map((answer, answerIndex) => {
+                                                    const getPlaceholder = () => {
+                                                        const base = `Answer ${answerIndex + 1}`;
+                                                        switch (answerGroup.type) {
+                                                            case FillInBlanksAcceptedType.NUMBER:
+                                                                return `${base} (e.g., 42, 3.14)`;
+                                                            case FillInBlanksAcceptedType.UPPERCASE:
+                                                                return `${base} (UPPERCASE ONLY)`;
+                                                            case FillInBlanksAcceptedType.LOWERCASE:
+                                                                return `${base} (lowercase only)`;
+                                                            default:
+                                                                return base;
+                                                        }
+                                                    };
+
+                                                    return (
+                                                        <div
+                                                            key={answerIndex}
+                                                            className="flex gap-2"
                                                         >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-                                                ))}
+                                                            <Input
+                                                                placeholder={getPlaceholder()}
+                                                                value={answer}
+                                                                onChange={(e) =>
+                                                                    handleAnswerChange(
+                                                                        blankIndex,
+                                                                        answerIndex,
+                                                                        e.target.value
+                                                                    )
+                                                                }
+                                                            />
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() =>
+                                                                    handleRemoveAnswer(
+                                                                        blankIndex,
+                                                                        answerIndex
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    answerGroup.answers.length === 1
+                                                                }
+                                                                className="hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/20"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
 
                                             <Button
