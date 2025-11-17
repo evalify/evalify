@@ -199,7 +199,7 @@ export function SemesterBulkForm({ onSubmit, onCancel }: SemesterBulkFormProps) 
             }));
 
             await onSubmit(semestersToCreate);
-        } catch (error) {
+        } catch (_error) {
         } finally {
             setIsLoading(false);
         }

@@ -102,7 +102,7 @@ export function SemesterManagersModal({ semesterId, onClose }: SemesterManagersM
                 setSelectedManagerIds([]);
                 onClose();
             }
-        } catch (err) {
+        } catch (_err) {
             // This should not happen with Promise.allSettled, but handle just in case
             error("An unexpected error occurred while adding managers");
         } finally {
