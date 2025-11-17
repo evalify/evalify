@@ -7,7 +7,7 @@ export default function ExamLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <AuthGuard requiredRoles={[UserType.STUDENT]}>
+        <AuthGuard requiredGroups={[UserType.STUDENT]}>
             <div className="space-y-6">{children}</div>
         </AuthGuard>
     );
