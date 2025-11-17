@@ -1,14 +1,14 @@
 import AuthGuard from "@/components/auth/auth-guard";
 import { UserType } from "@/lib/auth/utils";
 
-export default function QuizLayout({
+export default function ExamLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
     return (
-        <AuthGuard requiredGroups={[UserType.STUDENT]}>
-            <div>{children}</div>
+        <AuthGuard requiredRoles={[UserType.STUDENT]}>
+            <div className="space-y-6">{children}</div>
         </AuthGuard>
     );
 }

@@ -33,6 +33,8 @@
 - use `src/components/ui/custom-alert-dialog.tsx` for alert dialogs.
 - security is important. make sure to validate and sanitize user inputs properly.
 - Make sure every necessary thing is validated on both client and server sides.
+- Use `shadCN/ui` MCP to write UI components.
+- Use `useMemo` and `useCallback` hooks to optimize performance only when it is necessary.
 
 ## Project Directory & Code Structure Guidelines (Target Architecture)
 

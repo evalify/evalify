@@ -8,6 +8,7 @@ import { semesterRouter } from "./routers/administrative/semester";
 import { facultyCourseRouter } from "./routers/academic/faculty/course";
 import { studentCourseRouter } from "./routers/academic/student/course";
 import { studentQuizRouter } from "./routers/academic/student/quiz";
+import { examRouter } from "./routers/academic/student/exam";
 import { bankRouter } from "./routers/academic/faculty/bank";
 import { questionRouter } from "./routers/academic/faculty/question";
 import { facultyQuizRouter } from "./routers/academic/faculty/quiz";
@@ -29,6 +30,7 @@ export const appRouter = createTRPCRouter({
     facultyCourse: facultyCourseRouter,
     studentCourse: studentCourseRouter,
     studentQuiz: studentQuizRouter,
+    exam: examRouter,
     bank: bankRouter,
     question: questionRouter,
     topic: topicRouter,
