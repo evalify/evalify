@@ -31,6 +31,8 @@ export async function GET(
                 bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
                 question: questionsTable.question,
                 questionData: questionsTable.questionData,
+                explanation: questionsTable.explanation,
+                solution: questionsTable.solution,
                 createdById: questionsTable.createdById,
                 created_at: questionsTable.created_at,
                 updated_at: questionsTable.updated_at,

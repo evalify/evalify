@@ -112,6 +112,7 @@ const baseQuestionSchema = z.object({
     courseOutcome: courseOutcomeEnum.nullish(),
     bloomTaxonomyLevel: bloomTaxonomyEnum.nullish(),
     topicIds: z.array(z.uuid()).nullish(),
+    explanation: z.string().nullish(),
 });
 
 const mcqDataSchema = z.object({
@@ -854,6 +855,7 @@ export const questionRouter = createTRPCRouter({
                         difficulty: input.difficulty,
                         courseOutcome: input.courseOutcome,
                         bloomTaxonomyLevel: input.bloomTaxonomyLevel,
+                        explanation: input.explanation || null,
                         questionData,
                         solution,
                         createdById: userId,
@@ -999,6 +1001,7 @@ export const questionRouter = createTRPCRouter({
                     updateData.courseOutcome = input.courseOutcome;
                 if (input.bloomTaxonomyLevel !== undefined)
                     updateData.bloomTaxonomyLevel = input.bloomTaxonomyLevel;
+                if (input.explanation !== undefined) updateData.explanation = input.explanation;
 
                 if (input.type === "MCQ") {
                     if ("questionData" in input && input.questionData !== undefined) {
@@ -1280,6 +1283,7 @@ export const questionRouter = createTRPCRouter({
                         difficulty: input.difficulty,
                         courseOutcome: input.courseOutcome,
                         bloomTaxonomyLevel: input.bloomTaxonomyLevel,
+                        explanation: input.explanation || null,
                         questionData,
                         solution,
                         createdById: userId,
@@ -1566,6 +1570,7 @@ export const questionRouter = createTRPCRouter({
                     updateData.courseOutcome = input.courseOutcome;
                 if (input.bloomTaxonomyLevel !== undefined)
                     updateData.bloomTaxonomyLevel = input.bloomTaxonomyLevel;
+                if (input.explanation !== undefined) updateData.explanation = input.explanation;
 
                 if (input.type === "MCQ" || input.type === "MMCQ") {
                     if (input.questionData) {
