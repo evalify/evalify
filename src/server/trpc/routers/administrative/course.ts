@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, adminProcedure, createCustomProcedure } from "../../trpc";
-import { UserType } from "@/lib/auth/utils";
+import { createTRPCRouter, adminProcedure } from "../../trpc";
 import { db } from "@/db";
 import {
     coursesTable,

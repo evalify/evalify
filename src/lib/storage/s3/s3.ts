@@ -180,7 +180,7 @@ class S3ClientSingleton {
             );
             logger.info({ bucketName }, "Bucket exists");
             return true;
-        } catch (error) {
+        } catch (_error) {
             logger.warn({ bucketName }, "Bucket does not exist");
             return false;
         }
@@ -389,7 +389,7 @@ class S3ClientSingleton {
             );
             logger.info({ bucketName, key }, "File exists");
             return true;
-        } catch (error) {
+        } catch (_error) {
             logger.warn({ bucketName, key }, "File does not exist");
             return false;
         }

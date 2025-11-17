@@ -4,7 +4,6 @@ import {
     adminProcedure,
     facultyProcedure,
     managerProcedure,
-    studentProcedure,
     protectedProcedure,
     createCustomProcedure,
 } from "../../trpc";
