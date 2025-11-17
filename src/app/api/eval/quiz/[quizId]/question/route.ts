@@ -21,6 +21,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ quiz
                 bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
                 question: questionsTable.question,
                 questionData: questionsTable.questionData,
+                explanation: questionsTable.explanation,
+                solution: questionsTable.solution,
                 createdById: questionsTable.createdById,
                 created_at: questionsTable.created_at,
                 updated_at: questionsTable.updated_at,
