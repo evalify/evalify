@@ -309,7 +309,13 @@ export default function QuestionBankPage() {
     };
 
     const handleCreateQuestion = () => {
-        router.push(`/question-bank/${bankId}/question/create`);
+        // Pass selected topics as URL params (excluding NO_TOPIC_ID)
+        const validTopics = selectedTopics.filter((id) => id !== NO_TOPIC_ID);
+        if (validTopics.length > 0) {
+            router.push(`/question-bank/${bankId}/question/create?topics=${validTopics.join(",")}`);
+        } else {
+            router.push(`/question-bank/${bankId}/question/create`);
+        }
     };
 
     const handleEditQuestion = (questionId: string) => {
