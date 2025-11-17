@@ -23,6 +23,7 @@ interface QuestionFormProps {
     isLoading?: boolean;
     context?: "bank" | "quiz";
     bankId?: string;
+    defaultTopics?: Array<{ topicId: string; topicName: string }>;
 }
 
 export default function QuestionForm({
@@ -33,13 +34,22 @@ export default function QuestionForm({
     isLoading = false,
     context = "quiz",
     bankId,
+    defaultTopics = [],
 }: QuestionFormProps) {
     const [selectedType, setSelectedType] = useState<QuestionType>(
         initialData?.type || QuestionType.MCQ
     );
-    const [question, setQuestion] = useState<Question>(
-        initialData || createDefaultQuestion(QuestionType.MCQ)
-    );
+    const [question, setQuestion] = useState<Question>(() => {
+        if (initialData) {
+            return initialData;
+        }
+        const defaultQuestion = createDefaultQuestion(QuestionType.MCQ);
+        // Apply default topics if provided
+        if (defaultTopics.length > 0) {
+            return { ...defaultQuestion, topics: defaultTopics };
+        }
+        return defaultQuestion;
+    });
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [showExplanation, setShowExplanation] = useState<boolean>(!!initialData?.explanation);
 
@@ -53,7 +63,7 @@ export default function QuestionForm({
             explanation: question.explanation,
             marks: question.marks,
             negativeMarks: question.negativeMarks,
-            topics: question.topics,
+            topics: question.topics, // Preserve existing topics (including default ones)
             bloomsLevel: question.bloomsLevel,
             difficulty: question.difficulty,
             courseOutcome: question.courseOutcome,
