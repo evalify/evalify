@@ -248,8 +248,12 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
                             <TabsTrigger value={FillInBlanksEvaluationType.NORMAL}>
                                 Normal
                             </TabsTrigger>
-                            <TabsTrigger value={FillInBlanksEvaluationType.LENIENT}>
-                                Lenient
+                            <TabsTrigger
+                                value={FillInBlanksEvaluationType.HYBRID}
+                                disabled
+                                className="cursor-not-allowed opacity-50"
+                            >
+                                Hybrid
                             </TabsTrigger>
                         </TabsList>
                         <TabsContent value={FillInBlanksEvaluationType.STRICT} className="mt-4">
@@ -271,12 +275,13 @@ export default function FillInBlanksComponent({ value, onChange }: FillInBlanksC
                                 </p>
                             </div>
                         </TabsContent>
-                        <TabsContent value={FillInBlanksEvaluationType.LENIENT} className="mt-4">
-                            <div className="rounded-md bg-muted/50 p-4">
-                                <h4 className="mb-2 font-medium">Lenient Evaluation</h4>
+                        <TabsContent value={FillInBlanksEvaluationType.HYBRID} className="mt-4">
+                            <div className="rounded-md bg-muted/50 p-4 ">
+                                <h4 className="mb-2 font-medium">Hybrid Evaluation</h4>
                                 <p className="text-sm text-muted-foreground">
-                                    More flexible evaluation that accepts minor variations and
-                                    synonyms. Useful for answers that have multiple valid forms.
+                                    Smart evaluation using LLM to determine if the student answer is
+                                    correct based on the acceptable answers. This allows for minor
+                                    variations while still ensuring accuracy.
                                 </p>
                             </div>
                         </TabsContent>

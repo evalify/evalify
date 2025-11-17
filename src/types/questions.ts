@@ -53,7 +53,7 @@ export enum CourseOutcome {
 export enum FillInBlanksEvaluationType {
     STRICT = "STRICT",
     NORMAL = "NORMAL",
-    LENIENT = "LENIENT",
+    HYBRID = "HYBRID",
 }
 
 export enum FillInBlanksAcceptedType {

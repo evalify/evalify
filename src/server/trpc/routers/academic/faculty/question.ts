@@ -154,7 +154,7 @@ const fillTheBlankConfigSchema = z.object({
         })
     ),
     blankWeights: z.record(z.string(), z.number()),
-    evaluationType: z.enum(["NORMAL", "STRICT", "LENIENT"]),
+    evaluationType: z.enum(["NORMAL", "STRICT", "HYBRID"]),
 });
 
 const descriptiveConfigSchema = z
