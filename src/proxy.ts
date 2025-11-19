@@ -5,7 +5,7 @@ export default auth((req) => {
     const { pathname } = req.nextUrl;
 
     if (
-        pathname.startsWith("/api/eval") &&
+        pathname.startsWith("/api/utils") &&
         req.headers.get("API_KEY") !== process.env.EVALUATION_SERVICE_API_KEY
     ) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
