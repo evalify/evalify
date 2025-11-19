@@ -338,7 +338,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 questionData: unwrappedQuestionData as MCQData,
@@ -361,7 +361,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 questionData: unwrappedQuestionData as MMCQData,
@@ -388,7 +388,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 trueFalseAnswer: solutionData?.trueFalseAnswer,
@@ -417,7 +417,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 blankConfig: {
@@ -449,7 +449,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 descriptiveConfig: {
@@ -493,7 +493,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 options,
