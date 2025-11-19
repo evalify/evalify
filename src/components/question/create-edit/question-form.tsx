@@ -64,7 +64,7 @@ export default function QuestionForm({
             marks: question.marks,
             negativeMarks: question.negativeMarks,
             topics: question.topics, // Preserve existing topics (including default ones)
-            bloomsLevel: question.bloomsLevel,
+            bloomTaxonomyLevel: question.bloomTaxonomyLevel,
             difficulty: question.difficulty,
             courseOutcome: question.courseOutcome,
         };

@@ -19,11 +19,13 @@ import {
     CheckCircle2,
     Calendar as CalendarIcon,
     Sparkles,
+    PlayCircle,
 } from "lucide-react";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { capitalizeName } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DashboardStats {
     totalCourses: number;
@@ -156,9 +158,66 @@ export default function FacultyDashboard() {
 
     const isLoading = isLoadingCourses || isLoadingBanks || isLoadingStudents || isLoadingQuizzes;
 
+    // Categorize quizzes with course information
+    const activeQuizzes = useMemo(() => {
+        const now = new Date();
+        return allQuizzes
+            .filter((q) => new Date(q.startTime) <= now && new Date(q.endTime) >= now)
+            .map((quiz) => {
+                const course = courses.find((c) => {
+                    const quizIndex = courses.indexOf(c);
+                    return quizQueries[quizIndex]?.data?.quizzes.some((cq) => cq.id === quiz.id);
+                });
+                return { ...quiz, course };
+            })
+            .slice(0, 3);
+    }, [allQuizzes, courses, quizQueries]);
+
+    const upcomingQuizzes = useMemo(() => {
+        const now = new Date();
+        return allQuizzes
+            .filter((q) => new Date(q.startTime) > now)
+            .map((quiz) => {
+                const course = courses.find((c) => {
+                    const quizIndex = courses.indexOf(c);
+                    return quizQueries[quizIndex]?.data?.quizzes.some((cq) => cq.id === quiz.id);
+                });
+                return { ...quiz, course };
+            })
+            .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+            .slice(0, 3);
+    }, [allQuizzes, courses, quizQueries]);
+
+    const completedQuizzes = useMemo(() => {
+        const now = new Date();
+        return allQuizzes
+            .filter((q) => new Date(q.endTime) < now)
+            .map((quiz) => {
+                const course = courses.find((c) => {
+                    const quizIndex = courses.indexOf(c);
+                    return quizQueries[quizIndex]?.data?.quizzes.some((cq) => cq.id === quiz.id);
+                });
+                return { ...quiz, course };
+            })
+            .sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())
+            .slice(0, 3);
+    }, [allQuizzes, courses, quizQueries]);
+
+    // Determine default tab based on availability
+    const defaultTab = useMemo(() => {
+        if (activeQuizzes.length > 0) return "active";
+        if (upcomingQuizzes.length > 0) return "upcoming";
+        return "completed";
+    }, [activeQuizzes, upcomingQuizzes]);
+
     const handleNavigation = (path: string, label: string) => {
         track("faculty_dashboard_navigation", { path, label });
         router.push(path);
+    };
+
+    const handleQuizClick = (quizId: string, courseId: string, quizName: string) => {
+        track("faculty_quiz_clicked_from_dashboard", { quizId, courseId, quizName });
+        router.push(`/course/${courseId}/quiz/${quizId}/results`);
     };
 
     if (isLoading || !stats) {
@@ -295,59 +354,261 @@ export default function FacultyDashboard() {
                 </Card>
             </div>
 
-            {/* Quiz Status & Courses Grid */}
+            {/* Recent Quizzes & Quick Actions Grid */}
             <div className="grid gap-6 lg:grid-cols-2">
-                {/* Quiz Status */}
+                {/* Recent Quizzes */}
                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                            <CalendarIcon className="h-5 w-5" />
-                            Quiz Timeline
-                        </CardTitle>
+                    <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                                <Clock className="h-5 w-5" />
+                                Recent Quizzes
+                            </CardTitle>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleNavigation("/course", "View All Quizzes")}
+                            >
+                                View All
+                                <ArrowRight className="h-4 w-4 ml-1" />
+                            </Button>
+                        </div>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between p-4 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-900/10">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                                    <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                                </div>
-                                <div>
-                                    <p className="font-semibold">Upcoming</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Scheduled quizzes
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-2xl font-bold">{stats.upcomingQuizzes}</div>
-                        </div>
+                    <CardContent>
+                        <Tabs defaultValue={defaultTab} className="w-full">
+                            <TabsList className="w-full grid grid-cols-3 mb-4">
+                                <TabsTrigger value="active" className="gap-2">
+                                    <PlayCircle className="h-4 w-4" />
+                                    Active
+                                    {activeQuizzes.length > 0 && (
+                                        <Badge variant="secondary" className="ml-1">
+                                            {activeQuizzes.length}
+                                        </Badge>
+                                    )}
+                                </TabsTrigger>
+                                <TabsTrigger value="upcoming" className="gap-2">
+                                    <Clock className="h-4 w-4" />
+                                    Upcoming
+                                    {upcomingQuizzes.length > 0 && (
+                                        <Badge variant="secondary" className="ml-1">
+                                            {upcomingQuizzes.length}
+                                        </Badge>
+                                    )}
+                                </TabsTrigger>
+                                <TabsTrigger value="completed" className="gap-2">
+                                    <CheckCircle2 className="h-4 w-4" />
+                                    Completed
+                                    {completedQuizzes.length > 0 && (
+                                        <Badge variant="secondary" className="ml-1">
+                                            {completedQuizzes.length}
+                                        </Badge>
+                                    )}
+                                </TabsTrigger>
+                            </TabsList>
 
-                        <div className="flex items-center justify-between p-4 rounded-lg border border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                                    <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                </div>
-                                <div>
-                                    <p className="font-semibold">Active Now</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Currently running
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="text-2xl font-bold">{stats.activeQuizzes}</div>
-                        </div>
+                            <TabsContent value="active" className="mt-0">
+                                {activeQuizzes.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {activeQuizzes.map((quiz) => (
+                                            <Card
+                                                key={quiz.id}
+                                                className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-green-500 dark:border-l-green-400"
+                                                onClick={() =>
+                                                    quiz.course &&
+                                                    handleQuizClick(
+                                                        quiz.id,
+                                                        quiz.course.id,
+                                                        quiz.name
+                                                    )
+                                                }
+                                            >
+                                                <CardContent className="p-4">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex-1 space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <h3 className="font-semibold text-sm line-clamp-1">
+                                                                    {quiz.name}
+                                                                </h3>
+                                                                <Badge
+                                                                    variant="default"
+                                                                    className="bg-green-500 hover:bg-green-600 text-xs"
+                                                                >
+                                                                    Live
+                                                                </Badge>
+                                                            </div>
+                                                            {quiz.course && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {quiz.course.name} (
+                                                                    {quiz.course.code})
+                                                                </p>
+                                                            )}
+                                                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                                                <span className="flex items-center gap-1">
+                                                                    <Clock className="h-3 w-3" />
+                                                                    Ends{" "}
+                                                                    {new Date(
+                                                                        quiz.endTime
+                                                                    ).toLocaleTimeString([], {
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    })}
+                                                                </span>
+                                                                <span className="flex items-center gap-1">
+                                                                    <FileQuestion className="h-3 w-3" />
+                                                                    {quiz.questionCount || 0}{" "}
+                                                                    questions
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <PlayCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">No active quizzes</p>
+                                    </div>
+                                )}
+                            </TabsContent>
 
-                        <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/10">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-gray-100 dark:bg-gray-900/30 rounded-lg">
-                                    <FileQuestion className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-                                </div>
-                                <div>
-                                    <p className="font-semibold">Completed</p>
-                                    <p className="text-sm text-muted-foreground">Past quizzes</p>
-                                </div>
-                            </div>
-                            <div className="text-2xl font-bold">{stats.completedQuizzes}</div>
-                        </div>
+                            <TabsContent value="upcoming" className="mt-0">
+                                {upcomingQuizzes.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {upcomingQuizzes.map((quiz) => (
+                                            <Card
+                                                key={quiz.id}
+                                                className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-blue-500 dark:border-l-blue-400"
+                                                onClick={() =>
+                                                    quiz.course &&
+                                                    handleQuizClick(
+                                                        quiz.id,
+                                                        quiz.course.id,
+                                                        quiz.name
+                                                    )
+                                                }
+                                            >
+                                                <CardContent className="p-4">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex-1 space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <h3 className="font-semibold text-sm line-clamp-1">
+                                                                    {quiz.name}
+                                                                </h3>
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="text-xs"
+                                                                >
+                                                                    Upcoming
+                                                                </Badge>
+                                                            </div>
+                                                            {quiz.course && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {quiz.course.name} (
+                                                                    {quiz.course.code})
+                                                                </p>
+                                                            )}
+                                                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                                                <span className="flex items-center gap-1">
+                                                                    <CalendarIcon className="h-3 w-3" />
+                                                                    {new Date(
+                                                                        quiz.startTime
+                                                                    ).toLocaleDateString()}
+                                                                </span>
+                                                                <span className="flex items-center gap-1">
+                                                                    <Clock className="h-3 w-3" />
+                                                                    {new Date(
+                                                                        quiz.startTime
+                                                                    ).toLocaleTimeString([], {
+                                                                        hour: "2-digit",
+                                                                        minute: "2-digit",
+                                                                    })}
+                                                                </span>
+                                                                <span className="flex items-center gap-1">
+                                                                    <FileQuestion className="h-3 w-3" />
+                                                                    {quiz.questionCount || 0}{" "}
+                                                                    questions
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">No upcoming quizzes</p>
+                                    </div>
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="completed" className="mt-0">
+                                {completedQuizzes.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {completedQuizzes.map((quiz) => (
+                                            <Card
+                                                key={quiz.id}
+                                                className="cursor-pointer hover:shadow-md transition-all border-l-4 border-l-gray-300 dark:border-l-gray-600"
+                                                onClick={() =>
+                                                    quiz.course &&
+                                                    handleQuizClick(
+                                                        quiz.id,
+                                                        quiz.course.id,
+                                                        quiz.name
+                                                    )
+                                                }
+                                            >
+                                                <CardContent className="p-4">
+                                                    <div className="flex items-start justify-between">
+                                                        <div className="flex-1 space-y-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <h3 className="font-semibold text-sm line-clamp-1">
+                                                                    {quiz.name}
+                                                                </h3>
+                                                                <Badge
+                                                                    variant="secondary"
+                                                                    className="text-xs"
+                                                                >
+                                                                    Completed
+                                                                </Badge>
+                                                            </div>
+                                                            {quiz.course && (
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {quiz.course.name} (
+                                                                    {quiz.course.code})
+                                                                </p>
+                                                            )}
+                                                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                                                <span className="flex items-center gap-1">
+                                                                    <CalendarIcon className="h-3 w-3" />
+                                                                    Ended{" "}
+                                                                    {new Date(
+                                                                        quiz.endTime
+                                                                    ).toLocaleDateString()}
+                                                                </span>
+                                                                <span className="flex items-center gap-1">
+                                                                    <FileQuestion className="h-3 w-3" />
+                                                                    {quiz.questionCount || 0}{" "}
+                                                                    questions
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <CheckCircle2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">No completed quizzes</p>
+                                    </div>
+                                )}
+                            </TabsContent>
+                        </Tabs>
                     </CardContent>
                 </Card>
 

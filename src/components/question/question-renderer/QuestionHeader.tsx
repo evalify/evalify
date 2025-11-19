@@ -104,10 +104,10 @@ export function QuestionHeader({
                             </Badge>
                         )}
 
-                        {question.bloomsLevel && (
+                        {question.bloomTaxonomyLevel && (
                             <Badge variant="outline" className="text-xs">
                                 <BrainCircuit className="h-3 w-3 mr-1" />
-                                {question.bloomsLevel}
+                                {question.bloomTaxonomyLevel}
                             </Badge>
                         )}
 

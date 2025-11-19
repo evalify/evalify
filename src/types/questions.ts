@@ -76,7 +76,7 @@ export interface BaseQuestion {
     marks: number;
     negativeMarks: number;
     topics?: { topicId: string; topicName: string }[];
-    bloomsLevel?: BloomsLevel;
+    bloomTaxonomyLevel?: BloomsLevel;
     difficulty?: Difficulty;
     courseOutcome?: CourseOutcome;
     createdBy?: string;

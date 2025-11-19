@@ -36,7 +36,7 @@ type QuestionWithTopics = {
     negativeMarks: number;
     difficulty?: string;
     courseOutcome?: string;
-    bloomsLevel?: string;
+    bloomTaxonomyLevel?: string;
     topics: TopicLink[];
     // Type-specific fields that may be present
     questionData?: {
@@ -109,6 +109,9 @@ export default function QuestionBankPage() {
 
     // Fetch bank details
     const { data: bank, isLoading: isBankLoading } = trpc.bank.get.useQuery({ id: bankId });
+
+    // Determine if user has edit access (OWNER or EDIT, not READ)
+    const hasEditAccess = bank?.accessLevel !== "READ";
 
     // Fetch topics
     const { data: topics, isLoading: isTopicsLoading } = trpc.topic.listByBank.useQuery({
@@ -370,7 +373,7 @@ export default function QuestionBankPage() {
                         </div>
 
                         {/* Select All / Deselect All toggle button */}
-                        {topics && topics.length > 0 && (
+                        {topics && topics.length > 0 && hasEditAccess && (
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -484,50 +487,52 @@ export default function QuestionBankPage() {
                                                         <p>{topic.name}</p>
                                                     </TooltipContent>
                                                 </Tooltip>
-                                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                className="h-7 w-7"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleEditTopic(
-                                                                        topic.id,
-                                                                        topic.name
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <Edit2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>Edit topic</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button
-                                                                size="icon"
-                                                                variant="ghost"
-                                                                className="h-7 w-7"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleDeleteTopic(
-                                                                        topic.id,
-                                                                        topic.name
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p>Delete topic</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </div>
+                                                {hasEditAccess && (
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="h-7 w-7"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleEditTopic(
+                                                                            topic.id,
+                                                                            topic.name
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <Edit2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Edit topic</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="h-7 w-7"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleDeleteTopic(
+                                                                            topic.id,
+                                                                            topic.name
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p>Delete topic</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </div>
+                                                )}
                                             </>
                                         )}
                                     </div>
@@ -559,31 +564,33 @@ export default function QuestionBankPage() {
                     )}
                 </div>
 
-                <div className="flex gap-2 m-4 border-t pt-4">
-                    <Input
-                        placeholder="Add new topic"
-                        value={newTopicInput}
-                        onChange={(e) => setNewTopicInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                                handleCreateTopic();
-                            }
-                        }}
-                        disabled={createTopicMutation.isPending}
-                        className="flex-1"
-                    />
-                    <Button
-                        size="icon"
-                        onClick={handleCreateTopic}
-                        disabled={createTopicMutation.isPending || !newTopicInput.trim()}
-                    >
-                        {createTopicMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Plus className="h-4 w-4" />
-                        )}
-                    </Button>
-                </div>
+                {hasEditAccess && (
+                    <div className="flex gap-2 m-4 border-t pt-4">
+                        <Input
+                            placeholder="Add new topic"
+                            value={newTopicInput}
+                            onChange={(e) => setNewTopicInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    handleCreateTopic();
+                                }
+                            }}
+                            disabled={createTopicMutation.isPending}
+                            className="flex-1"
+                        />
+                        <Button
+                            size="icon"
+                            onClick={handleCreateTopic}
+                            disabled={createTopicMutation.isPending || !newTopicInput.trim()}
+                        >
+                            {createTopicMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Plus className="h-4 w-4" />
+                            )}
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Main Content Area */}
@@ -597,10 +604,12 @@ export default function QuestionBankPage() {
                                 Semester {bank.semester}
                             </p>
                         </div>
-                        <Button onClick={handleCreateQuestion}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Question
-                        </Button>
+                        {hasEditAccess && (
+                            <Button onClick={handleCreateQuestion}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Question
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -627,6 +636,7 @@ export default function QuestionBankPage() {
                             questionRefs={questionRefs}
                             onEdit={handleEditQuestion}
                             onDelete={handleDeleteQuestion}
+                            hasEditAccess={hasEditAccess}
                         />
                     ) : (
                         <Card className="border-dashed">
@@ -635,14 +645,16 @@ export default function QuestionBankPage() {
                                     No questions found for the selected topic
                                     {selectedTopics.length !== 1 ? "s" : ""}
                                 </p>
-                                <Button
-                                    variant="outline"
-                                    className="mt-4"
-                                    onClick={handleCreateQuestion}
-                                >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Create First Question
-                                </Button>
+                                {hasEditAccess && (
+                                    <Button
+                                        variant="outline"
+                                        className="mt-4"
+                                        onClick={handleCreateQuestion}
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Create First Question
+                                    </Button>
+                                )}
                             </CardContent>
                         </Card>
                     )}
@@ -685,10 +697,14 @@ type QuestionListProps = {
     questionRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
     onEdit: (id: string) => void;
     onDelete: (id: string) => void;
+    hasEditAccess: boolean;
 };
 
 const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
-    ({ questions, selectedTopics, NO_TOPIC_ID, questionRefs, onEdit, onDelete }, ref) => {
+    (
+        { questions, selectedTopics, NO_TOPIC_ID, questionRefs, onEdit, onDelete, hasEditAccess },
+        ref
+    ) => {
         const parentRef = useRef<HTMLDivElement>(null);
 
         // eslint-disable-next-line react-hooks/incompatible-library
@@ -769,8 +785,8 @@ const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
                                         showExplanation={true}
                                         isReadOnly={true}
                                         compareWithStudentAnswer={false}
-                                        onEdit={onEdit}
-                                        onDelete={onDelete}
+                                        onEdit={hasEditAccess ? onEdit : undefined}
+                                        onDelete={hasEditAccess ? onDelete : undefined}
                                     />
                                 </div>
                             );

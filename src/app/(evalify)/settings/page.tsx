@@ -337,9 +337,15 @@ export default function SettingsPage() {
                                                         type="tel"
                                                         placeholder="Enter phone number"
                                                         value={phoneNumber || ""}
-                                                        onChange={(e) =>
-                                                            setPhoneNumber(e.target.value)
-                                                        }
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+                                                            // Only allow numbers (0-9)
+                                                            const numericValue = value.replace(
+                                                                /\D/g,
+                                                                ""
+                                                            );
+                                                            setPhoneNumber(numericValue);
+                                                        }}
                                                         className="bg-white dark:bg-slate-900"
                                                     />
                                                     {!isEditingPhone ? (
