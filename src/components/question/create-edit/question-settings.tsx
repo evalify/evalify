@@ -55,8 +55,12 @@ export default function QuestionSettings({
         }
     };
 
-    const handleBloomLevelChange = (bloomsLevel: BloomsLevel) => {
-        onChange({ ...value, bloomsLevel });
+    const handleBloomLevelChange = (bloomTaxonomyLevel: string) => {
+        onChange({
+            ...value,
+            bloomTaxonomyLevel:
+                bloomTaxonomyLevel === "none" ? undefined : (bloomTaxonomyLevel as BloomsLevel),
+        });
     };
 
     const handleDifficultyChange = (difficulty: Difficulty) => {
@@ -273,13 +277,14 @@ export default function QuestionSettings({
                         Bloom&apos;s Taxonomy Level
                     </Label>
                     <Select
-                        value={value.bloomsLevel || ""}
-                        onValueChange={(val) => handleBloomLevelChange(val as BloomsLevel)}
+                        value={value.bloomTaxonomyLevel || "none"}
+                        onValueChange={handleBloomLevelChange}
                     >
                         <SelectTrigger id="bloomLevel">
                             <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="none">None</SelectItem>
                             {Object.values(BloomsLevel).map((level) => (
                                 <SelectItem key={level} value={level}>
                                     {level}

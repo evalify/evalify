@@ -25,7 +25,7 @@ A comprehensive student evaluation platform built with modern web technologies.
 Copy the example environment file and configure your variables:
 
 ```bash
-cp env.example .env
+cp env.app.example .env
 ```
 
 ### 2. Start Dependencies

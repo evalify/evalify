@@ -16,6 +16,7 @@ import { eq, and, desc, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { TRPCError } from "@trpc/server";
 import { getClientIp, isClientInLabSubnets } from "@/lib/ip-utils";
+import { getStudentQuizStatus } from "./utils";
 
 /**
  * Student quiz router
@@ -37,7 +38,6 @@ export const studentQuizRouter = createTRPCRouter({
         .query(async ({ input, ctx }) => {
             try {
                 const userId = ctx.session.user.id;
-                const now = new Date();
 
                 // Get student's batch IDs
                 const studentBatchIds = await db
@@ -115,31 +115,37 @@ export const studentQuizRouter = createTRPCRouter({
                     }
                 }
 
-                // Filter and enhance quizzes with status
-                let filteredQuizzes = quizzes
-                    .filter((quiz) => accessibleQuizIds.includes(quiz.id))
-                    .map((quiz) => {
-                        // Calculate status based on current time
-                        let status: "active" | "completed" | "missed" | "upcoming";
+                // Filter and enhance quizzes with status (use helper for per-student status)
+                const accessibleQuizzes = quizzes.filter((quiz) =>
+                    accessibleQuizIds.includes(quiz.id)
+                );
+                let filteredQuizzes = await Promise.all(
+                    accessibleQuizzes.map(async (quiz) => {
+                        const studentStatus = await getStudentQuizStatus(
+                            quiz.id,
+                            userId,
+                            quiz.startTime,
+                            quiz.endTime
+                        );
+                        // map helper result to lowercase values used by this API
+                        const statusMap: Record<
+                            string,
+                            "active" | "completed" | "missed" | "upcoming"
+                        > = {
+                            ACTIVE: "active",
+                            COMPLETED: "completed",
+                            MISSED: "missed",
+                            UPCOMING: "upcoming",
+                        } as const;
 
-                        const startTime = new Date(quiz.startTime);
-                        const endTime = new Date(quiz.endTime);
-
-                        if (now < startTime) {
-                            status = "upcoming";
-                        } else if (now >= startTime && now <= endTime) {
-                            status = "active";
-                        } else {
-                            // Quiz has ended - need to check if student submitted
-                            // TODO: Check actual submission status
-                            status = startTime > endTime ? "completed" : "missed";
-                        }
+                        const status = statusMap[studentStatus] ?? "active";
 
                         return {
                             ...quiz,
                             status,
                         };
-                    });
+                    })
+                );
 
                 // Apply search filter
                 if (input.searchTerm) {
@@ -199,7 +205,7 @@ export const studentQuizRouter = createTRPCRouter({
         .query(async ({ input, ctx }) => {
             try {
                 const userId = ctx.session.user.id;
-                const now = new Date();
+                const _now = new Date();
 
                 // Verify student has access to this course
                 const courseAccess = await db
@@ -297,34 +303,33 @@ export const studentQuizRouter = createTRPCRouter({
                     }
                 }
 
-                // Filter and enhance quizzes with status
-                let filteredQuizzes = quizzes
-                    .filter((quiz) => accessibleQuizIds.includes(quiz.id))
-                    .map((quiz) => {
-                        // Calculate status based on current time
-                        let status: "active" | "completed" | "missed";
+                // Filter and enhance quizzes with status (use helper for per-student status)
+                const accessibleQuizzes = quizzes.filter((quiz) =>
+                    accessibleQuizIds.includes(quiz.id)
+                );
+                let filteredQuizzes = await Promise.all(
+                    accessibleQuizzes.map(async (quiz) => {
+                        const studentStatus = await getStudentQuizStatus(
+                            quiz.id,
+                            userId,
+                            quiz.startTime,
+                            quiz.endTime
+                        );
+                        // map helper result to lowercase values used by this API
+                        const statusMap: Record<string, "active" | "completed" | "missed"> = {
+                            ACTIVE: "active",
+                            COMPLETED: "completed",
+                            MISSED: "missed",
+                        } as const;
 
-                        const startTime = new Date(quiz.startTime);
-                        const endTime = new Date(quiz.endTime);
-
-                        if (now < startTime) {
-                            // Quiz hasn't started yet - treat as active/upcoming
-                            status = "active";
-                        } else if (now >= startTime && now <= endTime) {
-                            // Quiz is currently active
-                            status = "active";
-                        } else {
-                            // Quiz has ended - need to check if student submitted
-                            // For now, we'll mark as completed
-                            // TODO: Check actual submission status
-                            status = "completed";
-                        }
+                        const status = statusMap[studentStatus] ?? "active";
 
                         return {
                             ...quiz,
                             status,
                         };
-                    });
+                    })
+                );
 
                 // Apply search filter
                 if (input.searchTerm) {
@@ -539,18 +544,18 @@ export const studentQuizRouter = createTRPCRouter({
                     "IP verification check"
                 );
 
-                // Calculate quiz status
-                const endTime = new Date(quiz.endTime);
-                let status: "UPCOMING" | "ACTIVE" | "COMPLETED" | "MISSED";
-
-                if (now < startTime) {
-                    status = "UPCOMING";
-                } else if (now >= startTime && now <= endTime) {
-                    status = "ACTIVE";
-                } else {
-                    // TODO: Check if student submitted
-                    status = "COMPLETED";
-                }
+                // Determine student-specific status using helper
+                const studentStatus = await getStudentQuizStatus(
+                    quiz.id,
+                    userId,
+                    quiz.startTime,
+                    quiz.endTime
+                );
+                const status = (studentStatus as string).toUpperCase() as
+                    | "UPCOMING"
+                    | "ACTIVE"
+                    | "COMPLETED"
+                    | "MISSED";
 
                 logger.info({ userId, quizId: quiz.id, status }, "Student quiz details fetched");
 

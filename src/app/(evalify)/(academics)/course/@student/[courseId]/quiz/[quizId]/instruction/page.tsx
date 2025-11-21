@@ -57,21 +57,43 @@ const QuizInstructionsPage = () => {
         quizId,
     });
 
-    // TODO: Implement start quiz mutation with tRPC
+    // Start quiz via tRPC: create or resume quiz_response and then redirect to quiz page
+    const getTrpcErrorMessage = (err: unknown) => {
+        if (!err) return "Unknown error";
+
+        // Check if error has message property
+        if (typeof err === "object" && err !== null) {
+            const e = err as {
+                message?: unknown;
+                data?: { message?: unknown };
+                cause?: unknown;
+                toString?: () => string;
+            };
+
+            // Common shapes: TRPCClientError with message, or { data: { message } }
+            if (typeof e.message === "string" && e.message) return e.message;
+            if (e.data && typeof e.data.message === "string") return e.data.message;
+            if (e.cause && typeof e.cause === "string") return e.cause;
+            if (e.toString) return String(e);
+        }
+
+        return "An error occurred";
+    };
+
+    const startQuizMutation = trpc.exam.startQuiz.useMutation({
+        onSuccess: () => {
+            success("Quiz started successfully!");
+            router.push(`/exam/${quizId}`);
+        },
+    });
+
     const startQuiz = async (password?: string) => {
         setIsStarting(true);
         try {
-            // TODO: Replace with actual tRPC mutation
-            // await trpc.studentQuiz.startQuiz.mutate({ quizId, password });
-            console.log("Starting quiz with password:", password);
-            success("Quiz started successfully!");
-            router.push(`/exam/quiz/${quizId}`);
+            await startQuizMutation.mutateAsync({ quizId, password });
         } catch (err) {
-            const errorMessage =
-                err instanceof Error
-                    ? err.message
-                    : "Failed to start quiz. Please check your password and try again.";
-            showErrorToast(errorMessage);
+            const msg = getTrpcErrorMessage(err);
+            showErrorToast(msg);
         } finally {
             setIsStarting(false);
         }

@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { getCroppedImg, fileToBase64, validateImageFile } from "@/lib/image-utils";
 import Cropper from "react-easy-crop";
-import { Upload, ZoomIn, ZoomOut, RotateCw, Loader2 } from "lucide-react";
+import { Upload, ZoomIn, RotateCw, Loader2 } from "lucide-react";
 
 interface ImageUploadCropModalProps {
     open: boolean;
@@ -21,7 +21,7 @@ export function ImageUploadCropModal({
     onOpenChange,
     onImageCropped,
 }: ImageUploadCropModalProps) {
-    const { toast, error } = useToast();
+    const { error } = useToast();
     const { track } = useAnalytics();
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
@@ -65,7 +65,7 @@ export function ImageUploadCropModal({
                     fileSize: file.size,
                     fileType: file.type,
                 });
-            } catch (err) {
+            } catch (_err) {
                 error("Error", {
                     description: "Failed to load image. Please try again.",
                 });

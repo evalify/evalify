@@ -251,10 +251,10 @@ export default function QuestionRender({
                                         {question.difficulty}
                                     </Badge>
                                 )}
-                                {showMetadata && question.bloomsLevel && (
+                                {showMetadata && question.bloomTaxonomyLevel && (
                                     <Badge variant="outline" className="text-xs">
                                         <BrainCircuit className="h-3 w-3 mr-1" />
-                                        {question.bloomsLevel}
+                                        {question.bloomTaxonomyLevel}
                                     </Badge>
                                 )}
                                 {showMetadata && question.courseOutcome && (
