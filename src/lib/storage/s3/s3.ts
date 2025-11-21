@@ -48,29 +48,26 @@ class S3ClientSingleton {
 
     private constructor() {
         // Validate required environment variables
-        const endpoint = process.env.MINIO_ENDPOINT;
-        const region = process.env.AWS_REGION;
-        const accessKeyId = process.env.MINIO_ROOT_USER || process.env.AWS_ACCESS_KEY_ID;
-        const secretAccessKey =
-            process.env.MINIO_ROOT_PASSWORD || process.env.AWS_SECRET_ACCESS_KEY;
+        const endpoint = process.env.S3_ENDPOINT;
+        const region = process.env.S3_REGION;
+        const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
 
         if (!endpoint) {
-            const error = new Error(
-                "MINIO_ENDPOINT environment variable is required for S3 client"
-            );
+            const error = new Error("S3_ENDPOINT environment variable is required for S3 client");
             logger.error({ error }, "Missing required environment variable");
             throw error;
         }
 
         if (!region) {
-            const error = new Error("AWS_REGION environment variable is required for S3 client");
+            const error = new Error("S3_REGION environment variable is required for S3 client");
             logger.error({ error }, "Missing required environment variable");
             throw error;
         }
 
         if (!accessKeyId) {
             const error = new Error(
-                "MINIO_ROOT_USER or AWS_ACCESS_KEY_ID environment variable is required for S3 client"
+                "S3_ACCESS_KEY_ID environment variable is required for S3 client"
             );
             logger.error({ error }, "Missing required environment variable");
             throw error;
@@ -78,7 +75,7 @@ class S3ClientSingleton {
 
         if (!secretAccessKey) {
             const error = new Error(
-                "MINIO_ROOT_PASSWORD or AWS_SECRET_ACCESS_KEY environment variable is required for S3 client"
+                "S3_SECRET_ACCESS_KEY environment variable is required for S3 client"
             );
             logger.error({ error }, "Missing required environment variable");
             throw error;
@@ -91,7 +88,7 @@ class S3ClientSingleton {
                 accessKeyId,
                 secretAccessKey,
             },
-            forcePathStyle: true, // Required for MinIO
+            forcePathStyle: true, // Required for MinIO/S3 compatible
         };
 
         this.client = new S3Client(config);

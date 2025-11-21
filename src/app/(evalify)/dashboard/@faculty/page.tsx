@@ -88,7 +88,10 @@ export default function FacultyDashboard() {
     );
 
     const isLoadingQuizzes = quizQueries.some((q) => q.isLoading);
-    const allQuizzes = quizQueries.flatMap((q) => q.data?.quizzes || []);
+    const allQuizzes = useMemo(() => {
+        const quizzes = quizQueries.flatMap((q) => q.data?.quizzes || []);
+        return Array.from(new Map(quizzes.map((q) => [q.id, q])).values());
+    }, [quizQueries]);
 
     // Compute dashboard stats
     const stats = useMemo((): DashboardStats | null => {
