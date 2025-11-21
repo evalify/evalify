@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
 # Enable corepack to use pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
 
 COPY package.json pnpm-lock.yaml ./
 
@@ -18,7 +18,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Enable corepack to use pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@10.21.0 --activate
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
