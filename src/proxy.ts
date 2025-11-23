@@ -3,9 +3,13 @@ import { auth } from "@/lib/auth/auth";
 
 export default auth((req) => {
     const { pathname } = req.nextUrl;
+    const isExternalAPIProtected = process.env.PROTECTED
+        ? !(process.env.PROTECTED === "false")
+        : true;
 
     if (
         pathname.startsWith("/api/utils") &&
+        isExternalAPIProtected &&
         req.headers.get("API_KEY") !== process.env.EVALUATION_SERVICE_API_KEY
     ) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
