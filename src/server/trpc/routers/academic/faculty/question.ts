@@ -190,10 +190,8 @@ export const questionRouter = createTRPCRouter({
     listByTopics: managerOrFacultyProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                topicIds: z.array(z.string().uuid()),
-                limit: z.number().min(1).max(100).default(50),
-                offset: z.number().min(0).default(0),
+                bankId: z.uuid(),
+                topicIds: z.array(z.uuid()),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -253,9 +251,7 @@ export const questionRouter = createTRPCRouter({
                             eq(questionsTable.id, bankQuestionsTable.questionId)
                         )
                         .where(eq(bankQuestionsTable.bankId, input.bankId))
-                        .orderBy(desc(questionsTable.created_at))
-                        .limit(input.limit)
-                        .offset(input.offset);
+                        .orderBy(desc(questionsTable.created_at));
                 } else {
                     // Get questions that belong to any of the selected topics
                     questions = await db
@@ -288,9 +284,7 @@ export const questionRouter = createTRPCRouter({
                                 inArray(topicQuestionsTable.topicId, input.topicIds)
                             )
                         )
-                        .orderBy(desc(questionsTable.created_at))
-                        .limit(input.limit)
-                        .offset(input.offset);
+                        .orderBy(desc(questionsTable.created_at));
                 }
 
                 // Fetch topics for each question
@@ -396,9 +390,7 @@ export const questionRouter = createTRPCRouter({
     listByBank: managerOrFacultyProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                limit: z.number().min(1).max(100).default(50),
-                offset: z.number().min(0).default(0),
+                bankId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -455,9 +447,7 @@ export const questionRouter = createTRPCRouter({
                         eq(questionsTable.id, bankQuestionsTable.questionId)
                     )
                     .where(eq(bankQuestionsTable.bankId, input.bankId))
-                    .orderBy(desc(questionsTable.created_at))
-                    .limit(input.limit)
-                    .offset(input.offset);
+                    .orderBy(desc(questionsTable.created_at));
 
                 // Fetch topics for each question and transform data
                 const questionsWithTopics = await Promise.all(

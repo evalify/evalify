@@ -275,7 +275,7 @@ export default function QuestionRender({
                                 <div className="flex flex-wrap gap-2">
                                     {question.topics.map((topic) => (
                                         <Badge
-                                            key={topic.topicId}
+                                            key={`${question.id}-${topic.topicId}`}
                                             variant="secondary"
                                             className="text-xs"
                                         >

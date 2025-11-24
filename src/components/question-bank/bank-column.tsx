@@ -125,6 +125,44 @@ export const getColumns = (
             enableSorting: false,
         },
         {
+            accessorKey: "questionCount",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Questions" className="text-center" />
+            ),
+            cell: ({ row }) => {
+                const count = row.getValue("questionCount") as number;
+                return (
+                    <div className="text-center">
+                        <Badge variant="secondary" className="font-normal">
+                            {count}
+                        </Badge>
+                    </div>
+                );
+            },
+            meta: { label: "Questions" },
+            size: 100,
+            enableSorting: true,
+        },
+        {
+            accessorKey: "topicCount",
+            header: ({ column }) => (
+                <DataTableColumnHeader column={column} title="Topics" className="text-center" />
+            ),
+            cell: ({ row }) => {
+                const count = row.getValue("topicCount") as number;
+                return (
+                    <div className="text-center">
+                        <Badge variant="outline" className="font-normal">
+                            {count}
+                        </Badge>
+                    </div>
+                );
+            },
+            meta: { label: "Topics" },
+            size: 100,
+            enableSorting: true,
+        },
+        {
             accessorKey: "sharedCount",
             header: ({ column }) => (
                 <DataTableColumnHeader column={column} title="Shared" className="text-center" />

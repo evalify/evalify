@@ -301,7 +301,7 @@ export default function QuestionBankPage() {
     const handleSelectAllTopics = () => {
         const allTopicIds = topics ? topics.map((t) => t.id) : [];
         // Include NO_TOPIC_ID as well
-        const allIds = [...allTopicIds, NO_TOPIC_ID];
+        const allIds = [...allTopicIds];
         router.push(`/question-bank/${bankId}?topics=${allIds.join(",")}`);
         track("topics_select_all", { bankId, count: allIds.length });
     };
@@ -354,11 +354,6 @@ export default function QuestionBankPage() {
         );
     }
 
-    // Check if all topics are selected
-    const allTopicIds = topics ? [...topics.map((t) => t.id), NO_TOPIC_ID] : [];
-    const allTopicsSelected =
-        allTopicIds.length > 0 && allTopicIds.every((id) => selectedTopics.includes(id));
-
     return (
         <div className="flex h-[90vh] overflow-hidden">
             {/* Left Sidebar - Topics */}
@@ -378,14 +373,14 @@ export default function QuestionBankPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={
-                                    allTopicsSelected
+                                    selectedTopics.length > 0
                                         ? handleDeselectAllTopics
                                         : handleSelectAllTopics
                                 }
                                 className="h-7 text-xs px-2 shrink-0 border border-border/80"
                                 disabled={isTopicsLoading}
                             >
-                                {allTopicsSelected ? (
+                                {selectedTopics.length > 0 ? (
                                     <>
                                         <X className="h-3 w-3 mr-1" />
                                         Clear

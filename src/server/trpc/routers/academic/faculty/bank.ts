@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { createTRPCRouter, facultyAndManagerProcedure, protectedProcedure } from "../../../trpc";
 import { db } from "@/db";
-import { banksTable, bankUsersTable, usersTable, topicsTable } from "@/db/schema";
+import {
+    banksTable,
+    bankUsersTable,
+    usersTable,
+    topicsTable,
+    bankQuestionsTable,
+} from "@/db/schema";
 import { eq, and, or, ilike, desc, count, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
@@ -96,12 +102,23 @@ export const bankRouter = createTRPCRouter({
                         ),
                 ]);
 
-                const banksWithSharedCount = await Promise.all(
+                const banksWithCounts = await Promise.all(
                     banks.map(async (bank) => {
-                        const [{ sharedCount }] = await db
-                            .select({ sharedCount: count() })
-                            .from(bankUsersTable)
-                            .where(eq(bankUsersTable.bankId, bank.id));
+                        const [[{ sharedCount }], [{ questionCount }], [{ topicCount }]] =
+                            await Promise.all([
+                                db
+                                    .select({ sharedCount: count() })
+                                    .from(bankUsersTable)
+                                    .where(eq(bankUsersTable.bankId, bank.id)),
+                                db
+                                    .select({ questionCount: count() })
+                                    .from(bankQuestionsTable)
+                                    .where(eq(bankQuestionsTable.bankId, bank.id)),
+                                db
+                                    .select({ topicCount: count() })
+                                    .from(topicsTable)
+                                    .where(eq(topicsTable.bankId, bank.id)),
+                            ]);
 
                         return {
                             id: bank.id,
@@ -122,6 +139,8 @@ export const bankRouter = createTRPCRouter({
                                     ? ("OWNER" as const)
                                     : bank.accessLevel || "READ",
                             sharedCount: Number(sharedCount),
+                            questionCount: Number(questionCount),
+                            topicCount: Number(topicCount),
                         };
                     })
                 );
@@ -132,7 +151,7 @@ export const bankRouter = createTRPCRouter({
                 logger.info({ count: banks.length, userId }, "Banks listed");
 
                 return {
-                    rows: banksWithSharedCount,
+                    rows: banksWithCounts,
                     pageCount,
                     total: totalCount,
                 };
