@@ -47,6 +47,8 @@ export interface BankListItem {
     } | null;
     accessLevel: "READ" | "WRITE" | "OWNER";
     sharedCount: number;
+    questionCount: number;
+    topicCount: number;
 }
 
 export interface BankQuestion {
