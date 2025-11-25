@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import { db } from "@/db";
-import { banksTable } from "@/db/schema";
+import { banksTable, bankUsersTable } from "@/db/schema";
 import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
@@ -20,16 +20,47 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const { name, semester, courseCode } = await req.json();
+        const { name, semester, courseCode, createdById, sharedUserIds } = await req.json();
 
-        const [newBank] = await db
-            .insert(banksTable)
-            .values({ name, semester, courseCode })
-            .returning();
+        // Create the bank and share with users in a transaction
+        const result = await db.transaction(async (tx) => {
+            // Create the bank
+            const [newBank] = await tx
+                .insert(banksTable)
+                .values({ name, semester, courseCode, createdById })
+                .returning();
 
-        return NextResponse.json({ bank: newBank }, { status: 201 });
+            // Share with users if sharedUserIds is provided
+            let sharedUsers: (typeof bankUsersTable.$inferSelect)[] = [];
+            if (sharedUserIds && Array.isArray(sharedUserIds) && sharedUserIds.length > 0) {
+                sharedUsers = await tx
+                    .insert(bankUsersTable)
+                    .values(
+                        sharedUserIds.map((userId) => ({
+                            bankId: newBank.id,
+                            userId,
+                            accessLevel: "WRITE" as const,
+                        }))
+                    )
+                    .returning();
+            }
+
+            return { bank: newBank, sharedUsers };
+        });
+
+        logger.info(
+            {
+                bankId: result.bank.id,
+                name,
+                createdById,
+                sharedCount: result.sharedUsers.length,
+            },
+            "Bank created and shared"
+        );
+
+        return NextResponse.json(result, { status: 201 });
     } catch (error) {
-        logger.error("Error creating bank:", error);
+        logger.error({ error }, "Error creating bank");
         return NextResponse.json({ error: "Failed to create bank" }, { status: 500 });
     }
 }
