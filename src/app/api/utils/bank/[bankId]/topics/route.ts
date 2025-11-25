@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ban
         const { bankId } = await params;
         const { name } = await req.json();
 
-        const [newTopic] = await db.insert(topicsTable).values({ bankId, name }).returning();
+        const [newTopic] = await db.insert(topicsTable).values({ name, bankId }).returning();
 
         return NextResponse.json({ topic: newTopic }, { status: 201 });
     } catch (error) {
