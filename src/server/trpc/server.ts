@@ -24,7 +24,7 @@ const createCaller = createCallerFactory(appRouter);
 /**
  * Creates a server-side tRPC caller with context
  */
-export const serverTRPC = async () => {
+export const serverTRPC = async (): Promise<ReturnType<typeof createCaller>> => {
     const context = await createTRPCContext();
     return createCaller(context);
 };

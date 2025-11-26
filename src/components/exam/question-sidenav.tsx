@@ -13,8 +13,13 @@ export default function QuestionSidenav() {
     const ctx = useQuizContext();
 
     const displayQuestions = useMemo(() => {
-        return ctx.sectionQuestions.map((q) => {
+        return ctx.sectionQuestions.map((q, _index) => {
+            // Use the index within the section + 1 for display
+            // Or if we want global index, we find it in the global list
+            // The user asked for "question Index", which usually means the sequential number.
+            // Let's use the global index from the main questions list.
             const globalIndex = ctx.questions.findIndex((qq) => qq.id === q.id) + 1;
+
             const isAnswered = !!(q.response && Object.keys(q.response).length > 0);
             const isVisited = !!q._visited && !isAnswered;
             const isMarked = !!q._markedForReview;
