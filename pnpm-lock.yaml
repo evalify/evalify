@@ -81,7 +81,7 @@ importers:
         specifier: ^0.5.1
         version: 0.5.1(typescript@5.9.3)
       '@tanstack/query-core':
-        specifier: ^5.90.11
+        specifier: ^5.90.10
         version: 5.90.11
       '@tanstack/query-db-collection':
         specifier: ^1.0.1
@@ -90,7 +90,7 @@ importers:
         specifier: ^0.1.45
         version: 0.1.45(react@19.2.0)(typescript@5.9.3)
       '@tanstack/react-query':
-        specifier: ^5.90.11
+        specifier: ^5.90.10
         version: 5.90.11(react@19.2.0)
       '@tanstack/react-table':
         specifier: ^8.21.3
@@ -99,46 +99,46 @@ importers:
         specifier: ^3.13.12
         version: 3.13.12(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@tiptap/core':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1(@tiptap/pm@3.11.1)
       '@tiptap/extension-color':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1(@tiptap/extension-text-style@3.11.1(@tiptap/core@3.11.1(@tiptap/pm@3.11.1)))
       '@tiptap/extension-highlight':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1(@tiptap/core@3.11.1(@tiptap/pm@3.11.1))
       '@tiptap/extension-image':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1(@tiptap/core@3.11.1(@tiptap/pm@3.11.1))
       '@tiptap/extension-link':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1(@tiptap/core@3.11.1(@tiptap/pm@3.11.1))(@tiptap/pm@3.11.1)
       '@tiptap/extension-placeholder':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1(@tiptap/extensions@3.11.1(@tiptap/core@3.11.1(@tiptap/pm@3.11.1))(@tiptap/pm@3.11.1))
       '@tiptap/extension-text-style':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1(@tiptap/core@3.11.1(@tiptap/pm@3.11.1))
       '@tiptap/pm':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1
       '@tiptap/react':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1(@floating-ui/dom@1.7.4)(@tiptap/core@3.11.1(@tiptap/pm@3.11.1))(@tiptap/pm@3.11.1)(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@tiptap/starter-kit':
-        specifier: ^3.11.1
+        specifier: ^3.10.7
         version: 3.11.1
       '@trpc/client':
-        specifier: ^11.7.2
+        specifier: ^11.7.1
         version: 11.7.2(@trpc/server@11.7.2(typescript@5.9.3))(typescript@5.9.3)
       '@trpc/next':
-        specifier: ^11.7.2
+        specifier: ^11.7.1
         version: 11.7.2(@tanstack/react-query@5.90.11(react@19.2.0))(@trpc/client@11.7.2(@trpc/server@11.7.2(typescript@5.9.3))(typescript@5.9.3))(@trpc/react-query@11.7.2(@tanstack/react-query@5.90.11(react@19.2.0))(@trpc/client@11.7.2(@trpc/server@11.7.2(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.7.2(typescript@5.9.3))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3))(@trpc/server@11.7.2(typescript@5.9.3))(next@16.0.7(@babel/core@7.28.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
       '@trpc/react-query':
-        specifier: ^11.7.2
+        specifier: ^11.7.1
         version: 11.7.2(@tanstack/react-query@5.90.11(react@19.2.0))(@trpc/client@11.7.2(@trpc/server@11.7.2(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.7.2(typescript@5.9.3))(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(typescript@5.9.3)
       '@trpc/server':
-        specifier: ^11.7.2
+        specifier: ^11.7.1
         version: 11.7.2(typescript@5.9.3)
       '@types/node-cron':
         specifier: ^3.0.11
