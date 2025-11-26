@@ -90,6 +90,7 @@ export interface QuizQuestionMetadata {
     orderIndex: number;
     bankQuestionId?: string | null;
     bankName?: string | null;
+    sectionId: string | null;
 }
 
 export interface MCQQuestion extends BaseQuestion {
@@ -147,14 +148,15 @@ export type Question =
     | FileUploadQuestion;
 
 // Quiz question types with metadata
-export type QuizMCQQuestion = MCQQuestion & QuizQuestionMetadata;
-export type QuizMMCQQuestion = MMCQQuestion & QuizQuestionMetadata;
-export type QuizTrueFalseQuestion = TrueFalseQuestion & QuizQuestionMetadata;
-export type QuizFillInBlanksQuestion = FillInBlanksQuestion & QuizQuestionMetadata;
-export type QuizMatchTheFollowingQuestion = MatchTheFollowingQuestion & QuizQuestionMetadata;
-export type QuizDescriptiveQuestion = DescriptiveQuestion & QuizQuestionMetadata;
-export type QuizCodingQuestion = CodingQuestion & QuizQuestionMetadata;
-export type QuizFileUploadQuestion = FileUploadQuestion & QuizQuestionMetadata;
+export type QuizMCQQuestion = MCQQuestion & QuizQuestionMetadata & { id: string };
+export type QuizMMCQQuestion = MMCQQuestion & QuizQuestionMetadata & { id: string };
+export type QuizTrueFalseQuestion = TrueFalseQuestion & QuizQuestionMetadata & { id: string };
+export type QuizFillInBlanksQuestion = FillInBlanksQuestion & QuizQuestionMetadata & { id: string };
+export type QuizMatchTheFollowingQuestion = MatchTheFollowingQuestion &
+    QuizQuestionMetadata & { id: string };
+export type QuizDescriptiveQuestion = DescriptiveQuestion & QuizQuestionMetadata & { id: string };
+export type QuizCodingQuestion = CodingQuestion & QuizQuestionMetadata & { id: string };
+export type QuizFileUploadQuestion = FileUploadQuestion & QuizQuestionMetadata & { id: string };
 
 export type QuizQuestion =
     | QuizMCQQuestion

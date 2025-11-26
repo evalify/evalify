@@ -18,6 +18,7 @@ import {
 import { getClientIp, isClientInLabSubnets } from "@/lib/ip-utils";
 import { TRPCError } from "@trpc/server";
 import { parseIntervalToMs } from "./utils";
+import { QuestionType, QuizQuestion } from "@/types/questions";
 
 /**
  * Simple exam router exposing a `get` endpoint to fetch questions.
@@ -101,11 +102,12 @@ export const examRouter = createTRPCRouter({
                 }
 
                 // Fetch questions for the specific quiz
-                const questions = await db
+                const questionsData = await db
                     .select({
-                        questionId: quizQuestionsTable.questionId,
+                        quizQuestionId: quizQuestionsTable.id,
                         orderIndex: quizQuestionsTable.orderIndex,
                         sectionId: quizQuestionsTable.sectionId,
+                        bankQuestionId: quizQuestionsTable.bankQuestionId,
                         id: questionsTable.id,
                         type: questionsTable.type,
                         marks: questionsTable.marks,
@@ -115,9 +117,10 @@ export const examRouter = createTRPCRouter({
                         bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
                         question: questionsTable.question,
                         questionData: questionsTable.questionData,
-                        createdById: questionsTable.createdById,
-                        created_at: questionsTable.created_at,
-                        updated_at: questionsTable.updated_at,
+                        explanation: questionsTable.explanation,
+                        createdBy: questionsTable.createdById,
+                        createdAt: questionsTable.created_at,
+                        updatedAt: questionsTable.updated_at,
                     })
                     .from(questionsTable)
                     .innerJoin(
@@ -125,6 +128,11 @@ export const examRouter = createTRPCRouter({
                         eq(questionsTable.id, quizQuestionsTable.questionId)
                     )
                     .where(eq(quizQuestionsTable.quizId, input.quizId));
+
+                const questions = questionsData.map((q) => ({
+                    ...q,
+                    type: q.type as QuestionType,
+                })) as QuizQuestion[];
 
                 return { questions };
             } catch (error) {
@@ -590,5 +598,61 @@ export const examRouter = createTRPCRouter({
                     message: "Failed to start quiz",
                 });
             }
+        }),
+
+    /**
+     * Check and trigger auto-submit if needed (manual check)
+     */
+    checkAutoSubmitStatus: studentProcedure
+        .input(z.object({ quizId: z.uuid() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = ctx.session.user.id;
+            const now = new Date();
+
+            const existing = await db
+                .select({
+                    response: quizResponseTable,
+                    quiz: quizzesTable,
+                })
+                .from(quizResponseTable)
+                .innerJoin(quizzesTable, eq(quizResponseTable.quizId, quizzesTable.id))
+                .where(
+                    and(
+                        eq(quizResponseTable.quizId, input.quizId),
+                        eq(quizResponseTable.studentId, userId),
+                        eq(quizResponseTable.submissionStatus, "NOT_SUBMITTED")
+                    )
+                )
+                .limit(1);
+
+            if (existing.length === 0) {
+                return { autoSubmitted: false };
+            }
+
+            const { response, quiz } = existing[0];
+
+            // Check if time expired and autoSubmit is enabled
+            if (quiz.autoSubmit && response.endTime && new Date(response.endTime) <= now) {
+                await db
+                    .update(quizResponseTable)
+                    .set({
+                        submissionStatus: "AUTO_SUBMITTED",
+                        submissionTime: now,
+                    })
+                    .where(
+                        and(
+                            eq(quizResponseTable.quizId, input.quizId),
+                            eq(quizResponseTable.studentId, userId)
+                        )
+                    );
+
+                logger.info(
+                    { userId, quizId: input.quizId },
+                    "Quiz auto-submitted by manual check"
+                );
+                return { autoSubmitted: true };
+            }
+
+            return { autoSubmitted: false };
         }),
 });
