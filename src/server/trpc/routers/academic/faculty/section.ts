@@ -347,6 +347,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                sectionId: qq.sectionId,
                             } satisfies QuizMCQQuestion;
                         } else if (question.type === "MMCQ") {
                             transformedQuestion = {
@@ -370,6 +371,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                sectionId: qq.sectionId,
                             } satisfies QuizMMCQQuestion;
                         } else if (question.type === "TRUE_FALSE") {
                             const solutionData = unwrappedSolution as {
@@ -397,6 +399,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                sectionId: qq.sectionId,
                             } satisfies QuizTrueFalseQuestion;
                         } else if (question.type === "FILL_THE_BLANK") {
                             const data = unwrappedQuestionData as {
@@ -428,6 +431,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                sectionId: qq.sectionId,
                             } satisfies QuizFillInBlanksQuestion;
                         } else if (question.type === "DESCRIPTIVE") {
                             const data = unwrappedQuestionData as {
@@ -461,6 +465,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                sectionId: qq.sectionId,
                             } satisfies QuizDescriptiveQuestion;
                         } else if (question.type === "MATCHING") {
                             const data = unwrappedQuestionData as {
@@ -501,6 +506,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                sectionId: qq.sectionId,
                             } satisfies QuizMatchTheFollowingQuestion;
                         } else {
                             // For unsupported question types, return null

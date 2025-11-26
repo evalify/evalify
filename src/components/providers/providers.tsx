@@ -6,6 +6,7 @@ import { type ThemeProviderProps } from "next-themes";
 import { TRPCProvider } from "@/lib/trpc/client";
 import { Toaster } from "sonner";
 import { ModalManagerProvider } from "@/contexts/modal-manager-context";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 export interface ProvidersProps {
     children: React.ReactNode;
@@ -26,6 +27,9 @@ export function Providers({ children }: ProvidersProps) {
                         {children}
                         <Toaster position="bottom-right" richColors expand={true} />
                     </ModalManagerProvider>
+                    {process.env.NODE_ENV === "development" && (
+                        <ReactQueryDevtools initialIsOpen={false} />
+                    )}
                 </TRPCProvider>
             </SessionProvider>
         </NextThemesProvider>

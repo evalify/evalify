@@ -2,6 +2,10 @@
 
 import { trpc } from "@/lib/trpc/client";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { ExamQueryProvider, useExamCollectionsContext } from "../providers/exam-query-provider";
+import { useQuestionResponses, useQuestionState } from "../hooks/use-exam-collections";
+import { useAutoSubmit } from "../hooks/use-auto-submit";
+import { QuestionItem, StudentAnswer } from "../lib/types";
 
 export interface QuizSection {
     id: string;
@@ -9,12 +13,8 @@ export interface QuizSection {
     orderIndex: number;
 }
 
-export type QuizQuestion = Record<string, unknown> & {
-    id: string;
-    type?: string;
-    sectionId?: string | null;
-    orderIndex?: number;
-    response?: Record<string, unknown>;
+export type QuizQuestion = QuestionItem & {
+    response?: StudentAnswer;
     _visited?: boolean;
     _markedForReview?: boolean;
 };
@@ -53,7 +53,7 @@ type QuizContextValue = {
     sanitizedQuestions: QuizQuestion[];
     quizInfo?: QuizInfo | null;
     profile?: Profile | null;
-    saveAnswer: (responsePatch: Record<string, unknown>) => Promise<void>;
+    saveAnswer: (responsePatch: Record<string, StudentAnswer>) => Promise<void>;
     submitQuiz: () => Promise<void>;
     sections: QuizSection[];
     selectedSection: string | null;
@@ -66,11 +66,12 @@ type QuizContextValue = {
     markAsVisited: (questionId: string) => void;
     getQuestionStats: () => QuestionStats;
     getSectionStats: (sectionId: string) => QuestionStats;
+    isAutoSubmitting: boolean;
 };
 
 const QuizContext = createContext<QuizContextValue | undefined>(undefined);
 
-export function QuizProvider({
+function QuizContextInner({
     quizId,
     quizQuestions,
     quizInfo,
@@ -79,15 +80,59 @@ export function QuizProvider({
     sections,
 }: {
     quizId: string;
-    quizQuestions?: QuizQuestion[];
+    quizQuestions: QuizQuestion[];
     quizInfo?: QuizInfo | null;
     profile?: Profile | null;
     children: React.ReactNode;
     sections?: { sections: QuizSection[] } | QuizSection[];
 }) {
-    const [questions, setQuestions] = useState<QuizQuestion[]>(quizQuestions || []);
+    const { collections } = useExamCollectionsContext();
+
+    if (!collections) {
+        throw new Error("Collections not initialized");
+    }
+
+    const { responses, saveResponse } = useQuestionResponses(collections.responses);
+    const {
+        states,
+        markAsVisited: markAsVisitedDb,
+        toggleMarkForReview: toggleMarkForReviewDb,
+    } = useQuestionState(collections.state);
+
+    // Auto-submit integration
+    const submitMutation = trpc.exam.submitQuiz.useMutation();
+    const submitQuiz = useCallback(async () => {
+        await submitMutation.mutateAsync({ quizId });
+    }, [quizId, submitMutation]);
+
+    const { isAutoSubmitting } = useAutoSubmit(collections.metadata, submitQuiz);
+
     const [selectedSection, setSelectedSection] = useState<string | null>(null);
     const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
+
+    // Merge questions with responses and state
+    const questions = useMemo(() => {
+        const responsesMap = new Map(responses.map((r) => [r.questionId, r.response]));
+        const statesMap = new Map(states.map((s) => [s.questionId, s]));
+
+        return quizQuestions.map((q) => {
+            const response = responsesMap.get(q.id);
+            const state = statesMap.get(q.id);
+
+            return {
+                ...q,
+                response: response || undefined,
+                _visited: state?.visited || false,
+                _markedForReview: state?.markedForReview || false,
+            };
+        });
+    }, [quizQuestions, responses, states]);
+
+    // No-op setQuestions for backward compatibility if needed, or remove it from context type if possible.
+    // For now, we'll keep it but it won't do much since state is driven by DB.
+    const setQuestions = useCallback((_q: QuizQuestion[]) => {
+        console.warn("setQuestions is deprecated. State is managed by TanStack DB.");
+    }, []);
 
     const sanitizedQuestions = useMemo(() => {
         return questions.map((q) => {
@@ -135,19 +180,19 @@ export function QuizProvider({
     }, [selectedQuestion, questions, sectionQuestions]);
 
     // Helper functions for question state management
-    const toggleMarkForReview = useCallback((questionId: string) => {
-        setQuestions((prev) =>
-            prev.map((q) =>
-                q.id === questionId ? { ...q, _markedForReview: !q._markedForReview } : q
-            )
-        );
-    }, []);
+    const toggleMarkForReview = useCallback(
+        (questionId: string) => {
+            toggleMarkForReviewDb(questionId);
+        },
+        [toggleMarkForReviewDb]
+    );
 
-    const markAsVisited = useCallback((questionId: string) => {
-        setQuestions((prev) =>
-            prev.map((q) => (q.id === questionId ? { ...q, _visited: true } : q))
-        );
-    }, []);
+    const markAsVisited = useCallback(
+        (questionId: string) => {
+            markAsVisitedDb(questionId);
+        },
+        [markAsVisitedDb]
+    );
 
     const getQuestionStats = useCallback((): QuestionStats => {
         const answered = questions.filter(
@@ -193,19 +238,38 @@ export function QuizProvider({
         }
     }, [currentQuestion, selectedQuestion]);
 
-    const saveMutation = trpc.exam.saveAnswer.useMutation();
-    const submitMutation = trpc.exam.submitQuiz.useMutation();
+    // Automatically mark question as visited when it's viewed
+    useEffect(() => {
+        if (currentQuestion?.id) {
+            markAsVisited(currentQuestion.id);
+        }
+    }, [currentQuestion?.id, markAsVisited]);
 
+    // const submitMutation = trpc.exam.submitQuiz.useMutation(); // Moved up
+
+    // Wrap saveResponse to match expected signature if needed, or use directly
+    // The context expects saveAnswer: (responsePatch: Record<string, unknown>) => Promise<void>
+    // But useQuestionResponses.saveResponse is (questionId: string, answer: Record<string, unknown>) => void
+    // Wait, existing saveAnswer in context was taking a patch for the whole quiz?
+    // Let's check the previous implementation.
+    // Previous: saveMutation.mutateAsync({ quizId, responsePatch });
+    // responsePatch was { [questionId]: response }
+
+    // We need to support the same interface for now.
     const saveAnswer = useCallback(
-        async (responsePatch: Record<string, unknown>) => {
-            await saveMutation.mutateAsync({ quizId, responsePatch });
+        async (responsePatch: Record<string, StudentAnswer>) => {
+            // Iterate over keys in patch and save individually to collection
+            // This might be slightly inefficient if saving many at once, but usually it's one by one.
+            Object.entries(responsePatch).forEach(([questionId, response]) => {
+                saveResponse(questionId, response);
+            });
         },
-        [quizId, saveMutation]
+        [saveResponse]
     );
 
-    const submitQuiz = useCallback(async () => {
-        await submitMutation.mutateAsync({ quizId });
-    }, [quizId, submitMutation]);
+    // const submitQuiz = useCallback(async () => {
+    //     await submitMutation.mutateAsync({ quizId });
+    // }, [quizId, submitMutation]); // Moved up
 
     const value = useMemo(
         () => ({
@@ -228,10 +292,12 @@ export function QuizProvider({
             markAsVisited,
             getQuestionStats,
             getSectionStats,
+            isAutoSubmitting,
         }),
         [
             quizId,
             questions,
+            setQuestions,
             sanitizedQuestions,
             quizInfo,
             profile,
@@ -246,10 +312,79 @@ export function QuizProvider({
             markAsVisited,
             getQuestionStats,
             getSectionStats,
+            isAutoSubmitting,
         ]
     );
 
     return <QuizContext.Provider value={value}>{children}</QuizContext.Provider>;
+}
+
+export function QuizProvider({
+    quizId,
+    quizQuestions,
+    quizInfo,
+    profile,
+    children,
+    sections,
+}: {
+    quizId: string;
+    quizQuestions?: QuizQuestion[];
+    quizInfo?: QuizInfo | null;
+    profile?: Profile | null;
+    children: React.ReactNode;
+    sections?: { sections: QuizSection[] } | QuizSection[];
+}) {
+    const trpcUtils = trpc.useUtils();
+    const { mutateAsync: saveAnswerMutate } = trpc.exam.saveAnswer.useMutation();
+
+    const fetchQuestions = useCallback(async () => {
+        // We already have questions passed as props, but the collection expects a fetcher.
+        // We can return the props questions if we want, or fetch again.
+        // Ideally we use the props to initialize, but for now let's fetch to be safe and consistent.
+        // Actually, we can just return the props if they are fresh.
+        // But createExamCollections expects a promise.
+        if (quizQuestions) {
+            // Cast to QuestionItem[]
+            return quizQuestions as unknown as QuestionItem[];
+        }
+        const { questions } = await trpcUtils.client.exam.getStudentQuestions.query({ quizId });
+        return questions as unknown as QuestionItem[];
+    }, [quizId, quizQuestions, trpcUtils]);
+
+    const fetchResponses = useCallback(async () => {
+        const resp = await trpcUtils.exam.getResponse.fetch({ quizId });
+        return (resp.response?.response || {}) as Record<string, StudentAnswer>;
+    }, [quizId, trpcUtils]);
+
+    const saveAnswerToServer = useCallback(
+        async (responsePatch: Record<string, StudentAnswer>) => {
+            await saveAnswerMutate({ quizId, responsePatch });
+        },
+        [quizId, saveAnswerMutate]
+    );
+
+    const questionIds = useMemo(() => quizQuestions?.map((q) => q.id) || [], [quizQuestions]);
+
+    return (
+        <ExamQueryProvider
+            quizId={quizId}
+            studentId={profile?.id ?? ""}
+            fetchQuestions={fetchQuestions}
+            fetchResponses={fetchResponses}
+            saveAnswer={saveAnswerToServer}
+            questionIds={questionIds}
+        >
+            <QuizContextInner
+                quizId={quizId}
+                quizQuestions={quizQuestions || []}
+                quizInfo={quizInfo}
+                profile={profile}
+                sections={sections}
+            >
+                {children}
+            </QuizContextInner>
+        </ExamQueryProvider>
+    );
 }
 
 export function useQuizContext() {
