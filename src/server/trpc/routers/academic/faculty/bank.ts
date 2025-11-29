@@ -1,8 +1,14 @@
 import { z } from "zod";
 import { createTRPCRouter, facultyAndManagerProcedure, protectedProcedure } from "../../../trpc";
 import { db } from "@/db";
-import { banksTable, bankUsersTable, usersTable, topicsTable } from "@/db/schema";
-import { eq, and, or, ilike, desc, count, sql } from "drizzle-orm";
+import {
+    banksTable,
+    bankUsersTable,
+    usersTable,
+    topicsTable,
+    bankQuestionsTable,
+} from "@/db/schema";
+import { eq, and, or, ilike, desc, asc, count, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 export const bankRouter = createTRPCRouter({
@@ -38,6 +44,39 @@ export const bankRouter = createTRPCRouter({
 
                 const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+                // Determine ordering based on input
+                const orderClauses: ReturnType<typeof asc | typeof desc>[] = [];
+                if (input.sortBy) {
+                    const order = input.sortOrder === "asc" ? asc : desc;
+                    switch (input.sortBy) {
+                        case "name":
+                            orderClauses.push(order(banksTable.name));
+                            break;
+                        case "semester":
+                            orderClauses.push(order(banksTable.semester));
+                            break;
+                        case "questionCount":
+                            // Order by subquery count of questions
+                            orderClauses.push(
+                                order(
+                                    sql`(select count(*) from ${bankQuestionsTable} where ${bankQuestionsTable.bankId} = ${banksTable.id})`
+                                )
+                            );
+                            break;
+                        case "topicCount":
+                            orderClauses.push(
+                                order(
+                                    sql`(select count(*) from ${topicsTable} where ${topicsTable.bankId} = ${banksTable.id})`
+                                )
+                            );
+                            break;
+                        default:
+                            orderClauses.push(desc(banksTable.created_at));
+                    }
+                } else {
+                    orderClauses.push(desc(banksTable.created_at));
+                }
+
                 const banksQuery = db
                     .select({
                         id: banksTable.id,
@@ -69,7 +108,7 @@ export const bankRouter = createTRPCRouter({
                             )
                         )
                     )
-                    .orderBy(desc(banksTable.created_at))
+                    .orderBy(...orderClauses)
                     .limit(input.limit)
                     .offset(input.offset);
 
@@ -96,12 +135,23 @@ export const bankRouter = createTRPCRouter({
                         ),
                 ]);
 
-                const banksWithSharedCount = await Promise.all(
+                const banksWithCounts = await Promise.all(
                     banks.map(async (bank) => {
-                        const [{ sharedCount }] = await db
-                            .select({ sharedCount: count() })
-                            .from(bankUsersTable)
-                            .where(eq(bankUsersTable.bankId, bank.id));
+                        const [[{ sharedCount }], [{ questionCount }], [{ topicCount }]] =
+                            await Promise.all([
+                                db
+                                    .select({ sharedCount: count() })
+                                    .from(bankUsersTable)
+                                    .where(eq(bankUsersTable.bankId, bank.id)),
+                                db
+                                    .select({ questionCount: count() })
+                                    .from(bankQuestionsTable)
+                                    .where(eq(bankQuestionsTable.bankId, bank.id)),
+                                db
+                                    .select({ topicCount: count() })
+                                    .from(topicsTable)
+                                    .where(eq(topicsTable.bankId, bank.id)),
+                            ]);
 
                         return {
                             id: bank.id,
@@ -122,6 +172,8 @@ export const bankRouter = createTRPCRouter({
                                     ? ("OWNER" as const)
                                     : bank.accessLevel || "READ",
                             sharedCount: Number(sharedCount),
+                            questionCount: Number(questionCount),
+                            topicCount: Number(topicCount),
                         };
                     })
                 );
@@ -132,7 +184,7 @@ export const bankRouter = createTRPCRouter({
                 logger.info({ count: banks.length, userId }, "Banks listed");
 
                 return {
-                    rows: banksWithSharedCount,
+                    rows: banksWithCounts,
                     pageCount,
                     total: totalCount,
                 };
@@ -145,7 +197,7 @@ export const bankRouter = createTRPCRouter({
     get: facultyAndManagerProcedure
         .input(
             z.object({
-                id: z.string().uuid(),
+                id: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -284,7 +336,7 @@ export const bankRouter = createTRPCRouter({
     update: facultyAndManagerProcedure
         .input(
             z.object({
-                id: z.string().uuid(),
+                id: z.uuid(),
                 name: z.string().min(1, "Bank name is required").max(255).optional(),
                 courseCode: z.string().max(50).optional(),
                 semester: z.number().min(1).max(8).optional(),
@@ -346,7 +398,7 @@ export const bankRouter = createTRPCRouter({
     delete: facultyAndManagerProcedure
         .input(
             z.object({
-                id: z.string().uuid(),
+                id: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -384,8 +436,8 @@ export const bankRouter = createTRPCRouter({
     shareBank: facultyAndManagerProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                userIds: z.array(z.string().uuid()).min(1),
+                bankId: z.uuid(),
+                userIds: z.array(z.uuid()).min(1),
                 accessLevel: z.enum(["READ", "WRITE"]),
             })
         )
@@ -438,8 +490,8 @@ export const bankRouter = createTRPCRouter({
     unshareBank: facultyAndManagerProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                userId: z.string().uuid(),
+                bankId: z.uuid(),
+                userId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -491,8 +543,8 @@ export const bankRouter = createTRPCRouter({
     updateAccessLevel: facultyAndManagerProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                userId: z.string().uuid(),
+                bankId: z.uuid(),
+                userId: z.uuid(),
                 accessLevel: z.enum(["READ", "WRITE"]),
             })
         )
@@ -547,7 +599,7 @@ export const bankRouter = createTRPCRouter({
     getSharedUsers: facultyAndManagerProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
+                bankId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -632,7 +684,7 @@ export const bankRouter = createTRPCRouter({
         .input(
             z.object({
                 searchTerm: z.string().min(2),
-                excludeUserIds: z.array(z.string().uuid()).optional(),
+                excludeUserIds: z.array(z.uuid()).optional(),
             })
         )
         .query(async ({ input }) => {

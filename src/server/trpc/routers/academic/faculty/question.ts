@@ -112,6 +112,7 @@ const baseQuestionSchema = z.object({
     courseOutcome: courseOutcomeEnum.nullish(),
     bloomTaxonomyLevel: bloomTaxonomyEnum.nullish(),
     topicIds: z.array(z.uuid()).nullish(),
+    explanation: z.string().nullish(),
 });
 
 const mcqDataSchema = z.object({
@@ -189,10 +190,8 @@ export const questionRouter = createTRPCRouter({
     listByTopics: managerOrFacultyProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                topicIds: z.array(z.string().uuid()),
-                limit: z.number().min(1).max(100).default(50),
-                offset: z.number().min(0).default(0),
+                bankId: z.uuid(),
+                topicIds: z.array(z.uuid()),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -252,9 +251,7 @@ export const questionRouter = createTRPCRouter({
                             eq(questionsTable.id, bankQuestionsTable.questionId)
                         )
                         .where(eq(bankQuestionsTable.bankId, input.bankId))
-                        .orderBy(desc(questionsTable.created_at))
-                        .limit(input.limit)
-                        .offset(input.offset);
+                        .orderBy(desc(questionsTable.created_at));
                 } else {
                     // Get questions that belong to any of the selected topics
                     questions = await db
@@ -287,9 +284,7 @@ export const questionRouter = createTRPCRouter({
                                 inArray(topicQuestionsTable.topicId, input.topicIds)
                             )
                         )
-                        .orderBy(desc(questionsTable.created_at))
-                        .limit(input.limit)
-                        .offset(input.offset);
+                        .orderBy(desc(questionsTable.created_at));
                 }
 
                 // Fetch topics for each question
@@ -395,9 +390,7 @@ export const questionRouter = createTRPCRouter({
     listByBank: managerOrFacultyProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                limit: z.number().min(1).max(100).default(50),
-                offset: z.number().min(0).default(0),
+                bankId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -454,9 +447,7 @@ export const questionRouter = createTRPCRouter({
                         eq(questionsTable.id, bankQuestionsTable.questionId)
                     )
                     .where(eq(bankQuestionsTable.bankId, input.bankId))
-                    .orderBy(desc(questionsTable.created_at))
-                    .limit(input.limit)
-                    .offset(input.offset);
+                    .orderBy(desc(questionsTable.created_at));
 
                 // Fetch topics for each question and transform data
                 const questionsWithTopics = await Promise.all(
@@ -559,8 +550,8 @@ export const questionRouter = createTRPCRouter({
     getById: managerOrFacultyProcedure
         .input(
             z.object({
-                questionId: z.string().uuid(),
-                bankId: z.string().uuid().optional(),
+                questionId: z.uuid(),
+                bankId: z.uuid().optional(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -744,7 +735,7 @@ export const questionRouter = createTRPCRouter({
                 ])
             )
         )
-        .input(z.object({ bankId: z.string().uuid() }))
+        .input(z.object({ bankId: z.uuid() }))
         .mutation(async ({ input, ctx }) => {
             try {
                 const userId = ctx.session.user.id;
@@ -854,6 +845,7 @@ export const questionRouter = createTRPCRouter({
                         difficulty: input.difficulty,
                         courseOutcome: input.courseOutcome,
                         bloomTaxonomyLevel: input.bloomTaxonomyLevel,
+                        explanation: input.explanation || null,
                         questionData,
                         solution,
                         createdById: userId,
@@ -900,8 +892,8 @@ export const questionRouter = createTRPCRouter({
         .input(
             z
                 .object({
-                    questionId: z.string().uuid(),
-                    bankId: z.string().uuid().optional(),
+                    questionId: z.uuid(),
+                    bankId: z.uuid().optional(),
                 })
                 .and(
                     baseQuestionSchema.partial().and(
@@ -999,6 +991,7 @@ export const questionRouter = createTRPCRouter({
                     updateData.courseOutcome = input.courseOutcome;
                 if (input.bloomTaxonomyLevel !== undefined)
                     updateData.bloomTaxonomyLevel = input.bloomTaxonomyLevel;
+                if (input.explanation !== undefined) updateData.explanation = input.explanation;
 
                 if (input.type === "MCQ") {
                     if ("questionData" in input && input.questionData !== undefined) {
@@ -1101,8 +1094,8 @@ export const questionRouter = createTRPCRouter({
     delete: managerOrFacultyProcedure
         .input(
             z.object({
-                questionId: z.string().uuid(),
-                bankId: z.string().uuid().optional(),
+                questionId: z.uuid(),
+                bankId: z.uuid().optional(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -1190,9 +1183,9 @@ export const questionRouter = createTRPCRouter({
         )
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
-                sectionId: z.string().uuid().optional().nullable(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
+                sectionId: z.uuid().optional().nullable(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -1280,6 +1273,7 @@ export const questionRouter = createTRPCRouter({
                         difficulty: input.difficulty,
                         courseOutcome: input.courseOutcome,
                         bloomTaxonomyLevel: input.bloomTaxonomyLevel,
+                        explanation: input.explanation || null,
                         questionData,
                         solution,
                         createdById: userId,
@@ -1335,9 +1329,9 @@ export const questionRouter = createTRPCRouter({
     getByIdForQuiz: managerOrFacultyProcedure
         .input(
             z.object({
-                questionId: z.string().uuid(),
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                questionId: z.uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -1365,6 +1359,35 @@ export const questionRouter = createTRPCRouter({
 
                 if (!question) {
                     throw new Error("Question not found");
+                }
+
+                // Fetch bankQuestionId and bankName if this question is from a bank
+                const [quizQuestion] = await db
+                    .select({
+                        bankQuestionId: quizQuestionsTable.bankQuestionId,
+                    })
+                    .from(quizQuestionsTable)
+                    .where(
+                        and(
+                            eq(quizQuestionsTable.quizId, input.quizId),
+                            eq(quizQuestionsTable.questionId, input.questionId)
+                        )
+                    )
+                    .limit(1);
+
+                let bankName: string | null = null;
+                const bankQuestionId = quizQuestion?.bankQuestionId || null;
+
+                if (bankQuestionId) {
+                    const [bankQuestion] = await db
+                        .select({
+                            bankName: banksTable.name,
+                        })
+                        .from(bankQuestionsTable)
+                        .innerJoin(banksTable, eq(bankQuestionsTable.bankId, banksTable.id))
+                        .where(eq(bankQuestionsTable.id, bankQuestionId))
+                        .limit(1);
+                    bankName = bankQuestion?.bankName ?? null;
                 }
 
                 const [quizCourse] = await db
@@ -1423,6 +1446,8 @@ export const questionRouter = createTRPCRouter({
                 const transformedQuestion: TransformedQuestion = {
                     ...question,
                     topics: topicLinks,
+                    bankQuestionId,
+                    bankName,
                 };
 
                 if (question.type === "MCQ" || question.type === "MMCQ") {
@@ -1475,9 +1500,9 @@ export const questionRouter = createTRPCRouter({
         .input(
             z
                 .object({
-                    questionId: z.string().uuid(),
-                    quizId: z.string().uuid(),
-                    courseId: z.string().uuid(),
+                    questionId: z.uuid(),
+                    quizId: z.uuid(),
+                    courseId: z.uuid(),
                 })
                 .and(
                     baseQuestionSchema.partial().and(
@@ -1566,6 +1591,7 @@ export const questionRouter = createTRPCRouter({
                     updateData.courseOutcome = input.courseOutcome;
                 if (input.bloomTaxonomyLevel !== undefined)
                     updateData.bloomTaxonomyLevel = input.bloomTaxonomyLevel;
+                if (input.explanation !== undefined) updateData.explanation = input.explanation;
 
                 if (input.type === "MCQ" || input.type === "MMCQ") {
                     if (input.questionData) {
@@ -1657,9 +1683,9 @@ export const questionRouter = createTRPCRouter({
     deleteFromQuiz: managerOrFacultyProcedure
         .input(
             z.object({
-                questionId: z.string().uuid(),
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                questionId: z.uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -1713,10 +1739,10 @@ export const questionRouter = createTRPCRouter({
     addQuestionsFromBank: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
-                sectionId: z.string().uuid().nullable(),
-                bankQuestionIds: z.array(z.string().uuid()).min(1),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
+                sectionId: z.uuid().nullable(),
+                bankQuestionIds: z.array(z.uuid()).min(1),
             })
         )
         .mutation(async ({ input, ctx }) => {

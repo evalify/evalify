@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,17 @@ type ExistingQuizData = {
     courseIds?: string[];
     labIds?: string[];
     batchIds?: string[];
+    scoring?: {
+        mcqGlobalPartialMarking: boolean;
+        mcqGlobalNegativeMark?: number | null;
+        mcqGlobalNegativePercent?: number | null;
+        codingGlobalPartialMarking: boolean;
+        llmEvaluationEnabled: boolean;
+        llmProvider?: string | null;
+        llmModelName?: string | null;
+        fitbLlmSystemPrompt?: string | null;
+        descLlmSystemPrompt?: string | null;
+    };
 };
 
 type QuizCreationData = {
@@ -80,10 +91,15 @@ type QuizCreationData = {
         };
     };
     scoring: {
-        method?: "Standard" | "Weighted";
-        pointsPerQuestion?: number;
-        penalizeWrongAnswers?: boolean;
-        penaltyAmount?: number;
+        mcqGlobalPartialMarking: boolean;
+        mcqGlobalNegativeMark?: number;
+        mcqGlobalNegativePercent?: number;
+        codingGlobalPartialMarking: boolean;
+        llmEvaluationEnabled: boolean;
+        llmProvider?: string;
+        llmModelName?: string;
+        fitbLlmSystemPrompt?: string;
+        descLlmSystemPrompt?: string;
     };
 };
 
@@ -121,7 +137,12 @@ export function QuizCreationTabs({
     existingQuiz?: ExistingQuizData;
 }) {
     const router = useRouter();
-    const [currentTab, setCurrentTab] = useState<TabId>("metadata");
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+
+    const currentTab = (searchParams.get("tab") as TabId) || "metadata";
+
+    // const [currentTab, setCurrentTab] = useState<TabId>("metadata");
     const { toast } = useToast();
     const analytics = useAnalytics();
     const isEdit = !!quizId;
@@ -169,10 +190,9 @@ export function QuizCreationTabs({
                     },
                 },
                 scoring: {
-                    method: "Standard",
-                    pointsPerQuestion: 1,
-                    penalizeWrongAnswers: false,
-                    penaltyAmount: 0,
+                    mcqGlobalPartialMarking: false,
+                    codingGlobalPartialMarking: false,
+                    llmEvaluationEnabled: false,
                 },
             };
         }
@@ -228,12 +248,25 @@ export function QuizCreationTabs({
                     publishQuiz: existingQuiz.publishQuiz || false,
                 },
             },
-            scoring: {
-                method: "Standard",
-                pointsPerQuestion: 1,
-                penalizeWrongAnswers: false,
-                penaltyAmount: 0,
-            },
+            scoring: existingQuiz.scoring
+                ? {
+                      mcqGlobalPartialMarking: existingQuiz.scoring.mcqGlobalPartialMarking,
+                      mcqGlobalNegativeMark:
+                          existingQuiz.scoring.mcqGlobalNegativeMark ?? undefined,
+                      mcqGlobalNegativePercent:
+                          existingQuiz.scoring.mcqGlobalNegativePercent ?? undefined,
+                      codingGlobalPartialMarking: existingQuiz.scoring.codingGlobalPartialMarking,
+                      llmEvaluationEnabled: existingQuiz.scoring.llmEvaluationEnabled,
+                      llmProvider: existingQuiz.scoring.llmProvider ?? undefined,
+                      llmModelName: existingQuiz.scoring.llmModelName ?? undefined,
+                      fitbLlmSystemPrompt: existingQuiz.scoring.fitbLlmSystemPrompt ?? undefined,
+                      descLlmSystemPrompt: existingQuiz.scoring.descLlmSystemPrompt ?? undefined,
+                  }
+                : {
+                      mcqGlobalPartialMarking: false,
+                      codingGlobalPartialMarking: false,
+                      llmEvaluationEnabled: false,
+                  },
         };
     }, [existingQuiz]);
 
@@ -324,7 +357,9 @@ export function QuizCreationTabs({
 
     // Update URL when tab changes
     const handleTabChange = (value: string) => {
-        setCurrentTab(value as TabId);
+        const params = new URLSearchParams(searchParams);
+        params.set("tab", value);
+        router.push(`${pathname}?${params.toString()}`);
     };
 
     // Update specific section data
@@ -476,6 +511,7 @@ export function QuizCreationTabs({
                 studentIds: participantData.students,
                 labIds: participantData.labs,
                 batchIds: participantData.batches,
+                scoring: quizData.scoring,
             });
         } else {
             // Create new quiz
@@ -516,6 +552,7 @@ export function QuizCreationTabs({
                 studentIds: participantData.students,
                 labIds: participantData.labs,
                 batchIds: participantData.batches,
+                scoring: quizData.scoring,
             });
         }
     };
@@ -523,9 +560,10 @@ export function QuizCreationTabs({
     return (
         <TooltipProvider>
             <div className="w-full">
-                <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-                    <div className="flex justify-between">
-                        <div className="mb-8">
+                <div className="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+                    {/* Header Section */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
                             <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
                                 {isEdit ? "Edit Quiz" : "Create Quiz"}
                             </h1>
@@ -535,93 +573,103 @@ export function QuizCreationTabs({
                                     : "Set up your quiz by configuring the details, scoring method, and publishing settings."}
                             </p>
                         </div>
-                        <div className="flex justify-end pt-6 border-t">
-                            <Button
-                                onClick={handleSave}
-                                className="flex items-center gap-2"
-                                size="sm"
-                                disabled={
-                                    createQuizMutation.isPending || updateQuizMutation.isPending
-                                }
-                            >
-                                <Save className="h-4 w-4" />
-                                {createQuizMutation.isPending || updateQuizMutation.isPending
-                                    ? isEdit
-                                        ? "Updating..."
-                                        : "Saving..."
-                                    : isEdit
-                                      ? "Update Quiz"
-                                      : "Save Quiz"}
-                            </Button>
-                        </div>
+                        <Button
+                            onClick={handleSave}
+                            className="flex items-center gap-2 shrink-0"
+                            size="default"
+                            disabled={createQuizMutation.isPending || updateQuizMutation.isPending}
+                        >
+                            <Save className="h-4 w-4" />
+                            {createQuizMutation.isPending || updateQuizMutation.isPending
+                                ? isEdit
+                                    ? "Updating..."
+                                    : "Saving..."
+                                : isEdit
+                                  ? "Update Quiz"
+                                  : "Save Quiz"}
+                        </Button>
                     </div>
 
-                    <Tabs
-                        value={currentTab}
-                        onValueChange={handleTabChange}
-                        className="space-y-6 h-full flex flex-col"
-                    >
-                        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-3 h-auto p-1 gap-1 sm:gap-0">
-                            {tabs.map((tab) => {
-                                const Icon = tab.icon;
-                                return (
-                                    <TabsTrigger
-                                        key={tab.id}
-                                        value={tab.id}
-                                        className="flex flex-col sm:flex-col items-center gap-2 py-3 px-2 sm:px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground min-h-[60px] sm:min-h-[80px]"
-                                    >
-                                        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                                        <div className="text-center">
-                                            <div className="font-medium text-xs sm:text-sm flex items-center gap-1">
-                                                {tab.label}
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-                                                    </TooltipTrigger>
-                                                    <TooltipContent className="max-w-xs">
-                                                        <p>{tab.description}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
+                    {/* Tabs Container */}
+                    <Card>
+                        <CardContent className="p-6">
+                            <Tabs
+                                value={currentTab}
+                                onValueChange={handleTabChange}
+                                className="space-y-6"
+                            >
+                                <TabsList className="grid w-full grid-cols-3 h-auto p-1 gap-0">
+                                    {tabs.map((tab, index) => {
+                                        const Icon = tab.icon;
+                                        return (
+                                            <div key={tab.id} className="flex items-stretch h-full">
+                                                <TabsTrigger
+                                                    value={tab.id}
+                                                    className="flex-1 flex flex-col items-center justify-center gap-2 py-3 px-2 sm:px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground min-h-[60px] sm:min-h-20"
+                                                >
+                                                    <Icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
+                                                    <div className="text-center w-full">
+                                                        <div className="font-medium text-xs sm:text-sm flex items-center justify-center gap-1 flex-wrap">
+                                                            <span className="whitespace-normal wrap-break-word">
+                                                                {tab.label}
+                                                            </span>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Info className="h-3 w-3 text-muted-foreground cursor-help shrink-0" />
+                                                                </TooltipTrigger>
+                                                                <TooltipContent className="max-w-xs">
+                                                                    <p>{tab.description}</p>
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground hidden lg:block mt-1 whitespace-normal wrap-break-word">
+                                                            {tab.description}
+                                                        </div>
+                                                    </div>
+                                                </TabsTrigger>
+                                                {index < tabs.length - 1 && (
+                                                    <div className="w-px bg-border" />
+                                                )}
                                             </div>
-                                            <div className="text-xs text-muted-foreground hidden lg:block">
-                                                {tab.description}
-                                            </div>
-                                        </div>
-                                    </TabsTrigger>
-                                );
-                            })}
-                        </TabsList>
-                        <TabsContent value="metadata" className="space-y-6">
-                            <QuizMetadata data={quizData.metadata} updateData={updateMetadata} />
-                        </TabsContent>
-                        <TabsContent value="participants" className="space-y-6">
-                            <QuizParticipant
-                                data={participantData}
-                                updateData={setParticipantData}
-                            />
-                        </TabsContent>
-
-                        <TabsContent value="scoring" className="space-y-6">
-                            <Card className="w-full">
-                                <CardHeader className="px-4 sm:px-6">
-                                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                                        <Calculator className="h-4 w-4 sm:h-5 sm:w-5" />
-                                        Scoring Method
-                                    </CardTitle>
-                                    <CardDescription className="text-sm">
-                                        Define how questions will be scored and whether to apply
-                                        penalties for wrong answers.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="px-4 sm:px-6">
-                                    <ScoringMethod
-                                        data={quizData.scoring}
-                                        updateData={updateScoring}
+                                        );
+                                    })}
+                                </TabsList>
+                                <TabsContent value="metadata" className="space-y-6 mt-6">
+                                    <QuizMetadata
+                                        data={quizData.metadata}
+                                        updateData={updateMetadata}
                                     />
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                    </Tabs>
+                                </TabsContent>
+                                <TabsContent value="participants" className="space-y-6 mt-6">
+                                    <QuizParticipant
+                                        data={participantData}
+                                        updateData={setParticipantData}
+                                    />
+                                </TabsContent>
+
+                                <TabsContent value="scoring" className="space-y-6 mt-6">
+                                    <Card className="w-full">
+                                        <CardHeader className="px-4 sm:px-6">
+                                            <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                                                <Calculator className="h-4 w-4 sm:h-5 sm:w-5" />
+                                                Scoring Method
+                                            </CardTitle>
+                                            <CardDescription className="text-sm">
+                                                Define how questions will be scored and whether to
+                                                apply penalties for wrong answers.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="px-4 sm:px-6">
+                                            <ScoringMethod
+                                                data={quizData.scoring}
+                                                updateData={updateScoring}
+                                            />
+                                        </CardContent>
+                                    </Card>
+                                </TabsContent>
+                            </Tabs>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </TooltipProvider>

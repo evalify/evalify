@@ -205,7 +205,7 @@ export const profileImageRouter = createTRPCRouter({
     adminGetUploadUrl: adminProcedure
         .input(
             z.object({
-                userId: z.string().uuid(),
+                userId: z.uuid(),
                 fileType: z.string(),
             })
         )
@@ -251,7 +251,7 @@ export const profileImageRouter = createTRPCRouter({
     adminConfirmUpload: adminProcedure
         .input(
             z.object({
-                userId: z.string().uuid(),
+                userId: z.uuid(),
                 key: z.string(),
             })
         )
@@ -303,7 +303,7 @@ export const profileImageRouter = createTRPCRouter({
     adminDeleteProfileImage: adminProcedure
         .input(
             z.object({
-                userId: z.string().uuid(),
+                userId: z.uuid(),
             })
         )
         .mutation(async ({ ctx, input }) => {

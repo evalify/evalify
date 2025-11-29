@@ -45,7 +45,7 @@ export function createDefaultQuestion(questionType: QuestionType): Question {
         marks: 1,
         negativeMarks: 0,
         topics: [],
-        bloomsLevel: BloomsLevel.UNDERSTAND,
+        bloomTaxonomyLevel: BloomsLevel.UNDERSTAND,
         difficulty: Difficulty.MEDIUM,
     };
 

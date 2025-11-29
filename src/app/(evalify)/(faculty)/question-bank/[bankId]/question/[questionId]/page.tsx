@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import QuestionForm from "@/components/question/create-edit/question-form";
 import { trpc } from "@/lib/trpc/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,9 +16,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { useQuestionNavigation } from "@/contexts/question-navigation-context";
 import { logger } from "@/lib/logger";
+import { useMemo } from "react";
 
 export default function QuestionPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { success, error } = useToast();
     const { track } = useAnalytics();
     const utils = trpc.useUtils();
@@ -31,6 +33,30 @@ export default function QuestionPage() {
         : routeParams.questionId;
 
     const isCreateMode = questionId === "create";
+
+    // Get topics from URL params for create mode
+    const defaultTopicIds = useMemo(() => {
+        if (!isCreateMode) return [];
+        const topicsParam = searchParams.get("topics");
+        return topicsParam ? topicsParam.split(",") : [];
+    }, [isCreateMode, searchParams]);
+
+    // Fetch topic details for default topics
+    const { data: bankTopics } = trpc.topic.listByBank.useQuery(
+        { bankId: bankId! },
+        { enabled: isCreateMode && !!bankId && defaultTopicIds.length > 0 }
+    );
+
+    // Prepare default topics with names
+    const defaultTopics = useMemo(() => {
+        if (!isCreateMode || !bankTopics || defaultTopicIds.length === 0) return [];
+        return defaultTopicIds
+            .map((topicId) => {
+                const topic = bankTopics.find((t) => t.id === topicId);
+                return topic ? { topicId: topic.id, topicName: topic.name } : null;
+            })
+            .filter((t) => t !== null);
+    }, [isCreateMode, bankTopics, defaultTopicIds]);
 
     // Only fetch question data if we're in edit mode
     const { data: questionData, isLoading } = trpc.question.getById.useQuery(
@@ -110,7 +136,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     questionData: mcqQuestion.questionData,
@@ -129,7 +155,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     trueFalseAnswer: tfQuestion.trueFalseAnswer,
@@ -147,7 +173,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     blankConfig: fibQuestion.blankConfig,
@@ -165,7 +191,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     descriptiveConfig: descQuestion.descriptiveConfig,
@@ -183,7 +209,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     options: matchQuestion.options,
@@ -214,7 +240,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     questionData: mcqQuestion.questionData,
@@ -232,7 +258,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     trueFalseAnswer: tfQuestion.trueFalseAnswer,
@@ -251,7 +277,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     blankConfig: fibQuestion.blankConfig,
@@ -270,7 +296,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     descriptiveConfig: descQuestion.descriptiveConfig,
@@ -289,7 +315,7 @@ export default function QuestionPage() {
                     marks: question.marks,
                     negativeMarks: question.negativeMarks,
                     difficulty: question.difficulty,
-                    bloomTaxonomyLevel: question.bloomsLevel,
+                    bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                     courseOutcome: question.courseOutcome,
                     topicIds: (question.topics || []).map((t) => t.topicId),
                     options: matchQuestion.options,
@@ -328,7 +354,7 @@ export default function QuestionPage() {
                 marks: question.marks,
                 negativeMarks: question.negativeMarks,
                 difficulty: question.difficulty,
-                bloomTaxonomyLevel: question.bloomsLevel,
+                bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                 courseOutcome: question.courseOutcome,
                 topicIds: (question.topics || []).map((t) => t.topicId),
                 questionData: mcqQuestion.questionData,
@@ -347,7 +373,7 @@ export default function QuestionPage() {
                 marks: question.marks,
                 negativeMarks: question.negativeMarks,
                 difficulty: question.difficulty,
-                bloomTaxonomyLevel: question.bloomsLevel,
+                bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                 courseOutcome: question.courseOutcome,
                 topicIds: (question.topics || []).map((t) => t.topicId),
                 trueFalseAnswer: tfQuestion.trueFalseAnswer,
@@ -365,7 +391,7 @@ export default function QuestionPage() {
                 marks: question.marks,
                 negativeMarks: question.negativeMarks,
                 difficulty: question.difficulty,
-                bloomTaxonomyLevel: question.bloomsLevel,
+                bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                 courseOutcome: question.courseOutcome,
                 topicIds: (question.topics || []).map((t) => t.topicId),
                 blankConfig: fibQuestion.blankConfig,
@@ -383,7 +409,7 @@ export default function QuestionPage() {
                 marks: question.marks,
                 negativeMarks: question.negativeMarks,
                 difficulty: question.difficulty,
-                bloomTaxonomyLevel: question.bloomsLevel,
+                bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                 courseOutcome: question.courseOutcome,
                 topicIds: (question.topics || []).map((t) => t.topicId),
                 descriptiveConfig: descQuestion.descriptiveConfig,
@@ -401,7 +427,7 @@ export default function QuestionPage() {
                 marks: question.marks,
                 negativeMarks: question.negativeMarks,
                 difficulty: question.difficulty,
-                bloomTaxonomyLevel: question.bloomsLevel,
+                bloomTaxonomyLevel: question.bloomTaxonomyLevel,
                 courseOutcome: question.courseOutcome,
                 topicIds: (question.topics || []).map((t) => t.topicId),
                 options: matchQuestion.options,
@@ -460,6 +486,7 @@ export default function QuestionPage() {
             }
             context="bank"
             bankId={bankId}
+            defaultTopics={isCreateMode ? defaultTopics : undefined}
         />
     );
 }

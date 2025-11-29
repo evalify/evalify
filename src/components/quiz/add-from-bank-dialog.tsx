@@ -115,8 +115,6 @@ export function AddFromBankDialog({
             {
                 bankId: filters.bankId,
                 topicIds: filters.topicIds.length > 0 ? filters.topicIds : [],
-                limit: filters.limit,
-                offset: 0,
             },
             { enabled: step === 2 && !!filters.bankId }
         );

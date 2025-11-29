@@ -230,6 +230,7 @@ export function DataTable<TData, TValue>({
         return [selectCol, ...columns];
     }, [columns, enableRowSelection]);
 
+    // eslint-disable-next-line react-hooks/incompatible-library
     const table = useReactTable({
         data,
         columns: computedColumns,
@@ -269,14 +270,16 @@ export function DataTable<TData, TValue>({
         },
 
         onPaginationChange: (updater) => {
-            const next = typeof updater === "function" ? updater({ pageIndex, pageSize }) : updater;
+            const current = { pageIndex, pageSize };
+            const next = typeof updater === "function" ? updater(current) : updater;
 
-            if ("pageIndex" in next) {
-                (onPageIndexChange ?? iSetPageIndex)(next.pageIndex);
-            }
-            if ("pageSize" in next) {
+            // Check if pageSize changed - if so, reset to first page
+            if ("pageSize" in next && next.pageSize !== current.pageSize) {
                 (onPageSizeChange ?? iSetPageSize)(next.pageSize);
                 (onPageIndexChange ?? iSetPageIndex)(0);
+            } else if ("pageIndex" in next && next.pageIndex !== current.pageIndex) {
+                // Only pageIndex changed
+                (onPageIndexChange ?? iSetPageIndex)(next.pageIndex);
             }
         },
 

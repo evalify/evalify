@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { getColumns } from "@/components/question-bank/bank-column";
@@ -21,6 +22,7 @@ export default function QuestionBankPage() {
     const [bankToShare, setBankToShare] = useState<BankListItem | null>(null);
     const [pageIndex, setPageIndex] = useState(0);
     const [pageSize, setPageSize] = useState(10);
+    const [sorting, setSorting] = useState<SortingState>([]);
     const [filterValue, setFilterValue] = useState("");
     const { data: session } = useSession();
 
@@ -28,6 +30,8 @@ export default function QuestionBankPage() {
         searchTerm: filterValue || undefined,
         limit: pageSize,
         offset: pageIndex * pageSize,
+        sortBy: sorting && sorting[0] ? String(sorting[0].id) : undefined,
+        sortOrder: sorting && sorting[0] ? (sorting[0].desc ? "desc" : "asc") : undefined,
     });
 
     const rows = banksData?.rows || [];
@@ -79,6 +83,11 @@ export default function QuestionBankPage() {
                 onPageIndexChange={setPageIndex}
                 onPageSizeChange={(size) => {
                     setPageSize(size);
+                    setPageIndex(0);
+                }}
+                sorting={sorting}
+                onSortingChange={(s) => {
+                    setSorting(s);
                     setPageIndex(0);
                 }}
                 filterValue={filterValue}

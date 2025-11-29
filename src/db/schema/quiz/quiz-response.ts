@@ -42,7 +42,9 @@ export const quizResponseTable = pgTable(
         ip: text("ip").array(),
         duration: interval().notNull(),
         response: json("response"),
+        evaluationResults: json("evaluation_results"),
         score: decimal("score"),
+        totalScore: decimal("total_score"),
         violations: text("violations").array(),
         isViolated: boolean("is_violated").notNull().default(false),
 

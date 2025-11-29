@@ -21,3 +21,4 @@ export * from "./schema/question/bank-question";
 export * from "./schema/bank/topic/topic";
 export * from "./schema/bank/topic/topic-question";
 export * from "./schema/quiz/quiz-response";
+export * from "./schema/quiz/quiz-evaluation-settings";

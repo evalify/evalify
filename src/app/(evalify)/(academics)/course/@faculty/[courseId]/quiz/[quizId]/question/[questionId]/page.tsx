@@ -152,7 +152,7 @@ export default function QuizQuestionPage() {
             marks: question.marks,
             negativeMarks: question.negativeMarks,
             difficulty: question.difficulty,
-            bloomTaxonomyLevel: question.bloomsLevel,
+            bloomTaxonomyLevel: question.bloomTaxonomyLevel,
             courseOutcome: question.courseOutcome,
             explanation: question.explanation,
             topicIds: (question.topics || []).map((t) => t.topicId),
@@ -258,7 +258,7 @@ export default function QuizQuestionPage() {
             marks: question.marks,
             negativeMarks: question.negativeMarks,
             difficulty: question.difficulty,
-            bloomTaxonomyLevel: question.bloomsLevel,
+            bloomTaxonomyLevel: question.bloomTaxonomyLevel,
             courseOutcome: question.courseOutcome,
             topicIds: (question.topics || []).map((t) => t.topicId),
             explanation: question.explanation,
@@ -359,6 +359,19 @@ export default function QuizQuestionPage() {
                     initialData={!isCreateMode ? (questionData as unknown as Question) : undefined}
                     onSave={handleSave}
                     onSaveAndContinue={isCreateMode ? handleSaveAndContinue : undefined}
+                    onUpdateInBank={
+                        !isCreateMode &&
+                        questionData &&
+                        "bankQuestionId" in questionData &&
+                        questionData.bankQuestionId
+                            ? handleSave
+                            : undefined
+                    }
+                    bankName={
+                        !isCreateMode && questionData && "bankName" in questionData
+                            ? (questionData.bankName as string)
+                            : undefined
+                    }
                     onCancel={handleCancel}
                     isLoading={
                         createMutation.isPending ||

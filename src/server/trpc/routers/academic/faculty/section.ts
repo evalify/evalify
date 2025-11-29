@@ -9,6 +9,8 @@ import {
     questionsTable,
     topicQuestionsTable,
     topicsTable,
+    banksTable,
+    bankQuestionsTable,
 } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -84,8 +86,8 @@ export const sectionRouter = createTRPCRouter({
     create: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
                 name: z.string().min(1, "Section name is required"),
             })
         )
@@ -140,8 +142,8 @@ export const sectionRouter = createTRPCRouter({
     updateName: managerOrFacultyProcedure
         .input(
             z.object({
-                sectionId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                sectionId: z.uuid(),
+                courseId: z.uuid(),
                 name: z.string().min(1, "Section name is required"),
             })
         )
@@ -182,8 +184,8 @@ export const sectionRouter = createTRPCRouter({
     delete: managerOrFacultyProcedure
         .input(
             z.object({
-                sectionId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                sectionId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -227,9 +229,9 @@ export const sectionRouter = createTRPCRouter({
     listQuestionsInSection: managerOrFacultyProcedure
         .input(
             z.object({
-                sectionId: z.string().uuid().optional().nullable(),
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                sectionId: z.uuid().optional().nullable(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -292,6 +294,20 @@ export const sectionRouter = createTRPCRouter({
 
                         if (!question) return null;
 
+                        // Fetch bank name if question is from a bank
+                        let bankName: string | null = null;
+                        if (qq.bankQuestionId) {
+                            const [bankQuestion] = await db
+                                .select({
+                                    bankName: banksTable.name,
+                                })
+                                .from(bankQuestionsTable)
+                                .innerJoin(banksTable, eq(bankQuestionsTable.bankId, banksTable.id))
+                                .where(eq(bankQuestionsTable.id, qq.bankQuestionId))
+                                .limit(1);
+                            bankName = bankQuestion?.bankName ?? null;
+                        }
+
                         // Fetch topics for this question
                         const topicLinks: TopicLink[] = await db
                             .select({
@@ -338,7 +354,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 questionData: unwrappedQuestionData as MCQData,
@@ -347,6 +363,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizMCQQuestion;
                         } else if (question.type === "MMCQ") {
                             transformedQuestion = {
@@ -361,7 +378,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 questionData: unwrappedQuestionData as MMCQData,
@@ -370,6 +387,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizMMCQQuestion;
                         } else if (question.type === "TRUE_FALSE") {
                             const solutionData = unwrappedSolution as {
@@ -388,7 +406,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 trueFalseAnswer: solutionData?.trueFalseAnswer,
@@ -397,6 +415,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizTrueFalseQuestion;
                         } else if (question.type === "FILL_THE_BLANK") {
                             const data = unwrappedQuestionData as {
@@ -417,7 +436,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 blankConfig: {
@@ -428,6 +447,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizFillInBlanksQuestion;
                         } else if (question.type === "DESCRIPTIVE") {
                             const data = unwrappedQuestionData as {
@@ -449,7 +469,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 descriptiveConfig: {
@@ -461,6 +481,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizDescriptiveQuestion;
                         } else if (question.type === "MATCHING") {
                             const data = unwrappedQuestionData as {
@@ -493,7 +514,7 @@ export const sectionRouter = createTRPCRouter({
                                 courseOutcome: question.courseOutcome
                                     ? (question.courseOutcome as CourseOutcome)
                                     : undefined,
-                                bloomsLevel: question.bloomTaxonomyLevel
+                                bloomTaxonomyLevel: question.bloomTaxonomyLevel
                                     ? (question.bloomTaxonomyLevel as BloomsLevel)
                                     : undefined,
                                 options,
@@ -501,6 +522,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizMatchTheFollowingQuestion;
                         } else {
                             // For unsupported question types, return null
@@ -528,8 +550,8 @@ export const sectionRouter = createTRPCRouter({
     getAllQuizBankQuestionIds: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -588,11 +610,11 @@ export const sectionRouter = createTRPCRouter({
     reorderSections: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
                 sectionOrders: z.array(
                     z.object({
-                        sectionId: z.string().uuid(),
+                        sectionId: z.uuid(),
                         orderIndex: z.number(),
                     })
                 ),
@@ -640,12 +662,12 @@ export const sectionRouter = createTRPCRouter({
     reorderQuestions: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
-                sectionId: z.string().uuid().optional().nullable(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
+                sectionId: z.uuid().optional().nullable(),
                 questionOrders: z.array(
                     z.object({
-                        quizQuestionId: z.string().uuid(),
+                        quizQuestionId: z.uuid(),
                         orderIndex: z.number(),
                     })
                 ),
