@@ -550,8 +550,8 @@ export const questionRouter = createTRPCRouter({
     getById: managerOrFacultyProcedure
         .input(
             z.object({
-                questionId: z.string().uuid(),
-                bankId: z.string().uuid().optional(),
+                questionId: z.uuid(),
+                bankId: z.uuid().optional(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -735,7 +735,7 @@ export const questionRouter = createTRPCRouter({
                 ])
             )
         )
-        .input(z.object({ bankId: z.string().uuid() }))
+        .input(z.object({ bankId: z.uuid() }))
         .mutation(async ({ input, ctx }) => {
             try {
                 const userId = ctx.session.user.id;
@@ -892,8 +892,8 @@ export const questionRouter = createTRPCRouter({
         .input(
             z
                 .object({
-                    questionId: z.string().uuid(),
-                    bankId: z.string().uuid().optional(),
+                    questionId: z.uuid(),
+                    bankId: z.uuid().optional(),
                 })
                 .and(
                     baseQuestionSchema.partial().and(
@@ -1094,8 +1094,8 @@ export const questionRouter = createTRPCRouter({
     delete: managerOrFacultyProcedure
         .input(
             z.object({
-                questionId: z.string().uuid(),
-                bankId: z.string().uuid().optional(),
+                questionId: z.uuid(),
+                bankId: z.uuid().optional(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -1183,9 +1183,9 @@ export const questionRouter = createTRPCRouter({
         )
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
-                sectionId: z.string().uuid().optional().nullable(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
+                sectionId: z.uuid().optional().nullable(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -1329,9 +1329,9 @@ export const questionRouter = createTRPCRouter({
     getByIdForQuiz: managerOrFacultyProcedure
         .input(
             z.object({
-                questionId: z.string().uuid(),
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                questionId: z.uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -1469,9 +1469,9 @@ export const questionRouter = createTRPCRouter({
         .input(
             z
                 .object({
-                    questionId: z.string().uuid(),
-                    quizId: z.string().uuid(),
-                    courseId: z.string().uuid(),
+                    questionId: z.uuid(),
+                    quizId: z.uuid(),
+                    courseId: z.uuid(),
                 })
                 .and(
                     baseQuestionSchema.partial().and(
@@ -1652,9 +1652,9 @@ export const questionRouter = createTRPCRouter({
     deleteFromQuiz: managerOrFacultyProcedure
         .input(
             z.object({
-                questionId: z.string().uuid(),
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                questionId: z.uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -1708,10 +1708,10 @@ export const questionRouter = createTRPCRouter({
     addQuestionsFromBank: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
-                sectionId: z.string().uuid().nullable(),
-                bankQuestionIds: z.array(z.string().uuid()).min(1),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
+                sectionId: z.uuid().nullable(),
+                bankQuestionIds: z.array(z.uuid()).min(1),
             })
         )
         .mutation(async ({ input, ctx }) => {

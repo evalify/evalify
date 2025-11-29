@@ -29,7 +29,7 @@ export const facultyQuizRouter = createTRPCRouter({
     listByCourse: facultyAndManagerProcedure
         .input(
             z.object({
-                courseId: z.string().uuid(),
+                courseId: z.uuid(),
                 searchTerm: z.string().optional(),
                 status: z.enum(["ALL", "UPCOMING", "ACTIVE", "COMPLETED"]).default("ALL"),
                 publishStatus: z.enum(["ALL", "PUBLISHED", "UNPUBLISHED"]).default("ALL"),
@@ -197,7 +197,7 @@ export const facultyQuizRouter = createTRPCRouter({
     getCourseInfo: facultyAndManagerProcedure
         .input(
             z.object({
-                courseId: z.string().uuid(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -264,7 +264,7 @@ export const facultyQuizRouter = createTRPCRouter({
     getById: facultyAndManagerProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
+                quizId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -359,7 +359,7 @@ export const facultyQuizRouter = createTRPCRouter({
     create: facultyAndManagerProcedure
         .input(
             z.object({
-                courseId: z.string().uuid(),
+                courseId: z.uuid(),
                 name: z.string().min(1, "Quiz name is required"),
                 description: z.string().optional(),
                 instructions: z.string().optional(),
@@ -376,10 +376,10 @@ export const facultyQuizRouter = createTRPCRouter({
                 publishResult: z.boolean().default(false),
                 publishQuiz: z.boolean().default(false),
                 quizTags: z.array(z.string()).optional(),
-                courseIds: z.array(z.string().uuid()).optional(),
-                studentIds: z.array(z.string().uuid()).optional(),
-                labIds: z.array(z.string().uuid()).optional(),
-                batchIds: z.array(z.string().uuid()).optional(),
+                courseIds: z.array(z.uuid()).optional(),
+                studentIds: z.array(z.uuid()).optional(),
+                labIds: z.array(z.uuid()).optional(),
+                batchIds: z.array(z.uuid()).optional(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -532,7 +532,7 @@ export const facultyQuizRouter = createTRPCRouter({
     update: facultyAndManagerProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
+                quizId: z.uuid(),
                 name: z.string().min(1).optional(),
                 description: z.string().optional(),
                 instructions: z.string().optional(),
@@ -549,10 +549,10 @@ export const facultyQuizRouter = createTRPCRouter({
                 publishResult: z.boolean().optional(),
                 publishQuiz: z.boolean().optional(),
                 quizTags: z.array(z.string()).optional(),
-                courseIds: z.array(z.string().uuid()).optional(),
-                studentIds: z.array(z.string().uuid()).optional(),
-                labIds: z.array(z.string().uuid()).optional(),
-                batchIds: z.array(z.string().uuid()).optional(),
+                courseIds: z.array(z.uuid()).optional(),
+                studentIds: z.array(z.uuid()).optional(),
+                labIds: z.array(z.uuid()).optional(),
+                batchIds: z.array(z.uuid()).optional(),
             })
         )
         .mutation(async ({ input, ctx }) => {

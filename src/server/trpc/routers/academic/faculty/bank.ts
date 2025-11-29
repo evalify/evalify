@@ -197,7 +197,7 @@ export const bankRouter = createTRPCRouter({
     get: facultyAndManagerProcedure
         .input(
             z.object({
-                id: z.string().uuid(),
+                id: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -336,7 +336,7 @@ export const bankRouter = createTRPCRouter({
     update: facultyAndManagerProcedure
         .input(
             z.object({
-                id: z.string().uuid(),
+                id: z.uuid(),
                 name: z.string().min(1, "Bank name is required").max(255).optional(),
                 courseCode: z.string().max(50).optional(),
                 semester: z.number().min(1).max(8).optional(),
@@ -398,7 +398,7 @@ export const bankRouter = createTRPCRouter({
     delete: facultyAndManagerProcedure
         .input(
             z.object({
-                id: z.string().uuid(),
+                id: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -436,8 +436,8 @@ export const bankRouter = createTRPCRouter({
     shareBank: facultyAndManagerProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                userIds: z.array(z.string().uuid()).min(1),
+                bankId: z.uuid(),
+                userIds: z.array(z.uuid()).min(1),
                 accessLevel: z.enum(["READ", "WRITE"]),
             })
         )
@@ -490,8 +490,8 @@ export const bankRouter = createTRPCRouter({
     unshareBank: facultyAndManagerProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                userId: z.string().uuid(),
+                bankId: z.uuid(),
+                userId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -543,8 +543,8 @@ export const bankRouter = createTRPCRouter({
     updateAccessLevel: facultyAndManagerProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
-                userId: z.string().uuid(),
+                bankId: z.uuid(),
+                userId: z.uuid(),
                 accessLevel: z.enum(["READ", "WRITE"]),
             })
         )
@@ -599,7 +599,7 @@ export const bankRouter = createTRPCRouter({
     getSharedUsers: facultyAndManagerProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
+                bankId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -684,7 +684,7 @@ export const bankRouter = createTRPCRouter({
         .input(
             z.object({
                 searchTerm: z.string().min(2),
-                excludeUserIds: z.array(z.string().uuid()).optional(),
+                excludeUserIds: z.array(z.uuid()).optional(),
             })
         )
         .query(async ({ input }) => {
