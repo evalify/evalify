@@ -9,6 +9,8 @@ import {
     questionsTable,
     topicQuestionsTable,
     topicsTable,
+    banksTable,
+    bankQuestionsTable,
 } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -292,6 +294,20 @@ export const sectionRouter = createTRPCRouter({
 
                         if (!question) return null;
 
+                        // Fetch bank name if question is from a bank
+                        let bankName: string | null = null;
+                        if (qq.bankQuestionId) {
+                            const [bankQuestion] = await db
+                                .select({
+                                    bankName: banksTable.name,
+                                })
+                                .from(bankQuestionsTable)
+                                .innerJoin(banksTable, eq(bankQuestionsTable.bankId, banksTable.id))
+                                .where(eq(bankQuestionsTable.id, qq.bankQuestionId))
+                                .limit(1);
+                            bankName = bankQuestion?.bankName ?? null;
+                        }
+
                         // Fetch topics for this question
                         const topicLinks: TopicLink[] = await db
                             .select({
@@ -347,6 +363,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizMCQQuestion;
                         } else if (question.type === "MMCQ") {
                             transformedQuestion = {
@@ -370,6 +387,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizMMCQQuestion;
                         } else if (question.type === "TRUE_FALSE") {
                             const solutionData = unwrappedSolution as {
@@ -397,6 +415,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizTrueFalseQuestion;
                         } else if (question.type === "FILL_THE_BLANK") {
                             const data = unwrappedQuestionData as {
@@ -428,6 +447,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizFillInBlanksQuestion;
                         } else if (question.type === "DESCRIPTIVE") {
                             const data = unwrappedQuestionData as {
@@ -461,6 +481,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizDescriptiveQuestion;
                         } else if (question.type === "MATCHING") {
                             const data = unwrappedQuestionData as {
@@ -501,6 +522,7 @@ export const sectionRouter = createTRPCRouter({
                                 quizQuestionId: qq.id,
                                 orderIndex: qq.orderIndex,
                                 bankQuestionId: qq.bankQuestionId,
+                                bankName,
                             } satisfies QuizMatchTheFollowingQuestion;
                         } else {
                             // For unsupported question types, return null
