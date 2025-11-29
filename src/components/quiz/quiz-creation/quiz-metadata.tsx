@@ -780,7 +780,6 @@ export function QuizMetadata({ data, updateData }: QuizMetadataProps) {
                                         </TooltipContent>
                                     </Tooltip>
                                     <Switch
-                                        disabled
                                         id="kiosk-mode"
                                         checked={!!data.settings.kioskMode}
                                         onCheckedChange={(checked) =>

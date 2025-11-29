@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,17 @@ type ExistingQuizData = {
     courseIds?: string[];
     labIds?: string[];
     batchIds?: string[];
+    scoring?: {
+        mcqGlobalPartialMarking: boolean;
+        mcqGlobalNegativeMark?: number | null;
+        mcqGlobalNegativePercent?: number | null;
+        codingGlobalPartialMarking: boolean;
+        llmEvaluationEnabled: boolean;
+        llmProvider?: string | null;
+        llmModelName?: string | null;
+        fitbLlmSystemPrompt?: string | null;
+        descLlmSystemPrompt?: string | null;
+    };
 };
 
 type QuizCreationData = {
@@ -80,10 +91,15 @@ type QuizCreationData = {
         };
     };
     scoring: {
-        method?: "Standard" | "Weighted";
-        pointsPerQuestion?: number;
-        penalizeWrongAnswers?: boolean;
-        penaltyAmount?: number;
+        mcqGlobalPartialMarking: boolean;
+        mcqGlobalNegativeMark?: number;
+        mcqGlobalNegativePercent?: number;
+        codingGlobalPartialMarking: boolean;
+        llmEvaluationEnabled: boolean;
+        llmProvider?: string;
+        llmModelName?: string;
+        fitbLlmSystemPrompt?: string;
+        descLlmSystemPrompt?: string;
     };
 };
 
@@ -121,7 +137,12 @@ export function QuizCreationTabs({
     existingQuiz?: ExistingQuizData;
 }) {
     const router = useRouter();
-    const [currentTab, setCurrentTab] = useState<TabId>("metadata");
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+
+    const currentTab = (searchParams.get("tab") as TabId) || "metadata";
+
+    // const [currentTab, setCurrentTab] = useState<TabId>("metadata");
     const { toast } = useToast();
     const analytics = useAnalytics();
     const isEdit = !!quizId;
@@ -169,10 +190,9 @@ export function QuizCreationTabs({
                     },
                 },
                 scoring: {
-                    method: "Standard",
-                    pointsPerQuestion: 1,
-                    penalizeWrongAnswers: false,
-                    penaltyAmount: 0,
+                    mcqGlobalPartialMarking: false,
+                    codingGlobalPartialMarking: false,
+                    llmEvaluationEnabled: false,
                 },
             };
         }
@@ -228,12 +248,25 @@ export function QuizCreationTabs({
                     publishQuiz: existingQuiz.publishQuiz || false,
                 },
             },
-            scoring: {
-                method: "Standard",
-                pointsPerQuestion: 1,
-                penalizeWrongAnswers: false,
-                penaltyAmount: 0,
-            },
+            scoring: existingQuiz.scoring
+                ? {
+                      mcqGlobalPartialMarking: existingQuiz.scoring.mcqGlobalPartialMarking,
+                      mcqGlobalNegativeMark:
+                          existingQuiz.scoring.mcqGlobalNegativeMark ?? undefined,
+                      mcqGlobalNegativePercent:
+                          existingQuiz.scoring.mcqGlobalNegativePercent ?? undefined,
+                      codingGlobalPartialMarking: existingQuiz.scoring.codingGlobalPartialMarking,
+                      llmEvaluationEnabled: existingQuiz.scoring.llmEvaluationEnabled,
+                      llmProvider: existingQuiz.scoring.llmProvider ?? undefined,
+                      llmModelName: existingQuiz.scoring.llmModelName ?? undefined,
+                      fitbLlmSystemPrompt: existingQuiz.scoring.fitbLlmSystemPrompt ?? undefined,
+                      descLlmSystemPrompt: existingQuiz.scoring.descLlmSystemPrompt ?? undefined,
+                  }
+                : {
+                      mcqGlobalPartialMarking: false,
+                      codingGlobalPartialMarking: false,
+                      llmEvaluationEnabled: false,
+                  },
         };
     }, [existingQuiz]);
 
@@ -324,7 +357,9 @@ export function QuizCreationTabs({
 
     // Update URL when tab changes
     const handleTabChange = (value: string) => {
-        setCurrentTab(value as TabId);
+        const params = new URLSearchParams(searchParams);
+        params.set("tab", value);
+        router.push(`${pathname}?${params.toString()}`);
     };
 
     // Update specific section data
@@ -476,6 +511,7 @@ export function QuizCreationTabs({
                 studentIds: participantData.students,
                 labIds: participantData.labs,
                 batchIds: participantData.batches,
+                scoring: quizData.scoring,
             });
         } else {
             // Create new quiz
@@ -516,6 +552,7 @@ export function QuizCreationTabs({
                 studentIds: participantData.students,
                 labIds: participantData.labs,
                 batchIds: participantData.batches,
+                scoring: quizData.scoring,
             });
         }
     };
