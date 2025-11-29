@@ -16,7 +16,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
     Loader2,
     Plus,
@@ -28,6 +27,7 @@ import {
     Filter,
     FileQuestion,
     ArrowUpDown,
+    Search,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
@@ -104,6 +104,11 @@ export default function QuestionBankPage() {
     const [sortBy, setSortBy] = useState<"difficulty" | "marks" | "courseOutcome" | null>(null);
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
+    // Search state
+    const [searchInput, setSearchInput] = useState(""); // For the input field
+    const [searchQuery, setSearchQuery] = useState(""); // For the actual filtering (debounced)
+    const [isSearching, setIsSearching] = useState(false); // For showing loading indicator
+
     const questionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const questionListRef = useRef<QuestionListRef>(null);
 
@@ -135,6 +140,23 @@ export default function QuestionBankPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Debounce search input
+    useEffect(() => {
+        if (searchInput.trim() !== searchQuery.trim()) {
+            setIsSearching(true);
+        }
+
+        const timer = setTimeout(() => {
+            setSearchQuery(searchInput);
+            setIsSearching(false);
+        }, 300); // 300ms debounce
+
+        return () => {
+            clearTimeout(timer);
+            setIsSearching(false);
+        };
+    }, [searchInput, searchQuery]);
+
     // Fetch bank details
     const { data: bank, isLoading: isBankLoading } = trpc.bank.get.useQuery({ id: bankId });
 
@@ -157,7 +179,7 @@ export default function QuestionBankPage() {
                 enabled: selectedTopics.length > 0 && !selectedTopics.includes(NO_TOPIC_ID),
             }
         );
-    const questions = questionsData as QuestionWithTopics[] | undefined;
+    const _questions = questionsData as QuestionWithTopics[] | undefined;
 
     // Fetch questions without topics (when "No Topic" is selected)
     const { data: questionsWithoutTopicsData, isLoading: isQuestionsWithoutTopicsLoading } =
@@ -182,6 +204,31 @@ export default function QuestionBankPage() {
             questions = questions.filter((question) =>
                 selectedQuestionTypes.includes(question.type)
             );
+        }
+
+        // Apply search filter if search query exists
+        if (searchQuery.trim() && questions) {
+            const query = searchQuery.toLowerCase().trim();
+            questions = questions.filter((question) => {
+                // Search in question text
+                const questionText = question.question?.toLowerCase() || "";
+                // Search in explanation
+                const explanationText = question.explanation?.toLowerCase() || "";
+                // Search in course outcome
+                const courseOutcome = question.courseOutcome?.toLowerCase() || "";
+                // Search in difficulty
+                const difficulty = question.difficulty?.toLowerCase() || "";
+                // Search in question type
+                const questionType = question.type?.toLowerCase().replace(/_/g, " ") || "";
+
+                return (
+                    questionText.includes(query) ||
+                    explanationText.includes(query) ||
+                    courseOutcome.includes(query) ||
+                    difficulty.includes(query) ||
+                    questionType.includes(query)
+                );
+            });
         }
 
         // Apply sorting if selected
@@ -229,6 +276,7 @@ export default function QuestionBankPage() {
         selectedQuestionTypes,
         sortBy,
         sortOrder,
+        searchQuery,
         NO_TOPIC_ID,
     ]);
 
@@ -474,6 +522,21 @@ export default function QuestionBankPage() {
         setSortBy(null);
         setSortOrder("asc");
         track("question_sort_cleared", { bankId });
+    };
+
+    // Helper functions for search
+    const handleSearchChange = (value: string) => {
+        setSearchInput(value);
+        track("question_search_used", {
+            bankId,
+            searchLength: value.length,
+        });
+    };
+
+    const handleClearSearch = () => {
+        setSearchInput("");
+        setSearchQuery("");
+        track("question_search_cleared", { bankId });
     };
 
     if (isBankLoading) {
@@ -808,29 +871,80 @@ export default function QuestionBankPage() {
                                             </>
                                         )}
                                     </p>
-                                    {/* Show active question type filters */}
-                                    {selectedQuestionTypes && selectedQuestionTypes.length > 0 && (
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs text-muted-foreground">
-                                                Filtered by:
-                                            </span>
-                                            <div className="flex gap-1">
-                                                {selectedQuestionTypes.map((type) => (
-                                                    <Badge
-                                                        key={type}
-                                                        variant="outline"
-                                                        className="h-5 px-2 text-xs"
-                                                    >
-                                                        {type.replace(/_/g, " ")}
-                                                    </Badge>
-                                                ))}
+                                    {/* Show active filters */}
+                                    {(selectedQuestionTypes && selectedQuestionTypes.length > 0) ||
+                                        (searchQuery.trim() && (
+                                            <div className="flex items-center gap-4">
+                                                {/* Show search query */}
+                                                {searchQuery.trim() && (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Searching for:
+                                                        </span>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="h-5 px-2 text-xs bg-blue-50 border-blue-200 text-blue-700"
+                                                        >
+                                                            &quot;{searchQuery.trim()}&quot;
+                                                        </Badge>
+                                                    </div>
+                                                )}
+                                                {/* Show question type filters */}
+                                                {selectedQuestionTypes &&
+                                                    selectedQuestionTypes.length > 0 && (
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-muted-foreground">
+                                                                Filtered by:
+                                                            </span>
+                                                            <div className="flex gap-1">
+                                                                {selectedQuestionTypes.map(
+                                                                    (type) => (
+                                                                        <Badge
+                                                                            key={type}
+                                                                            variant="outline"
+                                                                            className="h-5 px-2 text-xs"
+                                                                        >
+                                                                            {type.replace(
+                                                                                /_/g,
+                                                                                " "
+                                                                            )}
+                                                                        </Badge>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                             </div>
-                                        </div>
-                                    )}
+                                        ))}
                                 </div>
 
                                 {/* Sort and Filter Buttons */}
                                 <div className="flex items-center gap-2">
+                                    {/* Search Input */}
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                        <Input
+                                            placeholder="Search questions..."
+                                            value={searchInput}
+                                            onChange={(e) => handleSearchChange(e.target.value)}
+                                            className="w-64 pl-9 pr-9 h-8"
+                                        />
+                                        {isSearching ? (
+                                            <div className="absolute right-1 top-1/2 h-6 w-6 p-0 -translate-y-1/2 flex items-center justify-center">
+                                                <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                            </div>
+                                        ) : searchInput ? (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleClearSearch}
+                                                className="absolute right-1 top-1/2 h-6 w-6 p-0 -translate-y-1/2 hover:bg-muted"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        ) : null}
+                                    </div>
+
                                     {/* Sort Button */}
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -1060,12 +1174,26 @@ export default function QuestionBankPage() {
                                             No questions found
                                         </h3>
                                         <p className="text-muted-foreground text-center max-w-md mb-4">
-                                            {selectedQuestionTypes.length > 0
-                                                ? "No questions match your current filters. Try adjusting or clearing the filters above."
-                                                : `No questions found for the selected topic${selectedTopics.length !== 1 ? "s" : ""}.`}
+                                            {searchQuery.trim()
+                                                ? `No questions found matching "${searchQuery.trim()}". Try different keywords or clear your search.`
+                                                : selectedQuestionTypes.length > 0
+                                                  ? "No questions match your current filters. Try adjusting or clearing the filters above."
+                                                  : `No questions found for the selected topic${selectedTopics.length !== 1 ? "s" : ""}.`}
                                         </p>
-                                        {(selectedQuestionTypes.length > 0 || sortBy) && (
+                                        {(selectedQuestionTypes.length > 0 ||
+                                            sortBy ||
+                                            searchQuery.trim()) && (
                                             <div className="flex gap-2">
+                                                {searchQuery.trim() && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handleClearSearch}
+                                                    >
+                                                        <X className="h-4 w-4 mr-2" />
+                                                        Clear Search
+                                                    </Button>
+                                                )}
                                                 {selectedQuestionTypes.length > 0 && (
                                                     <Button
                                                         variant="outline"
@@ -1080,7 +1208,8 @@ export default function QuestionBankPage() {
                                         )}
                                         {hasEditAccess &&
                                             selectedQuestionTypes.length === 0 &&
-                                            !sortBy && (
+                                            !sortBy &&
+                                            !searchQuery.trim() && (
                                                 <Button
                                                     variant="outline"
                                                     className="mt-2"
@@ -1139,7 +1268,15 @@ type QuestionListProps = {
 
 const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
     (
-        { questions, selectedTopics, NO_TOPIC_ID, questionRefs, onEdit, onDelete, hasEditAccess },
+        {
+            questions,
+            selectedTopics: _selectedTopics,
+            NO_TOPIC_ID: _NO_TOPIC_ID,
+            questionRefs,
+            onEdit,
+            onDelete,
+            hasEditAccess,
+        },
         ref
     ) => {
         const parentRef = useRef<HTMLDivElement>(null);
