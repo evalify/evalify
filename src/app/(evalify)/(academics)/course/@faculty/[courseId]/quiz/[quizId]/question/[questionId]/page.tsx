@@ -359,6 +359,19 @@ export default function QuizQuestionPage() {
                     initialData={!isCreateMode ? (questionData as unknown as Question) : undefined}
                     onSave={handleSave}
                     onSaveAndContinue={isCreateMode ? handleSaveAndContinue : undefined}
+                    onUpdateInBank={
+                        !isCreateMode &&
+                        questionData &&
+                        "bankQuestionId" in questionData &&
+                        questionData.bankQuestionId
+                            ? handleSave
+                            : undefined
+                    }
+                    bankName={
+                        !isCreateMode && questionData && "bankName" in questionData
+                            ? (questionData.bankName as string)
+                            : undefined
+                    }
                     onCancel={handleCancel}
                     isLoading={
                         createMutation.isPending ||

@@ -19,10 +19,13 @@ interface QuestionFormProps {
     initialData?: Question;
     onSave: (question: Question) => void;
     onSaveAndContinue?: (question: Question) => void;
+    onUpdateInBank?: (question: Question) => void;
     onCancel: () => void;
     isLoading?: boolean;
+    isUpdatingBank?: boolean;
     context?: "bank" | "quiz";
     bankId?: string;
+    bankName?: string;
     defaultTopics?: Array<{ topicId: string; topicName: string }>;
 }
 
@@ -30,10 +33,13 @@ export default function QuestionForm({
     initialData,
     onSave,
     onSaveAndContinue,
+    onUpdateInBank,
     onCancel,
     isLoading = false,
+    isUpdatingBank = false,
     context = "quiz",
     bankId,
+    bankName,
     defaultTopics = [],
 }: QuestionFormProps) {
     const [selectedType, setSelectedType] = useState<QuestionType>(
@@ -109,6 +115,17 @@ export default function QuestionForm({
         }
     };
 
+    const handleUpdateInBank = () => {
+        if (!validateQuestionData() || !question) {
+            error("Please fix validation errors before saving");
+            return;
+        }
+
+        if (onUpdateInBank) {
+            onUpdateInBank(question);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <Card className="p-4">
@@ -133,7 +150,23 @@ export default function QuestionForm({
                                 Save & Add Another
                             </Button>
                         )}
-                        <Button type="button" onClick={handleSave} disabled={isLoading}>
+                        {initialData && onUpdateInBank && bankName && (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={handleUpdateInBank}
+                                disabled={isLoading || isUpdatingBank}
+                                className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/50"
+                            >
+                                <Save className="mr-2 h-4 w-4" />
+                                {isUpdatingBank ? "Updating..." : `Update in ${bankName}`}
+                            </Button>
+                        )}
+                        <Button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={isLoading || isUpdatingBank}
+                        >
                             <Save className="mr-2 h-4 w-4" />
                             {isLoading
                                 ? "Saving..."

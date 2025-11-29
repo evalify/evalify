@@ -1361,6 +1361,35 @@ export const questionRouter = createTRPCRouter({
                     throw new Error("Question not found");
                 }
 
+                // Fetch bankQuestionId and bankName if this question is from a bank
+                const [quizQuestion] = await db
+                    .select({
+                        bankQuestionId: quizQuestionsTable.bankQuestionId,
+                    })
+                    .from(quizQuestionsTable)
+                    .where(
+                        and(
+                            eq(quizQuestionsTable.quizId, input.quizId),
+                            eq(quizQuestionsTable.questionId, input.questionId)
+                        )
+                    )
+                    .limit(1);
+
+                let bankName: string | null = null;
+                const bankQuestionId = quizQuestion?.bankQuestionId || null;
+
+                if (bankQuestionId) {
+                    const [bankQuestion] = await db
+                        .select({
+                            bankName: banksTable.name,
+                        })
+                        .from(bankQuestionsTable)
+                        .innerJoin(banksTable, eq(bankQuestionsTable.bankId, banksTable.id))
+                        .where(eq(bankQuestionsTable.id, bankQuestionId))
+                        .limit(1);
+                    bankName = bankQuestion?.bankName ?? null;
+                }
+
                 const [quizCourse] = await db
                     .select({ courseId: courseQuizzesTable.courseId })
                     .from(courseQuizzesTable)
@@ -1417,6 +1446,8 @@ export const questionRouter = createTRPCRouter({
                 const transformedQuestion: TransformedQuestion = {
                     ...question,
                     topics: topicLinks,
+                    bankQuestionId,
+                    bankName,
                 };
 
                 if (question.type === "MCQ" || question.type === "MMCQ") {
