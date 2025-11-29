@@ -9,9 +9,19 @@ import { DescriptiveRenderer } from "./DescriptiveRenderer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContentPreview } from "@/components/rich-text-editor/content-preview";
-import { AlertCircle, Award, BrainCircuit, Edit2, Gauge, Target, Tags, Trash2 } from "lucide-react";
+import {
+    AlertCircle,
+    Award,
+    BrainCircuit,
+    Edit2,
+    Gauge,
+    Target,
+    Tags,
+    Trash2,
+    BookOpen,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface QuestionRenderProps {
@@ -223,6 +233,9 @@ export default function QuestionRender({
         }
     };
 
+    // Extract bank name for type safety
+    const bankName = "bankName" in question ? (question.bankName as string | null) : null;
+
     return (
         <Card className={className}>
             <CardContent className="p-6">
@@ -262,6 +275,22 @@ export default function QuestionRender({
                                         <Target className="h-3 w-3 mr-1" />
                                         {question.courseOutcome}
                                     </Badge>
+                                )}
+                                {showMetadata && bankName && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Badge
+                                                variant="secondary"
+                                                className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                                            >
+                                                <BookOpen className="h-3 w-3 mr-1" />
+                                                {bankName}
+                                            </Badge>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Imported from question bank</p>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 )}
                             </div>
 

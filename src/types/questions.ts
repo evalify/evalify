@@ -89,6 +89,7 @@ export interface QuizQuestionMetadata {
     quizQuestionId: string;
     orderIndex: number;
     bankQuestionId?: string | null;
+    bankName?: string | null;
 }
 
 export interface MCQQuestion extends BaseQuestion {
