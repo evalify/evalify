@@ -12,6 +12,7 @@ import {
     studentQuizzesTable,
     labQuizzesTable,
     quizBatchesTable,
+    quizEvaluationSettingsTable,
 } from "@/db/schema";
 import { eq, and, or, ilike, desc, count, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -305,6 +306,13 @@ export const facultyQuizRouter = createTRPCRouter({
                     throw new Error("Quiz not found or unauthorized");
                 }
 
+                // Get evaluation settings
+                const evaluationSettings = await db
+                    .select()
+                    .from(quizEvaluationSettingsTable)
+                    .where(eq(quizEvaluationSettingsTable.id, input.quizId))
+                    .limit(1);
+
                 // Get associated tags
                 const tags = await db
                     .select({ name: quizTagsTable.name })
@@ -343,6 +351,34 @@ export const facultyQuizRouter = createTRPCRouter({
                     studentIds: students.map((s) => s.studentId),
                     labIds: labs.map((l) => l.labId),
                     batchIds: batches.map((b) => b.batchId),
+                    scoring: evaluationSettings[0]
+                        ? {
+                              method: evaluationSettings[0].mcqGlobalPartialMarking
+                                  ? "Weighted"
+                                  : "Standard", // This is a simplification, adjust as needed based on logic
+                              pointsPerQuestion: 1, // Not stored in DB currently?
+                              penalizeWrongAnswers:
+                                  (evaluationSettings[0].mcqGlobalNegativeMark ?? 0) > 0 ||
+                                  (evaluationSettings[0].mcqGlobalNegativePercent ?? 0) > 0,
+                              penaltyAmount:
+                                  evaluationSettings[0].mcqGlobalNegativeMark ??
+                                  evaluationSettings[0].mcqGlobalNegativePercent ??
+                                  0,
+                              // Add other fields as needed
+                              mcqGlobalPartialMarking:
+                                  evaluationSettings[0].mcqGlobalPartialMarking,
+                              mcqGlobalNegativeMark: evaluationSettings[0].mcqGlobalNegativeMark,
+                              mcqGlobalNegativePercent:
+                                  evaluationSettings[0].mcqGlobalNegativePercent,
+                              codingGlobalPartialMarking:
+                                  evaluationSettings[0].codingGlobalPartialMarking,
+                              llmEvaluationEnabled: evaluationSettings[0].llmEvaluationEnabled,
+                              llmProvider: evaluationSettings[0].llmProvider,
+                              llmModelName: evaluationSettings[0].llmModelName,
+                              fitbLlmSystemPrompt: evaluationSettings[0].fitbLlmSystemPrompt,
+                              descLlmSystemPrompt: evaluationSettings[0].descLlmSystemPrompt,
+                          }
+                        : undefined,
                 };
             } catch (error) {
                 logger.error(
@@ -380,6 +416,36 @@ export const facultyQuizRouter = createTRPCRouter({
                 studentIds: z.array(z.uuid()).optional(),
                 labIds: z.array(z.uuid()).optional(),
                 batchIds: z.array(z.uuid()).optional(),
+                scoring: z
+                    .object({
+                        mcqGlobalPartialMarking: z.boolean().default(false),
+                        mcqGlobalNegativeMark: z.number().optional().nullable(),
+                        mcqGlobalNegativePercent: z.number().optional().nullable(),
+                        codingGlobalPartialMarking: z.boolean().default(false),
+                        llmEvaluationEnabled: z.boolean().default(false),
+                        llmProvider: z.string().optional(),
+                        llmModelName: z.string().optional(),
+                        fitbLlmSystemPrompt: z.string().optional(),
+                        descLlmSystemPrompt: z.string().optional(),
+                    })
+                    .optional()
+                    .refine(
+                        (data) => {
+                            if (!data) return true;
+                            const hasFixed =
+                                data.mcqGlobalNegativeMark !== undefined &&
+                                data.mcqGlobalNegativeMark !== null;
+                            const hasPercent =
+                                data.mcqGlobalNegativePercent !== undefined &&
+                                data.mcqGlobalNegativePercent !== null;
+                            return !(hasFixed && hasPercent);
+                        },
+                        {
+                            message:
+                                "Cannot have both fixed negative mark and percentage negative mark",
+                            path: ["mcqGlobalNegativeMark"],
+                        }
+                    ),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -514,6 +580,20 @@ export const facultyQuizRouter = createTRPCRouter({
                     }
                 }
 
+                // Create evaluation settings
+                await db.insert(quizEvaluationSettingsTable).values({
+                    id: quiz.id,
+                    mcqGlobalPartialMarking: input.scoring?.mcqGlobalPartialMarking ?? false,
+                    mcqGlobalNegativeMark: input.scoring?.mcqGlobalNegativeMark,
+                    mcqGlobalNegativePercent: input.scoring?.mcqGlobalNegativePercent,
+                    codingGlobalPartialMarking: input.scoring?.codingGlobalPartialMarking ?? false,
+                    llmEvaluationEnabled: input.scoring?.llmEvaluationEnabled ?? false,
+                    llmProvider: input.scoring?.llmProvider,
+                    llmModelName: input.scoring?.llmModelName,
+                    fitbLlmSystemPrompt: input.scoring?.fitbLlmSystemPrompt,
+                    descLlmSystemPrompt: input.scoring?.descLlmSystemPrompt,
+                });
+
                 logger.info(
                     { userId, quizId: quiz.id, courseId: input.courseId },
                     "Quiz created successfully"
@@ -553,6 +633,36 @@ export const facultyQuizRouter = createTRPCRouter({
                 studentIds: z.array(z.uuid()).optional(),
                 labIds: z.array(z.uuid()).optional(),
                 batchIds: z.array(z.uuid()).optional(),
+                scoring: z
+                    .object({
+                        mcqGlobalPartialMarking: z.boolean().optional(),
+                        mcqGlobalNegativeMark: z.number().optional().nullable(),
+                        mcqGlobalNegativePercent: z.number().optional().nullable(),
+                        codingGlobalPartialMarking: z.boolean().optional(),
+                        llmEvaluationEnabled: z.boolean().optional(),
+                        llmProvider: z.string().optional(),
+                        llmModelName: z.string().optional(),
+                        fitbLlmSystemPrompt: z.string().optional(),
+                        descLlmSystemPrompt: z.string().optional(),
+                    })
+                    .optional()
+                    .refine(
+                        (data) => {
+                            if (!data) return true;
+                            const hasFixed =
+                                data.mcqGlobalNegativeMark !== undefined &&
+                                data.mcqGlobalNegativeMark !== null;
+                            const hasPercent =
+                                data.mcqGlobalNegativePercent !== undefined &&
+                                data.mcqGlobalNegativePercent !== null;
+                            return !(hasFixed && hasPercent);
+                        },
+                        {
+                            message:
+                                "Cannot have both fixed negative mark and percentage negative mark",
+                            path: ["mcqGlobalNegativeMark"],
+                        }
+                    ),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -711,6 +821,54 @@ export const facultyQuizRouter = createTRPCRouter({
                             await db.insert(quizQuizTagsTable).values({
                                 quizId: input.quizId,
                                 quizTagId: tag!.id,
+                            });
+                        }
+                    }
+                }
+
+                // Update evaluation settings
+                if (input.scoring) {
+                    const scoringUpdate: Record<string, unknown> = {};
+                    if (input.scoring.mcqGlobalPartialMarking !== undefined)
+                        scoringUpdate.mcqGlobalPartialMarking =
+                            input.scoring.mcqGlobalPartialMarking;
+                    if (input.scoring.mcqGlobalNegativeMark !== undefined)
+                        scoringUpdate.mcqGlobalNegativeMark = input.scoring.mcqGlobalNegativeMark;
+                    if (input.scoring.mcqGlobalNegativePercent !== undefined)
+                        scoringUpdate.mcqGlobalNegativePercent =
+                            input.scoring.mcqGlobalNegativePercent;
+                    if (input.scoring.codingGlobalPartialMarking !== undefined)
+                        scoringUpdate.codingGlobalPartialMarking =
+                            input.scoring.codingGlobalPartialMarking;
+                    if (input.scoring.llmEvaluationEnabled !== undefined)
+                        scoringUpdate.llmEvaluationEnabled = input.scoring.llmEvaluationEnabled;
+                    if (input.scoring.llmProvider !== undefined)
+                        scoringUpdate.llmProvider = input.scoring.llmProvider;
+                    if (input.scoring.llmModelName !== undefined)
+                        scoringUpdate.llmModelName = input.scoring.llmModelName;
+                    if (input.scoring.fitbLlmSystemPrompt !== undefined)
+                        scoringUpdate.fitbLlmSystemPrompt = input.scoring.fitbLlmSystemPrompt;
+                    if (input.scoring.descLlmSystemPrompt !== undefined)
+                        scoringUpdate.descLlmSystemPrompt = input.scoring.descLlmSystemPrompt;
+
+                    if (Object.keys(scoringUpdate).length > 0) {
+                        // Check if settings exist
+                        const existingSettings = await db
+                            .select()
+                            .from(quizEvaluationSettingsTable)
+                            .where(eq(quizEvaluationSettingsTable.id, input.quizId))
+                            .limit(1);
+
+                        if (existingSettings.length > 0) {
+                            await db
+                                .update(quizEvaluationSettingsTable)
+                                .set(scoringUpdate)
+                                .where(eq(quizEvaluationSettingsTable.id, input.quizId));
+                        } else {
+                            // Should not happen if created correctly, but handle it
+                            await db.insert(quizEvaluationSettingsTable).values({
+                                id: input.quizId,
+                                ...scoringUpdate,
                             });
                         }
                     }
