@@ -559,33 +559,50 @@ export default function QuestionBankPage() {
                     )}
                 </div>
 
-                {hasEditAccess && (
-                    <div className="flex gap-2 m-4 border-t pt-4">
-                        <Input
-                            placeholder="Add new topic"
-                            value={newTopicInput}
-                            onChange={(e) => setNewTopicInput(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    handleCreateTopic();
-                                }
-                            }}
-                            disabled={createTopicMutation.isPending}
-                            className="flex-1"
-                        />
-                        <Button
-                            size="icon"
-                            onClick={handleCreateTopic}
-                            disabled={createTopicMutation.isPending || !newTopicInput.trim()}
-                        >
-                            {createTopicMutation.isPending ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <Plus className="h-4 w-4" />
-                            )}
-                        </Button>
-                    </div>
-                )}
+                <div className="flex gap-2 m-4 border-t pt-4">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="flex gap-2 w-full">
+                                <Input
+                                    placeholder="Add new topic"
+                                    value={newTopicInput}
+                                    onChange={(e) => {
+                                        if (hasEditAccess) {
+                                            setNewTopicInput(e.target.value);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (hasEditAccess && e.key === "Enter") {
+                                            handleCreateTopic();
+                                        }
+                                    }}
+                                    disabled={!hasEditAccess || createTopicMutation.isPending}
+                                    className="flex-1"
+                                />
+                                <Button
+                                    size="icon"
+                                    onClick={hasEditAccess ? handleCreateTopic : undefined}
+                                    disabled={
+                                        !hasEditAccess ||
+                                        createTopicMutation.isPending ||
+                                        !newTopicInput.trim()
+                                    }
+                                >
+                                    {createTopicMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Plus className="h-4 w-4" />
+                                    )}
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        {!hasEditAccess && (
+                            <TooltipContent>
+                                <p>You have read-only access for this bank</p>
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
+                </div>
             </div>
 
             {/* Main Content Area */}
@@ -599,12 +616,24 @@ export default function QuestionBankPage() {
                                 Semester {bank.semester}
                             </p>
                         </div>
-                        {hasEditAccess && (
-                            <Button onClick={handleCreateQuestion}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Create Question
-                            </Button>
-                        )}
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span>
+                                    <Button
+                                        onClick={hasEditAccess ? handleCreateQuestion : undefined}
+                                        disabled={!hasEditAccess}
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Create Question
+                                    </Button>
+                                </span>
+                            </TooltipTrigger>
+                            {!hasEditAccess && (
+                                <TooltipContent>
+                                    <p>You have read-only access for this bank</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
                     </div>
                 </div>
 

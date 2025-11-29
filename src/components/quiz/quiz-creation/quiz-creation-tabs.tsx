@@ -568,7 +568,7 @@ export function QuizCreationTabs({
                                             <div key={tab.id} className="flex items-stretch h-full">
                                                 <TabsTrigger
                                                     value={tab.id}
-                                                    className="flex-1 flex flex-col items-center justify-center gap-2 py-3 px-2 sm:px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground min-h-[60px] sm:min-h-[80px]"
+                                                    className="flex-1 flex flex-col items-center justify-center gap-2 py-3 px-2 sm:px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground min-h-[60px] sm:min-h-20"
                                                 >
                                                     <Icon className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                                                     <div className="text-center w-full">

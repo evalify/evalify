@@ -8,7 +8,7 @@ import {
     topicsTable,
     bankQuestionsTable,
 } from "@/db/schema";
-import { eq, and, or, ilike, desc, count, sql } from "drizzle-orm";
+import { eq, and, or, ilike, desc, asc, count, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 export const bankRouter = createTRPCRouter({
@@ -44,6 +44,39 @@ export const bankRouter = createTRPCRouter({
 
                 const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
+                // Determine ordering based on input
+                const orderClauses: ReturnType<typeof asc | typeof desc>[] = [];
+                if (input.sortBy) {
+                    const order = input.sortOrder === "asc" ? asc : desc;
+                    switch (input.sortBy) {
+                        case "name":
+                            orderClauses.push(order(banksTable.name));
+                            break;
+                        case "semester":
+                            orderClauses.push(order(banksTable.semester));
+                            break;
+                        case "questionCount":
+                            // Order by subquery count of questions
+                            orderClauses.push(
+                                order(
+                                    sql`(select count(*) from ${bankQuestionsTable} where ${bankQuestionsTable.bankId} = ${banksTable.id})`
+                                )
+                            );
+                            break;
+                        case "topicCount":
+                            orderClauses.push(
+                                order(
+                                    sql`(select count(*) from ${topicsTable} where ${topicsTable.bankId} = ${banksTable.id})`
+                                )
+                            );
+                            break;
+                        default:
+                            orderClauses.push(desc(banksTable.created_at));
+                    }
+                } else {
+                    orderClauses.push(desc(banksTable.created_at));
+                }
+
                 const banksQuery = db
                     .select({
                         id: banksTable.id,
@@ -75,7 +108,7 @@ export const bankRouter = createTRPCRouter({
                             )
                         )
                     )
-                    .orderBy(desc(banksTable.created_at))
+                    .orderBy(...orderClauses)
                     .limit(input.limit)
                     .offset(input.offset);
 
