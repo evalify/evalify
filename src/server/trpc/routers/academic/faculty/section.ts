@@ -84,8 +84,8 @@ export const sectionRouter = createTRPCRouter({
     create: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
                 name: z.string().min(1, "Section name is required"),
             })
         )
@@ -140,8 +140,8 @@ export const sectionRouter = createTRPCRouter({
     updateName: managerOrFacultyProcedure
         .input(
             z.object({
-                sectionId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                sectionId: z.uuid(),
+                courseId: z.uuid(),
                 name: z.string().min(1, "Section name is required"),
             })
         )
@@ -182,8 +182,8 @@ export const sectionRouter = createTRPCRouter({
     delete: managerOrFacultyProcedure
         .input(
             z.object({
-                sectionId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                sectionId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {
@@ -227,9 +227,9 @@ export const sectionRouter = createTRPCRouter({
     listQuestionsInSection: managerOrFacultyProcedure
         .input(
             z.object({
-                sectionId: z.string().uuid().optional().nullable(),
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                sectionId: z.uuid().optional().nullable(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -528,8 +528,8 @@ export const sectionRouter = createTRPCRouter({
     getAllQuizBankQuestionIds: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -588,11 +588,11 @@ export const sectionRouter = createTRPCRouter({
     reorderSections: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
                 sectionOrders: z.array(
                     z.object({
-                        sectionId: z.string().uuid(),
+                        sectionId: z.uuid(),
                         orderIndex: z.number(),
                     })
                 ),
@@ -640,12 +640,12 @@ export const sectionRouter = createTRPCRouter({
     reorderQuestions: managerOrFacultyProcedure
         .input(
             z.object({
-                quizId: z.string().uuid(),
-                courseId: z.string().uuid(),
-                sectionId: z.string().uuid().optional().nullable(),
+                quizId: z.uuid(),
+                courseId: z.uuid(),
+                sectionId: z.uuid().optional().nullable(),
                 questionOrders: z.array(
                     z.object({
-                        quizQuestionId: z.string().uuid(),
+                        quizQuestionId: z.uuid(),
                         orderIndex: z.number(),
                     })
                 ),

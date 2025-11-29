@@ -195,7 +195,7 @@ export const studentQuizRouter = createTRPCRouter({
     listByCourse: studentProcedure
         .input(
             z.object({
-                courseId: z.string().uuid(),
+                courseId: z.uuid(),
                 searchTerm: z.string().optional(),
                 status: z.enum(["active", "completed", "missed", "all"]).default("all"),
                 limit: z.number().min(1).max(100).default(12),
@@ -386,7 +386,7 @@ export const studentQuizRouter = createTRPCRouter({
      * If labs are assigned, verifies client IP belongs to lab subnet
      */
     getById: studentProcedure
-        .input(z.object({ quizId: z.string().uuid() }))
+        .input(z.object({ quizId: z.uuid() }))
         .query(async ({ input, ctx }) => {
             try {
                 const userId = ctx.session.user.id;

@@ -19,7 +19,7 @@ export const topicRouter = createTRPCRouter({
     listByBank: managerOrFacultyProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
+                bankId: z.uuid(),
             })
         )
         .query(async ({ input, ctx }) => {
@@ -82,7 +82,7 @@ export const topicRouter = createTRPCRouter({
     create: managerOrFacultyProcedure
         .input(
             z.object({
-                bankId: z.string().uuid(),
+                bankId: z.uuid(),
                 name: z.string().min(1, "Topic name is required").max(255),
             })
         )
@@ -151,7 +151,7 @@ export const topicRouter = createTRPCRouter({
     update: managerOrFacultyProcedure
         .input(
             z.object({
-                topicId: z.string().uuid(),
+                topicId: z.uuid(),
                 name: z.string().min(1, "Topic name is required").max(255),
             })
         )
@@ -226,7 +226,7 @@ export const topicRouter = createTRPCRouter({
     delete: managerOrFacultyProcedure
         .input(
             z.object({
-                topicId: z.string().uuid(),
+                topicId: z.uuid(),
             })
         )
         .mutation(async ({ input, ctx }) => {

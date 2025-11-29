@@ -157,7 +157,7 @@ const baseQuestionSchema = z.object({
         .transform((val) => (val === "" ? null : val)),
     solution: z.any(),
     orderIndex: z.number().optional(),
-    topics: z.array(z.string().uuid()).optional().default([]),
+    topics: z.array(z.uuid()).optional().default([]),
 });
 
 // Complete question schema with discriminated union
