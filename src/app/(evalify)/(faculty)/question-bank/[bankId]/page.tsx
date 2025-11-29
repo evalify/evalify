@@ -7,7 +7,28 @@ import { trpc } from "@/lib/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Plus, Trash2, ChevronRight, Edit2, Check, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+    Loader2,
+    Plus,
+    Trash2,
+    ChevronRight,
+    Edit2,
+    Check,
+    X,
+    Filter,
+    FileQuestion,
+    ArrowUpDown,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { cn } from "@/lib/utils";
@@ -76,6 +97,13 @@ export default function QuestionBankPage() {
     const [topicToDelete, setTopicToDelete] = useState<{ id: string; name: string } | null>(null);
     const [questionToDelete, setQuestionToDelete] = useState<{ id: string } | null>(null);
 
+    // Question type filter state
+    const [selectedQuestionTypes, setSelectedQuestionTypes] = useState<string[]>([]);
+
+    // Sort state
+    const [sortBy, setSortBy] = useState<"difficulty" | "marks" | "courseOutcome" | null>(null);
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
     const questionRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const questionListRef = useRef<QuestionListRef>(null);
 
@@ -143,10 +171,66 @@ export default function QuestionBankPage() {
         );
     const questionsWithoutTopics = questionsWithoutTopicsData as QuestionWithTopics[] | undefined;
 
-    // Combine and filter questions based on selection
-    const displayQuestions = selectedTopics.includes(NO_TOPIC_ID)
-        ? (questionsWithoutTopics || []).filter((q) => !q.topics || q.topics.length === 0)
-        : questions;
+    // Combine and filter questions based on selection and filters
+    const displayQuestions = useMemo(() => {
+        let questions: QuestionWithTopics[] | undefined = selectedTopics.includes(NO_TOPIC_ID)
+            ? (questionsWithoutTopics || []).filter((q) => !q.topics || q.topics.length === 0)
+            : (questionsData as QuestionWithTopics[] | undefined);
+
+        // Apply question type filter if any types are selected
+        if (selectedQuestionTypes.length > 0 && questions) {
+            questions = questions.filter((question) =>
+                selectedQuestionTypes.includes(question.type)
+            );
+        }
+
+        // Apply sorting if selected
+        if (sortBy && questions) {
+            questions = [...questions].sort((a, b) => {
+                let aValue: string | number;
+                let bValue: string | number;
+
+                switch (sortBy) {
+                    case "difficulty":
+                        // Define difficulty order: EASY < MEDIUM < HARD
+                        const difficultyOrder = { EASY: 1, MEDIUM: 2, HARD: 3 };
+                        aValue = difficultyOrder[a.difficulty as keyof typeof difficultyOrder] || 0;
+                        bValue = difficultyOrder[b.difficulty as keyof typeof difficultyOrder] || 0;
+                        break;
+                    case "marks":
+                        aValue = a.marks || 0;
+                        bValue = b.marks || 0;
+                        break;
+                    case "courseOutcome":
+                        aValue = a.courseOutcome || "";
+                        bValue = b.courseOutcome || "";
+                        break;
+                    default:
+                        return 0;
+                }
+
+                if (typeof aValue === "string" && typeof bValue === "string") {
+                    return sortOrder === "asc"
+                        ? aValue.localeCompare(bValue)
+                        : bValue.localeCompare(aValue);
+                } else {
+                    return sortOrder === "asc"
+                        ? (aValue as number) - (bValue as number)
+                        : (bValue as number) - (aValue as number);
+                }
+            });
+        }
+
+        return questions;
+    }, [
+        selectedTopics,
+        questionsWithoutTopics,
+        questionsData,
+        selectedQuestionTypes,
+        sortBy,
+        sortOrder,
+        NO_TOPIC_ID,
+    ]);
 
     const isLoadingQuestions = selectedTopics.includes(NO_TOPIC_ID)
         ? isQuestionsWithoutTopicsLoading
@@ -336,6 +420,60 @@ export default function QuestionBankPage() {
                 bankId,
             });
         }
+    };
+
+    // Available question types (based on the schema)
+    const availableQuestionTypes = [
+        "MCQ",
+        "MMCQ",
+        "TRUE_FALSE",
+        "DESCRIPTIVE",
+        "FILL_THE_BLANK",
+        "MATCHING",
+        "FILE_UPLOAD",
+        "CODING",
+    ];
+
+    // Helper functions for question type filtering
+    const handleQuestionTypeToggle = (type: string) => {
+        setSelectedQuestionTypes((prev) =>
+            prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+        );
+
+        track("question_filter_applied", {
+            bankId,
+            filterType: "question_type",
+            value: type,
+        });
+    };
+
+    const handleClearQuestionTypeFilters = () => {
+        setSelectedQuestionTypes([]);
+        track("question_filter_cleared", { bankId, filterType: "question_type" });
+    };
+
+    // Helper functions for sorting
+    const handleSort = (field: "difficulty" | "marks" | "courseOutcome") => {
+        if (sortBy === field) {
+            // Toggle sort order if same field
+            setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        } else {
+            // Set new field and default to ascending
+            setSortBy(field);
+            setSortOrder("asc");
+        }
+
+        track("question_sort_applied", {
+            bankId,
+            sortBy: field,
+            sortOrder: sortBy === field ? (sortOrder === "asc" ? "desc" : "asc") : "asc",
+        });
+    };
+
+    const handleClearSort = () => {
+        setSortBy(null);
+        setSortOrder("asc");
+        track("question_sort_cleared", { bankId });
     };
 
     if (isBankLoading) {
@@ -637,7 +775,7 @@ export default function QuestionBankPage() {
                     </div>
                 </div>
 
-                <div className="flex-1  p-6">
+                <div className="flex-1 p-6">
                     {selectedTopics.length === 0 ? (
                         <Card className="border-dashed">
                             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
@@ -647,40 +785,315 @@ export default function QuestionBankPage() {
                                 </p>
                             </CardContent>
                         </Card>
-                    ) : isLoadingQuestions ? (
-                        <div className="flex items-center justify-center py-16">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                    ) : displayQuestions && displayQuestions.length > 0 ? (
-                        <QuestionList
-                            ref={questionListRef}
-                            questions={displayQuestions}
-                            selectedTopics={selectedTopics}
-                            NO_TOPIC_ID={NO_TOPIC_ID}
-                            questionRefs={questionRefs}
-                            onEdit={handleEditQuestion}
-                            onDelete={handleDeleteQuestion}
-                            hasEditAccess={hasEditAccess}
-                        />
                     ) : (
-                        <Card className="border-dashed">
-                            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-                                <p className="text-sm text-muted-foreground">
-                                    No questions found for the selected topic
-                                    {selectedTopics.length !== 1 ? "s" : ""}
-                                </p>
-                                {hasEditAccess && (
-                                    <Button
-                                        variant="outline"
-                                        className="mt-4"
-                                        onClick={handleCreateQuestion}
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Create First Question
-                                    </Button>
-                                )}
-                            </CardContent>
-                        </Card>
+                        <div className="space-y-6">
+                            {/* Filter and Sort Controls - Always Visible */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        {isLoadingQuestions ? (
+                                            "Loading questions..."
+                                        ) : (
+                                            <>
+                                                Showing {displayQuestions?.length || 0} question
+                                                {(displayQuestions?.length || 0) !== 1
+                                                    ? "s"
+                                                    : ""}{" "}
+                                                for{" "}
+                                                {selectedTopics.includes(NO_TOPIC_ID)
+                                                    ? "No Topic"
+                                                    : selectedTopics.length === 1
+                                                      ? "1 topic"
+                                                      : `${selectedTopics.length} topics`}
+                                            </>
+                                        )}
+                                    </p>
+                                    {/* Show active question type filters */}
+                                    {selectedQuestionTypes && selectedQuestionTypes.length > 0 && (
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-muted-foreground">
+                                                Filtered by:
+                                            </span>
+                                            <div className="flex gap-1">
+                                                {selectedQuestionTypes.map((type) => (
+                                                    <Badge
+                                                        key={type}
+                                                        variant="outline"
+                                                        className="h-5 px-2 text-xs"
+                                                    >
+                                                        {type.replace(/_/g, " ")}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Sort and Filter Buttons */}
+                                <div className="flex items-center gap-2">
+                                    {/* Sort Button */}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="sm" className="gap-2">
+                                                <ArrowUpDown className="h-4 w-4" />
+                                                Sort
+                                                {sortBy && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="ml-1 h-4 px-1.5 text-xs"
+                                                    >
+                                                        {sortBy === "courseOutcome" ? "CO" : sortBy}
+                                                    </Badge>
+                                                )}
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent className="w-64 p-0" align="end">
+                                            <div className="p-4 border-b">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <ArrowUpDown className="h-4 w-4 text-primary" />
+                                                        <h3 className="font-medium">
+                                                            Sort Questions
+                                                        </h3>
+                                                    </div>
+                                                    {sortBy && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={handleClearSort}
+                                                            className="h-7 px-2 text-xs"
+                                                        >
+                                                            Clear
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Sort questions by different criteria
+                                                </p>
+                                            </div>
+                                            <div className="p-2 space-y-1">
+                                                {[
+                                                    {
+                                                        key: "difficulty",
+                                                        label: "Difficulty",
+                                                        desc: "Easy → Medium → Hard",
+                                                    },
+                                                    {
+                                                        key: "marks",
+                                                        label: "Marks",
+                                                        desc: "Lowest → Highest",
+                                                    },
+                                                    {
+                                                        key: "courseOutcome",
+                                                        label: "Course Outcome",
+                                                        desc: "CO1 → CO8",
+                                                    },
+                                                ].map(({ key, label, desc }) => (
+                                                    <div
+                                                        key={key}
+                                                        className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+                                                        onClick={() =>
+                                                            handleSort(
+                                                                key as
+                                                                    | "difficulty"
+                                                                    | "marks"
+                                                                    | "courseOutcome"
+                                                            )
+                                                        }
+                                                    >
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm font-medium">
+                                                                    {label}
+                                                                </span>
+                                                                {sortBy === key && (
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className="h-5 px-2 text-xs"
+                                                                    >
+                                                                        {sortOrder === "asc"
+                                                                            ? "↑"
+                                                                            : "↓"}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {desc}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {sortBy && (
+                                                <div className="p-3 border-t">
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <span>Active sort:</span>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="h-5 px-2 text-xs"
+                                                        >
+                                                            {sortBy === "courseOutcome"
+                                                                ? "Course Outcome"
+                                                                : sortBy.charAt(0).toUpperCase() +
+                                                                  sortBy.slice(1)}
+                                                            {sortOrder === "asc" ? " ↑" : " ↓"}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
+                                    {/* Question Type Filter Button */}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="outline" size="sm" className="gap-2">
+                                                <Filter className="h-4 w-4" />
+                                                Filter
+                                                {selectedQuestionTypes.length > 0 && (
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="ml-1 h-4 px-1.5 text-xs"
+                                                    >
+                                                        {selectedQuestionTypes.length}
+                                                    </Badge>
+                                                )}
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent className="w-80 p-0" align="end">
+                                            <div className="p-4 border-b">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <FileQuestion className="h-4 w-4 text-primary" />
+                                                        <h3 className="font-medium">
+                                                            Filter by Question Type
+                                                        </h3>
+                                                    </div>
+                                                    {selectedQuestionTypes.length > 0 && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={handleClearQuestionTypeFilters}
+                                                            className="h-7 px-2 text-xs"
+                                                        >
+                                                            Clear All
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Select question types to filter the list
+                                                </p>
+                                            </div>
+                                            <ScrollArea className="h-64 p-2">
+                                                <div className="space-y-2">
+                                                    {availableQuestionTypes.map((type) => (
+                                                        <div
+                                                            key={type}
+                                                            className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                                                        >
+                                                            <Checkbox
+                                                                id={`filter-${type}`}
+                                                                checked={selectedQuestionTypes.includes(
+                                                                    type
+                                                                )}
+                                                                onCheckedChange={() =>
+                                                                    handleQuestionTypeToggle(type)
+                                                                }
+                                                                className="h-4 w-4"
+                                                            />
+                                                            <Label
+                                                                htmlFor={`filter-${type}`}
+                                                                className="cursor-pointer flex-1 text-sm"
+                                                            >
+                                                                {type.replace(/_/g, " ")}
+                                                            </Label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </ScrollArea>
+                                            {selectedQuestionTypes.length > 0 && (
+                                                <div className="p-3 border-t">
+                                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                        <span>Active filters:</span>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {selectedQuestionTypes.map((type) => (
+                                                                <Badge
+                                                                    key={type}
+                                                                    variant="outline"
+                                                                    className="h-5 px-2 text-xs"
+                                                                >
+                                                                    {type.replace(/_/g, " ")}
+                                                                </Badge>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </div>
+
+                            {/* Content Area */}
+                            {isLoadingQuestions ? (
+                                <div className="flex items-center justify-center py-16">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                                </div>
+                            ) : displayQuestions && displayQuestions.length > 0 ? (
+                                <QuestionList
+                                    ref={questionListRef}
+                                    questions={displayQuestions}
+                                    selectedTopics={selectedTopics}
+                                    NO_TOPIC_ID={NO_TOPIC_ID}
+                                    questionRefs={questionRefs}
+                                    onEdit={handleEditQuestion}
+                                    onDelete={handleDeleteQuestion}
+                                    hasEditAccess={hasEditAccess}
+                                />
+                            ) : (
+                                <Card className="border-dashed">
+                                    <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                                        <div className="p-6 bg-muted/50 rounded-full mb-6">
+                                            <Filter className="h-16 w-16 text-muted-foreground" />
+                                        </div>
+                                        <h3 className="text-xl font-semibold mb-2">
+                                            No questions found
+                                        </h3>
+                                        <p className="text-muted-foreground text-center max-w-md mb-4">
+                                            {selectedQuestionTypes.length > 0
+                                                ? "No questions match your current filters. Try adjusting or clearing the filters above."
+                                                : `No questions found for the selected topic${selectedTopics.length !== 1 ? "s" : ""}.`}
+                                        </p>
+                                        {(selectedQuestionTypes.length > 0 || sortBy) && (
+                                            <div className="flex gap-2">
+                                                {selectedQuestionTypes.length > 0 && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={handleClearQuestionTypeFilters}
+                                                    >
+                                                        <X className="h-4 w-4 mr-2" />
+                                                        Clear Filters
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        )}
+                                        {hasEditAccess &&
+                                            selectedQuestionTypes.length === 0 &&
+                                            !sortBy && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="mt-2"
+                                                    onClick={handleCreateQuestion}
+                                                >
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Create First Question
+                                                </Button>
+                                            )}
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
@@ -754,68 +1167,55 @@ const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
         }));
 
         return (
-            <div className="space-y-6">
-                <div className="flex items-center justify-between mb-4">
-                    <p className="text-sm text-muted-foreground">
-                        Showing {questions.length} question
-                        {questions.length !== 1 ? "s" : ""} for{" "}
-                        {selectedTopics.includes(NO_TOPIC_ID)
-                            ? "No Topic"
-                            : selectedTopics.length === 1
-                              ? "1 topic"
-                              : `${selectedTopics.length} topics`}
-                    </p>
-                </div>
+            <div
+                ref={parentRef}
+                className="h-[calc(100vh-240px)] overflow-auto"
+                style={{
+                    contain: "strict",
+                }}
+            >
                 <div
-                    ref={parentRef}
-                    className="h-[calc(100vh-240px)] overflow-auto"
                     style={{
-                        contain: "strict",
+                        height: `${virtualizer.getTotalSize()}px`,
+                        width: "100%",
+                        position: "relative",
                     }}
                 >
-                    <div
-                        style={{
-                            height: `${virtualizer.getTotalSize()}px`,
-                            width: "100%",
-                            position: "relative",
-                        }}
-                    >
-                        {virtualizer.getVirtualItems().map((virtualItem) => {
-                            const question = questions[virtualItem.index];
-                            return (
-                                <div
-                                    key={question.id}
-                                    data-index={virtualItem.index}
-                                    ref={(el) => {
-                                        virtualizer.measureElement(el);
-                                        if (el && question.id) {
-                                            questionRefs.current.set(question.id, el);
-                                        }
-                                    }}
-                                    style={{
-                                        position: "absolute",
-                                        top: 0,
-                                        left: 0,
-                                        width: "100%",
-                                        transform: `translateY(${virtualItem.start}px)`,
-                                    }}
-                                    className="pb-6"
-                                >
-                                    <QuestionRender
-                                        question={question as Question}
-                                        questionNumber={virtualItem.index + 1}
-                                        showMetadata={true}
-                                        showSolution={true}
-                                        showExplanation={true}
-                                        isReadOnly={true}
-                                        compareWithStudentAnswer={false}
-                                        onEdit={hasEditAccess ? onEdit : undefined}
-                                        onDelete={hasEditAccess ? onDelete : undefined}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
+                    {virtualizer.getVirtualItems().map((virtualItem) => {
+                        const question = questions[virtualItem.index];
+                        return (
+                            <div
+                                key={question.id}
+                                data-index={virtualItem.index}
+                                ref={(el) => {
+                                    virtualizer.measureElement(el);
+                                    if (el && question.id) {
+                                        questionRefs.current.set(question.id, el);
+                                    }
+                                }}
+                                style={{
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    width: "100%",
+                                    transform: `translateY(${virtualItem.start}px)`,
+                                }}
+                                className="pb-6"
+                            >
+                                <QuestionRender
+                                    question={question as Question}
+                                    questionNumber={virtualItem.index + 1}
+                                    showMetadata={true}
+                                    showSolution={true}
+                                    showExplanation={true}
+                                    isReadOnly={true}
+                                    compareWithStudentAnswer={false}
+                                    onEdit={hasEditAccess ? onEdit : undefined}
+                                    onDelete={hasEditAccess ? onDelete : undefined}
+                                />
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         );
