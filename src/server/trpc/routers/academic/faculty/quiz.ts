@@ -353,18 +353,6 @@ export const facultyQuizRouter = createTRPCRouter({
                     batchIds: batches.map((b) => b.batchId),
                     scoring: evaluationSettings[0]
                         ? {
-                              method: evaluationSettings[0].mcqGlobalPartialMarking
-                                  ? "Weighted"
-                                  : "Standard", // This is a simplification, adjust as needed based on logic
-                              pointsPerQuestion: 1, // Not stored in DB currently?
-                              penalizeWrongAnswers:
-                                  (evaluationSettings[0].mcqGlobalNegativeMark ?? 0) > 0 ||
-                                  (evaluationSettings[0].mcqGlobalNegativePercent ?? 0) > 0,
-                              penaltyAmount:
-                                  evaluationSettings[0].mcqGlobalNegativeMark ??
-                                  evaluationSettings[0].mcqGlobalNegativePercent ??
-                                  0,
-                              // Add other fields as needed
                               mcqGlobalPartialMarking:
                                   evaluationSettings[0].mcqGlobalPartialMarking,
                               mcqGlobalNegativeMark: evaluationSettings[0].mcqGlobalNegativeMark,

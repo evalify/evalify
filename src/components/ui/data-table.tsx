@@ -302,7 +302,7 @@ export function DataTable<TData, TValue>({
                         placeholder={`Filter ${filterColumn}...`}
                         value={boundFilter}
                         onChange={(e) => setBoundFilter(e.target.value)}
-                        className="w-[240px]"
+                        className="w-60"
                     />
                 ) : null}
 
