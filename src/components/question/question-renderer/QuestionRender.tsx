@@ -238,41 +238,48 @@ export default function QuestionRender({
 
     return (
         <Card className={className}>
-            <CardContent className="p-6">
-                {/* Header Section */}
-                <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-start gap-4 flex-1">
+            <CardContent className="p-4">
+                {/* Compact Header Section */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-start gap-2 flex-1 min-w-0">
                         {questionNumber && (
-                            <div className="shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-lg">
+                            <div className="shrink-0 w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary text-sm">
                                 {questionNumber}
                             </div>
                         )}
-                        <div className="flex-1 space-y-3">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant="outline" className="text-xs">
+                        <div className="flex-1 min-w-0 space-y-2">
+                            {/* Compact metadata badges */}
+                            <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                                     {getQuestionTypeLabel(question.type)}
                                 </Badge>
                                 {showMetadata && question.difficulty && (
                                     <Badge
                                         variant="outline"
                                         className={cn(
-                                            "text-xs",
+                                            "text-[10px] px-1.5 py-0 h-5",
                                             getDifficultyColor(question.difficulty)
                                         )}
                                     >
-                                        <Gauge className="h-3 w-3 mr-1" />
+                                        <Gauge className="h-2.5 w-2.5 mr-0.5" />
                                         {question.difficulty}
                                     </Badge>
                                 )}
                                 {showMetadata && question.bloomTaxonomyLevel && (
-                                    <Badge variant="outline" className="text-xs">
-                                        <BrainCircuit className="h-3 w-3 mr-1" />
+                                    <Badge
+                                        variant="outline"
+                                        className="text-[10px] px-1.5 py-0 h-5"
+                                    >
+                                        <BrainCircuit className="h-2.5 w-2.5 mr-0.5" />
                                         {question.bloomTaxonomyLevel}
                                     </Badge>
                                 )}
                                 {showMetadata && question.courseOutcome && (
-                                    <Badge variant="outline" className="text-xs">
-                                        <Target className="h-3 w-3 mr-1" />
+                                    <Badge
+                                        variant="outline"
+                                        className="text-[10px] px-1.5 py-0 h-5"
+                                    >
+                                        <Target className="h-2.5 w-2.5 mr-0.5" />
                                         {question.courseOutcome}
                                     </Badge>
                                 )}
@@ -281,9 +288,9 @@ export default function QuestionRender({
                                         <TooltipTrigger asChild>
                                             <Badge
                                                 variant="secondary"
-                                                className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                                                className="text-[10px] px-1.5 py-0 h-5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                                             >
-                                                <BookOpen className="h-3 w-3 mr-1" />
+                                                <BookOpen className="h-2.5 w-2.5 mr-0.5" />
                                                 {bankName}
                                             </Badge>
                                         </TooltipTrigger>
@@ -292,23 +299,35 @@ export default function QuestionRender({
                                         </TooltipContent>
                                     </Tooltip>
                                 )}
+                                {/* Marks inline */}
+                                <div className="flex items-center gap-1 ml-auto">
+                                    <Award className="h-3.5 w-3.5 text-blue-600" />
+                                    <span className="font-semibold text-blue-600 text-sm">
+                                        {question.marks}
+                                    </span>
+                                    {question.negativeMarks > 0 && (
+                                        <span className="text-[10px] text-destructive">
+                                            (-{question.negativeMarks})
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Question Text */}
-                            <div className="prose dark:prose-invert max-w-none">
+                            <div className="prose dark:prose-invert max-w-none prose-sm">
                                 <ContentPreview content={question.question} />
                             </div>
 
-                            {/* Topics */}
+                            {/* Topics - more compact */}
                             {showMetadata && question.topics && question.topics.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-1">
                                     {question.topics.map((topic) => (
                                         <Badge
                                             key={`${question.id}-${topic.topicId}`}
                                             variant="secondary"
-                                            className="text-xs"
+                                            className="text-[10px] px-1.5 py-0 h-5"
                                         >
-                                            <Tags className="h-3 w-3 mr-1" />
+                                            <Tags className="h-2.5 w-2.5 mr-0.5" />
                                             {topic.topicName}
                                         </Badge>
                                     ))}
@@ -317,66 +336,53 @@ export default function QuestionRender({
                         </div>
                     </div>
 
-                    {/* Actions and Marks */}
-                    <div className="flex flex-col items-end gap-2 ml-4">
-                        {(onEdit || onDelete) && (
-                            <div className="flex gap-1">
-                                {onEdit && (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-8 w-8"
-                                                onClick={() => question.id && onEdit(question.id)}
-                                            >
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Edit question</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                )}
-                                {onDelete && (
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button
-                                                size="icon"
-                                                variant="ghost"
-                                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                                onClick={() => question.id && onDelete(question.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                            <p>Delete question</p>
-                                        </TooltipContent>
-                                    </Tooltip>
-                                )}
-                            </div>
-                        )}
-                        <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950 px-3 py-2 rounded-lg">
-                            <Award className="h-5 w-5 text-blue-600" />
-                            <span className="font-bold text-blue-600 text-lg">
-                                {question.marks}
-                            </span>
+                    {/* Compact Actions */}
+                    {(onEdit || onDelete) && (
+                        <div className="flex gap-0.5 shrink-0">
+                            {onEdit && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-7 w-7"
+                                            onClick={() => question.id && onEdit(question.id)}
+                                        >
+                                            <Edit2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Edit question</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            )}
+                            {onDelete && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-7 w-7 text-destructive hover:text-destructive"
+                                            onClick={() => question.id && onDelete(question.id)}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Delete question</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            )}
                         </div>
-                        {question.negativeMarks > 0 && (
-                            <Badge variant="destructive" className="text-xs">
-                                -{question.negativeMarks}
-                            </Badge>
-                        )}
-                    </div>
+                    )}
                 </div>
 
                 {/* Answer Section */}
-                <div className="border-t pt-6">{renderQuestionContent()}</div>
+                <div className="border-t pt-3">{renderQuestionContent()}</div>
 
                 {/* Explanation */}
                 {showExplanation && question.explanation && (
-                    <div className="mt-6 pt-6 border-t">
+                    <div className="mt-3 pt-3 border-t">
                         <QuestionExplanation explanation={question.explanation} />
                     </div>
                 )}
