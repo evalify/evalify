@@ -161,7 +161,7 @@ function MultiSelect({
                     onValueChange={setInputValue}
                     onFocus={() => setOpen(true)}
                 />
-                <CommandList className="max-h-[var(--cmdk-list-height)] overflow-hidden">
+                <CommandList className="max-h-(--cmdk-list-height) overflow-hidden">
                     <div
                         ref={parentRef}
                         className="overflow-y-auto"
@@ -198,7 +198,7 @@ function MultiSelect({
                                                 data-index={virtualItem.index}
                                             >
                                                 <div
-                                                    className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer aria-selected:bg-accent aria-selected:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 hover:bg-accent hover:text-accent-foreground"
+                                                    className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer aria-selected:bg-accent aria-selected:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 hover:bg-accent hover:text-accent-foreground"
                                                     onClick={() => handleSelect(option.value)}
                                                     role="option"
                                                     aria-selected={selected.includes(option.value)}

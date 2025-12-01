@@ -65,6 +65,10 @@ export default function QuizQuestionsPage() {
     const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
     const [sectionName, setSectionName] = useState("");
     const [deletingSectionId, setDeletingSectionId] = useState<string | null>(null);
+    const [sectionWithQuestionsError, setSectionWithQuestionsError] = useState<{
+        sectionName: string;
+        questionCount: number;
+    } | null>(null);
     const [addFromBankOpen, setAddFromBankOpen] = useState(false);
     const [selectedSectionForBank, setSelectedSectionForBank] = useState<string | undefined>(
         undefined
@@ -196,6 +200,13 @@ export default function QuizQuestionsPage() {
 
     const handleDeleteSection = () => {
         if (!deletingSectionId) return;
+
+        // Check if section has questions
+        const section = sections?.find((s) => s.id === deletingSectionId);
+        if (!section) return;
+
+        // We need to fetch the questions for this section to check if it's empty
+        // This is handled by checking in the SectionItem component before calling this
         deleteSectionMutation.mutate({
             sectionId: deletingSectionId,
             courseId,
@@ -480,9 +491,21 @@ export default function QuizQuestionsPage() {
                                                             onEdit={(name) =>
                                                                 openEditDialog(section.id, name)
                                                             }
-                                                            onDelete={() =>
-                                                                setDeletingSectionId(section.id)
-                                                            }
+                                                            onDelete={(
+                                                                sectionName,
+                                                                questionCount
+                                                            ) => {
+                                                                if (questionCount > 0) {
+                                                                    setSectionWithQuestionsError({
+                                                                        sectionName,
+                                                                        questionCount,
+                                                                    });
+                                                                } else {
+                                                                    setDeletingSectionId(
+                                                                        section.id
+                                                                    );
+                                                                }
+                                                            }}
                                                             onAddQuestion={(sectionId) =>
                                                                 handleAddQuestion(sectionId)
                                                             }
@@ -619,10 +642,48 @@ export default function QuizQuestionsPage() {
                     onOpenChange={(open) => !open && setDeletingSectionId(null)}
                     onAccept={handleDeleteSection}
                     title="Delete Section"
-                    message="Are you sure you want to delete this section? Questions in this section will be moved to unsectioned questions."
+                    message="Are you sure you want to delete this section?"
                     confirmButtonText="Delete"
                     cancelButtonText="Cancel"
                 />
+
+                {/* Section with Questions Error Dialog */}
+                <Dialog
+                    open={!!sectionWithQuestionsError}
+                    onOpenChange={(open) => !open && setSectionWithQuestionsError(null)}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Cannot Delete Section</DialogTitle>
+                            <DialogDescription>
+                                The section &quot;{sectionWithQuestionsError?.sectionName}&quot;
+                                contains {sectionWithQuestionsError?.questionCount}{" "}
+                                {sectionWithQuestionsError?.questionCount === 1
+                                    ? "question"
+                                    : "questions"}
+                                .
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <p className="text-sm text-muted-foreground">
+                                To delete this section, you must first remove all questions from it.
+                                You can either:
+                            </p>
+                            <ul className="list-disc list-inside text-sm text-muted-foreground mt-2 space-y-1 ml-2">
+                                <li>Delete the questions individually</li>
+                                <li>Move the questions to another section by dragging them</li>
+                            </ul>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                onClick={() => setSectionWithQuestionsError(null)}
+                                variant="default"
+                            >
+                                Got it
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Add From Bank Dialog */}
                 <AddFromBankDialog
@@ -652,7 +713,7 @@ function SectionItem({
     quizId: string;
     courseId: string;
     onEdit: (name: string) => void;
-    onDelete: () => void;
+    onDelete: (sectionName: string, questionCount: number) => void;
     onAddQuestion: (sectionId: string) => void;
     onAddFromBank: (sectionId: string) => void;
     dragHandleProps?: object | null;
@@ -791,7 +852,7 @@ function SectionItem({
                                     <DropdownMenuItem
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            onDelete();
+                                            onDelete(section.name, questions?.length || 0);
                                         }}
                                         className="text-destructive focus:text-destructive"
                                     >
