@@ -1,11 +1,11 @@
-# #!/bin/sh
-# set -e
+#!/bin/sh
+set -e
 
-# echo "🔍 Running type check..."
-# pnpm type-check
+echo "🔍 Running type check..."
+pnpm type-check
 
-# echo "🔍 Running linter..."
-# pnpm lint
+echo "🔍 Running linter..."
+pnpm lint
 
-# echo "🏗️  Building project..."
-# pnpm build
+echo "🏗️  Building project..."
+pnpm build
