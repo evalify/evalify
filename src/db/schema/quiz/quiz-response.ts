@@ -24,6 +24,7 @@ export const submissionStatusEnum = pgEnum("submission_status", [
 export const evaluationStatusEnum = pgEnum("evaluation_status", [
     "NOT_EVALUATED",
     "EVALUATED",
+    "EVALUATED_MANUALLY",
     "FAILED",
 ]);
 
