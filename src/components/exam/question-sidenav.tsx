@@ -59,12 +59,44 @@ export default function QuestionSidenav() {
         return "bg-background hover:bg-accent border-border dark:bg-slate-900 dark:hover:bg-slate-800";
     };
 
+    // Convert PostgreSQL interval to milliseconds for timer fallback
+    const getDurationMs = (duration: string | null | undefined): number | undefined => {
+        if (!duration) return undefined;
+        try {
+            const parts = duration.split(" ");
+            let days = 0;
+            const timePart = parts[parts.length - 1];
+
+            if (parts.length === 3 && parts[1]?.startsWith("day")) {
+                days = parseInt(parts[0] || "0", 10) || 0;
+            }
+
+            const [hh = "0", mm = "0", ss = "0"] = timePart?.split(":") || [];
+            const hours = parseInt(hh, 10) || 0;
+            const minutes = parseInt(mm, 10) || 0;
+            const seconds = parseInt(ss, 10) || 0;
+
+            return (
+                days * 24 * 60 * 60 * 1000 +
+                hours * 60 * 60 * 1000 +
+                minutes * 60 * 1000 +
+                seconds * 1000
+            );
+        } catch {
+            return undefined;
+        }
+    };
+
     return (
         <Card className="w-80 sticky top-4 h-[88vh] flex flex-col">
             <CardContent className="flex flex-col h-full p-4 gap-4 overflow-hidden">
                 {/* Timer Section */}
                 <div className="shrink-0">
-                    <QuizTimer endTime={ctx.quizInfo?.endTime} />
+                    <QuizTimer
+                        endTime={ctx.quizInfo?.endTime}
+                        startTime={ctx.quizInfo?.startTime}
+                        durationMs={getDurationMs(ctx.quizInfo?.duration)}
+                    />
                 </div>
 
                 {/* Sections Section */}

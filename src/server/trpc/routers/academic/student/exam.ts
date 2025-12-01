@@ -91,6 +91,15 @@ export const examRouter = createTRPCRouter({
                     });
                 }
 
+                // Enforce time window - reject if end time has passed
+                const now = new Date();
+                if (entry.endTime && now > new Date(entry.endTime)) {
+                    throw new TRPCError({
+                        code: "FORBIDDEN",
+                        message: "Quiz time has ended",
+                    });
+                }
+
                 // Fetch questions for the specific quiz
                 const questions = await db
                     .select({
@@ -165,6 +174,15 @@ export const examRouter = createTRPCRouter({
                     });
                 }
 
+                // Enforce time window
+                const now = new Date();
+                if (entry.endTime && now > new Date(entry.endTime)) {
+                    throw new TRPCError({
+                        code: "FORBIDDEN",
+                        message: "Quiz time has ended",
+                    });
+                }
+
                 const sections = await db
                     .select({
                         id: quizSectionsTable.id,
@@ -218,6 +236,15 @@ export const examRouter = createTRPCRouter({
                 const entry = existing[0];
                 if (entry.submissionStatus !== "NOT_SUBMITTED") {
                     throw new TRPCError({ code: "FORBIDDEN", message: "Quiz already submitted" });
+                }
+
+                // Enforce time window
+                const now = new Date();
+                if (entry.endTime && now > new Date(entry.endTime)) {
+                    throw new TRPCError({
+                        code: "FORBIDDEN",
+                        message: "Quiz time has ended",
+                    });
                 }
 
                 // Merge JSON response: naive merge where responsePatch overwrites fields
@@ -280,6 +307,8 @@ export const examRouter = createTRPCRouter({
 
                 const now = new Date();
 
+                // Note: Allow submission even if time has passed (students can submit after deadline)
+
                 const [updated] = await db
                     .update(quizResponseTable)
                     .set({ submissionStatus: "SUBMITTED", submissionTime: now })
@@ -324,13 +353,19 @@ export const examRouter = createTRPCRouter({
                         endTime: quizzesTable.endTime,
                         duration: quizzesTable.duration,
                         password: quizzesTable.password,
+                        publishQuiz: quizzesTable.publishQuiz,
                     })
                     .from(quizzesTable)
-                    .where(eq(quizzesTable.id, input.quizId))
+                    .where(
+                        and(eq(quizzesTable.id, input.quizId), eq(quizzesTable.publishQuiz, true))
+                    )
                     .limit(1);
 
                 if (quizResult.length === 0) {
-                    throw new TRPCError({ code: "NOT_FOUND", message: "Quiz not found" });
+                    throw new TRPCError({
+                        code: "NOT_FOUND",
+                        message: "Quiz not found or not published",
+                    });
                 }
 
                 const quiz = quizResult[0];
@@ -442,10 +477,13 @@ export const examRouter = createTRPCRouter({
                         { err: e, quizId: quiz.id, userId },
                         "DB error fetching existing quiz_response"
                     );
-                    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e.message });
+                    throw new TRPCError({
+                        code: "INTERNAL_SERVER_ERROR",
+                        message: "Failed to check quiz response",
+                    });
                 }
 
-                // Compute endTime based on quiz.duration
+                // Compute endTime based on quiz.duration, but cap it to quiz.endTime
                 const durationRaw = quiz.duration;
                 const durationStr =
                     typeof durationRaw === "string"
@@ -454,7 +492,11 @@ export const examRouter = createTRPCRouter({
                           ? String(durationRaw)
                           : null;
                 const durationMs = parseIntervalToMs(durationStr);
-                const computedEndTime = new Date(now.getTime() + durationMs);
+                const attemptEndTime = new Date(now.getTime() + durationMs);
+                // Cap the end time to quiz's global end time
+                const computedEndTime = new Date(
+                    Math.min(quizEndTime.getTime(), attemptEndTime.getTime())
+                );
 
                 if (existing.length > 0) {
                     const existingEntry = existing[0];
@@ -497,7 +539,10 @@ export const examRouter = createTRPCRouter({
                             { err: e, quizId: quiz.id, userId, action: "resume", newIps },
                             "DB error resuming quiz"
                         );
-                        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e.message });
+                        throw new TRPCError({
+                            code: "INTERNAL_SERVER_ERROR",
+                            message: "Failed to resume quiz",
+                        });
                     }
 
                     logger.info({ userId, quizId: quiz.id, action: "resume" }, "Quiz resumed");
@@ -524,7 +569,10 @@ export const examRouter = createTRPCRouter({
                         { err: e, quizId: quiz.id, userId, values },
                         "DB error inserting quiz response"
                     );
-                    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e.message });
+                    throw new TRPCError({
+                        code: "INTERNAL_SERVER_ERROR",
+                        message: "Failed to start quiz",
+                    });
                 }
 
                 logger.info(
@@ -539,7 +587,7 @@ export const examRouter = createTRPCRouter({
                 if (error instanceof TRPCError) throw error;
                 throw new TRPCError({
                     code: "INTERNAL_SERVER_ERROR",
-                    message: e.message || "Failed to start quiz",
+                    message: "Failed to start quiz",
                 });
             }
         }),

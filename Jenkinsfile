@@ -30,7 +30,7 @@ pipeline {
         stage('Unit & Component Tests') {
             steps {
                 // Enable pnpm and install dependencies
-                sh 'corepack enable && corepack prepare pnpm@10.21.0 --activate'
+                sh 'corepack enable && corepack prepare pnpm@10.24.0 --activate'
                 sh 'pnpm install --frozen-lockfile'
                 sh 'pnpm test'
             }
