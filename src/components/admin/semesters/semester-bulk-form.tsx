@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Check, Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -70,6 +71,7 @@ const generateSemesters = (
 };
 
 export function SemesterBulkForm({ onSubmit, onCancel }: SemesterBulkFormProps) {
+    const { error: showErrorToast } = useToast();
     const [formData, setFormData] = useState<SemesterBulkFormData>({
         departmentIds: [],
         batchStartYear: new Date().getFullYear() - 3, // Default to 3 years ago
@@ -199,7 +201,10 @@ export function SemesterBulkForm({ onSubmit, onCancel }: SemesterBulkFormProps) 
             }));
 
             await onSubmit(semestersToCreate);
-        } catch (_error) {
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to create semesters";
+            console.error("Semester bulk creation failed:", error);
+            showErrorToast(message);
         } finally {
             setIsLoading(false);
         }

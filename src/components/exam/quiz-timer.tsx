@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Props = {
@@ -13,7 +13,7 @@ type Props = {
 };
 
 function formatMs(ms: number) {
-    if (ms <= 0) return "00:00";
+    if (!Number.isFinite(ms) || ms <= 0) return "00:00";
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -25,13 +25,22 @@ function formatMs(ms: number) {
 
 export default function QuizTimer({ endTime, startTime, durationMs, onExpire }: Props) {
     const computeEnd = useMemo(() => {
-        if (endTime) return new Date(endTime);
-        if (startTime && durationMs) return new Date(new Date(startTime).getTime() + durationMs);
+        if (endTime) {
+            const d = new Date(endTime);
+            if (Number.isNaN(d.getTime())) return null;
+            return d;
+        }
+        if (startTime && durationMs) {
+            const start = new Date(startTime);
+            if (Number.isNaN(start.getTime())) return null;
+            return new Date(start.getTime() + durationMs);
+        }
         return null;
     }, [endTime, startTime, durationMs]);
 
     const [mounted, setMounted] = useState(false);
     const [now, setNow] = useState<Date | null>(null);
+    const hasFiredRef = useRef(false);
 
     useEffect(() => {
         // mark mounted and initialize "now" only on client to avoid SSR/client mismatch
@@ -46,8 +55,10 @@ export default function QuizTimer({ endTime, startTime, durationMs, onExpire }: 
     const remainingMs = computeEnd && now ? computeEnd.getTime() - now.getTime() : null;
 
     useEffect(() => {
-        if (mounted && remainingMs !== null && remainingMs <= 0) {
-            onExpire?.();
+        if (!mounted || remainingMs === null || !onExpire) return;
+        if (remainingMs <= 0 && !hasFiredRef.current) {
+            hasFiredRef.current = true;
+            onExpire();
         }
     }, [mounted, remainingMs, onExpire]);
 

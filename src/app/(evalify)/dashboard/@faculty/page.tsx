@@ -169,7 +169,9 @@ export default function FacultyDashboard() {
             .map((quiz) => {
                 const course = courses.find((c) => {
                     const quizIndex = courses.indexOf(c);
-                    return quizQueries[quizIndex]?.data?.quizzes.some((cq) => cq.id === quiz.id);
+                    return (quizQueries[quizIndex]?.data?.quizzes || []).some(
+                        (cq) => cq.id === quiz.id
+                    );
                 });
                 return { ...quiz, course };
             })
@@ -183,7 +185,9 @@ export default function FacultyDashboard() {
             .map((quiz) => {
                 const course = courses.find((c) => {
                     const quizIndex = courses.indexOf(c);
-                    return quizQueries[quizIndex]?.data?.quizzes.some((cq) => cq.id === quiz.id);
+                    return (quizQueries[quizIndex]?.data?.quizzes || []).some(
+                        (cq) => cq.id === quiz.id
+                    );
                 });
                 return { ...quiz, course };
             })
@@ -198,7 +202,9 @@ export default function FacultyDashboard() {
             .map((quiz) => {
                 const course = courses.find((c) => {
                     const quizIndex = courses.indexOf(c);
-                    return quizQueries[quizIndex]?.data?.quizzes.some((cq) => cq.id === quiz.id);
+                    return (quizQueries[quizIndex]?.data?.quizzes || []).some(
+                        (cq) => cq.id === quiz.id
+                    );
                 });
                 return { ...quiz, course };
             })
