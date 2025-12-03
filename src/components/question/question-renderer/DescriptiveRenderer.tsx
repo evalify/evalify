@@ -21,7 +21,8 @@ export function DescriptiveRenderer({
     onAnswerChange,
     isReadOnly = false,
 }: DescriptiveRendererProps) {
-    const wordCount = answer.trim().split(/\s+/).filter(Boolean).length;
+    const safeAnswer = typeof answer === "string" ? answer : "";
+    const wordCount = safeAnswer.trim().split(/\s+/).filter(Boolean).length;
     const minWords = question.descriptiveConfig?.minWords;
     const maxWords = question.descriptiveConfig?.maxWords;
 
@@ -43,7 +44,7 @@ export function DescriptiveRenderer({
 
             <div className="space-y-3">
                 <Textarea
-                    value={answer}
+                    value={safeAnswer}
                     onChange={(e) => onAnswerChange?.(e.target.value)}
                     disabled={isReadOnly}
                     placeholder="Type your answer here..."

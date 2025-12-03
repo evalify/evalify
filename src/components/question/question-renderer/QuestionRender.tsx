@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContentPreview } from "@/components/rich-text-editor/content-preview";
 import {
@@ -23,8 +24,10 @@ import {
     Trash2,
     BookOpen,
     Check,
-    X,
     Pencil,
+    CheckCircle,
+    Circle,
+    MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useCallback } from "react";
@@ -40,7 +43,9 @@ export interface QuestionRenderProps {
     compareWithStudentAnswer?: boolean; // If false, just show solutions without comparing to student answers
 
     studentScore?: number | null; // The score awarded to the student (null if not evaluated)
-    onEditScore?: (questionId: string, newScore: number | null) => void; // null to clear the score
+    evaluationStatus?: "UNEVALUATED" | "EVALUATED" | "EVALUATED_MANUALLY"; // The evaluation status from results JSON
+    remarks?: string; // Optional remarks for the evaluation
+    onEditScore?: (questionId: string, newScore: number | null, remarks?: string) => void; // null to clear the score
 
     // Actions
     onEdit?: (questionId: string) => void;
@@ -79,6 +84,8 @@ export default function QuestionRender({
     className,
     compareWithStudentAnswer = true,
     studentScore,
+    evaluationStatus,
+    remarks,
     onEditScore,
     onEdit,
     onDelete,
@@ -96,22 +103,25 @@ export default function QuestionRender({
     onDescriptiveAnswerChange,
 }: QuestionRenderProps) {
     const [isEditingScore, setIsEditingScore] = useState(false);
+    const [isEditingRemarks, setIsEditingRemarks] = useState(false);
     const [editedScore, setEditedScore] = useState<string>(
         studentScore !== null && studentScore !== undefined ? String(studentScore) : ""
     );
+    const [editedRemarks, setEditedRemarks] = useState<string>(remarks || "");
 
     const handleSaveScore = useCallback(() => {
         if (!question.id || !onEditScore) return;
 
         // Allow empty score (clearing the evaluation)
         if (editedScore.trim() === "") {
-            onEditScore(question.id, null); // Signal to clear the score
+            onEditScore(question.id, null, editedRemarks || undefined); // Signal to clear the score
             setIsEditingScore(false);
             return;
         }
 
         const numericScore = parseFloat(editedScore);
-        if (isNaN(numericScore) || numericScore > question.marks) {
+        const minScore = -(question.negativeMarks || 0);
+        if (isNaN(numericScore) || numericScore > question.marks || numericScore < minScore) {
             // Invalid score, reset to original
             setEditedScore(
                 studentScore !== null && studentScore !== undefined ? String(studentScore) : ""
@@ -120,9 +130,23 @@ export default function QuestionRender({
             return;
         }
 
-        onEditScore(question.id, numericScore);
+        onEditScore(question.id, numericScore, editedRemarks || undefined);
         setIsEditingScore(false);
-    }, [question.id, question.marks, onEditScore, editedScore, studentScore]);
+    }, [
+        question.id,
+        question.marks,
+        question.negativeMarks,
+        onEditScore,
+        editedScore,
+        editedRemarks,
+        studentScore,
+    ]);
+
+    const handleSaveRemarks = useCallback(() => {
+        if (!question.id || !onEditScore) return;
+        onEditScore(question.id, studentScore ?? null, editedRemarks || undefined);
+        setIsEditingRemarks(false);
+    }, [question.id, onEditScore, studentScore, editedRemarks]);
 
     const handleCancelEdit = useCallback(() => {
         setEditedScore(
@@ -130,6 +154,11 @@ export default function QuestionRender({
         );
         setIsEditingScore(false);
     }, [studentScore]);
+
+    const handleCancelRemarks = useCallback(() => {
+        setEditedRemarks(remarks || "");
+        setIsEditingRemarks(false);
+    }, [remarks]);
     const renderQuestionContent = () => {
         // Add error boundary for incomplete question data
         if (!question || !question.type) {
@@ -281,8 +310,16 @@ export default function QuestionRender({
     // Extract bank name for type safety
     const bankName = "bankName" in question ? (question.bankName as string | null) : null;
 
+    // Determine if question is evaluated (based on evaluationStatus prop from results JSON)
+    const isEvaluated = onEditScore && evaluationStatus && evaluationStatus !== "UNEVALUATED";
+
     return (
-        <Card className={className}>
+        <Card
+            className={cn(
+                className,
+                isEvaluated && "border-2 border-green-500/50 bg-green-50/30 dark:bg-green-950/20"
+            )}
+        >
             <CardContent className="p-4">
                 {/* Compact Header Section */}
                 <div className="flex items-start justify-between gap-3 mb-3">
@@ -298,6 +335,37 @@ export default function QuestionRender({
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
                                     {getQuestionTypeLabel(question.type)}
                                 </Badge>
+                                {/* Evaluation status badge - only show when in evaluation mode */}
+                                {onEditScore && (
+                                    <Badge
+                                        variant="outline"
+                                        className={cn(
+                                            "text-[10px] px-1.5 py-0 h-5 gap-0.5",
+                                            evaluationStatus === "EVALUATED_MANUALLY"
+                                                ? "bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700"
+                                                : evaluationStatus === "EVALUATED"
+                                                  ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700"
+                                                  : "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700"
+                                        )}
+                                    >
+                                        {evaluationStatus === "EVALUATED_MANUALLY" ? (
+                                            <>
+                                                <Pencil className="h-2.5 w-2.5" />
+                                                Manually Evaluated
+                                            </>
+                                        ) : evaluationStatus === "EVALUATED" ? (
+                                            <>
+                                                <CheckCircle className="h-2.5 w-2.5" />
+                                                Auto Evaluated
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Circle className="h-2.5 w-2.5" />
+                                                Not Evaluated
+                                            </>
+                                        )}
+                                    </Badge>
+                                )}
                                 {showMetadata && question.difficulty && (
                                     <Badge
                                         variant="outline"
@@ -346,136 +414,55 @@ export default function QuestionRender({
                                 )}
                                 <div className="flex items-center gap-2 ml-auto">
                                     {(studentScore !== undefined || onEditScore) && (
-                                        <div className="flex items-center gap-1">
-                                            {isEditingScore ? (
-                                                <div className="flex items-center gap-1">
-                                                    <Input
-                                                        type="number"
-                                                        value={editedScore}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            // Allow empty string (for clearing) or valid numbers up to max
-                                                            if (val === "" || val === "-") {
-                                                                setEditedScore(val);
-                                                            } else {
-                                                                const num = parseFloat(val);
-                                                                if (
-                                                                    !isNaN(num) &&
-                                                                    num <= question.marks
-                                                                ) {
-                                                                    setEditedScore(val);
-                                                                }
-                                                            }
-                                                        }}
-                                                        className="h-6 w-14 text-xs px-1.5 text-center"
-                                                        max={question.marks}
-                                                        step="0.5"
-                                                        autoFocus
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === "Enter")
-                                                                handleSaveScore();
-                                                            if (e.key === "Escape")
-                                                                handleCancelEdit();
-                                                        }}
-                                                    />
-                                                    <span className="text-xs text-muted-foreground">
-                                                        /
-                                                    </span>
-                                                    <span className="text-xs font-medium">
-                                                        {question.marks}
-                                                    </span>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-100"
-                                                        onClick={handleSaveScore}
-                                                    >
-                                                        <Check className="h-3 w-3" />
-                                                    </Button>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="h-5 w-5 text-destructive hover:bg-destructive/10"
-                                                        onClick={handleCancelEdit}
-                                                    >
-                                                        <X className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <div
-                                                            className={cn(
-                                                                "flex items-center gap-1 px-1.5 py-0.5 rounded",
-                                                                studentScore !== null &&
-                                                                    studentScore !== undefined
-                                                                    ? studentScore ===
-                                                                      question.marks
-                                                                        ? "bg-green-100 dark:bg-green-900/30"
-                                                                        : studentScore === 0
-                                                                          ? "bg-red-100 dark:bg-red-900/30"
-                                                                          : "bg-yellow-100 dark:bg-yellow-900/30"
-                                                                    : "bg-muted/50",
-                                                                onEditScore &&
-                                                                    "cursor-pointer hover:bg-muted"
-                                                            )}
-                                                            onClick={() =>
-                                                                onEditScore &&
-                                                                setIsEditingScore(true)
-                                                            }
-                                                        >
-                                                            <span
-                                                                className={cn(
-                                                                    "font-semibold text-sm",
-                                                                    studentScore !== null &&
-                                                                        studentScore !== undefined
-                                                                        ? studentScore ===
-                                                                          question.marks
-                                                                            ? "text-green-700 dark:text-green-400"
-                                                                            : studentScore === 0
-                                                                              ? "text-red-700 dark:text-red-400"
-                                                                              : "text-yellow-700 dark:text-yellow-400"
-                                                                        : "text-muted-foreground"
-                                                                )}
-                                                            >
-                                                                {studentScore !== null &&
-                                                                studentScore !== undefined
-                                                                    ? studentScore
-                                                                    : "—"}
-                                                            </span>
-                                                            <span className="text-xs text-muted-foreground">
-                                                                /
-                                                            </span>
-                                                            <span className="text-xs font-medium">
-                                                                {question.marks}
-                                                            </span>
-                                                            {onEditScore && (
-                                                                <Pencil className="h-2.5 w-2.5 ml-0.5 text-muted-foreground" />
-                                                            )}
-                                                        </div>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>
-                                                            {studentScore !== null &&
-                                                            studentScore !== undefined
-                                                                ? `Score: ${studentScore}/${question.marks}`
-                                                                : "Not evaluated yet"}
-                                                            {onEditScore && " (Click to edit)"}
-                                                        </p>
-                                                    </TooltipContent>
-                                                </Tooltip>
+                                        <div
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-2.5 py-1 rounded-full border-2 shadow-sm transition-all",
+                                                isEvaluated
+                                                    ? studentScore === question.marks
+                                                        ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 dark:from-green-950/50 dark:to-emerald-950/50 dark:border-green-700"
+                                                        : "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-300 dark:from-amber-950/50 dark:to-yellow-950/50 dark:border-amber-700"
+                                                    : "bg-gradient-to-r from-slate-50 to-gray-50 border-slate-200 dark:from-slate-900/50 dark:to-gray-900/50 dark:border-slate-700"
                                             )}
+                                        >
+                                            <Award
+                                                className={cn(
+                                                    "h-3.5 w-3.5",
+                                                    isEvaluated
+                                                        ? studentScore === question.marks
+                                                            ? "text-green-600 dark:text-green-400"
+                                                            : "text-amber-600 dark:text-amber-400"
+                                                        : "text-slate-400 dark:text-slate-500"
+                                                )}
+                                            />
+                                            <span
+                                                className={cn(
+                                                    "font-bold text-sm tabular-nums",
+                                                    isEvaluated
+                                                        ? studentScore === question.marks
+                                                            ? "text-green-700 dark:text-green-300"
+                                                            : "text-amber-700 dark:text-amber-300"
+                                                        : "text-slate-500 dark:text-slate-400"
+                                                )}
+                                            >
+                                                {isEvaluated ? studentScore : "—"}
+                                            </span>
+                                            <span className="text-xs text-muted-foreground font-medium">
+                                                /
+                                            </span>
+                                            <span className="text-xs font-semibold text-foreground">
+                                                {question.marks}
+                                            </span>
                                         </div>
                                     )}
                                     {/* Question Marks (only show separately if no student score) */}
                                     {studentScore === undefined && !onEditScore && (
-                                        <div className="flex items-center gap-1">
-                                            <Award className="h-3.5 w-3.5 text-blue-600" />
-                                            <span className="font-semibold text-blue-600 text-sm">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 dark:border-blue-800 shadow-sm">
+                                            <Award className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                                            <span className="font-bold text-blue-700 dark:text-blue-300 text-sm tabular-nums">
                                                 {question.marks}
                                             </span>
                                             {question.negativeMarks > 0 && (
-                                                <span className="text-[10px] text-destructive">
+                                                <span className="text-[10px] font-medium text-red-500 dark:text-red-400">
                                                     (-{question.negativeMarks})
                                                 </span>
                                             )}
@@ -555,6 +542,166 @@ export default function QuestionRender({
                 {showExplanation && question.explanation && (
                     <div className="mt-3 pt-3 border-t">
                         <QuestionExplanation explanation={question.explanation} />
+                    </div>
+                )}
+
+                {/* Evaluation Section - only show when in evaluation mode */}
+                {onEditScore && (
+                    <div className="mt-3 pt-3 border-t space-y-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-muted-foreground">
+                                Evaluation
+                            </span>
+                            {!isEditingScore && !isEditingRemarks && (
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1"
+                                        onClick={() => setIsEditingScore(true)}
+                                    >
+                                        <Pencil className="h-3 w-3" />
+                                        Edit Marks
+                                    </Button>
+                                    {!remarks && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs gap-1 text-muted-foreground"
+                                            onClick={() => setIsEditingRemarks(true)}
+                                        >
+                                            <MessageSquare className="h-3 w-3" />
+                                            Add Remarks
+                                        </Button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Edit Score Section */}
+                        {isEditingScore && (
+                            <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">Score:</span>
+                                    <Input
+                                        type="number"
+                                        value={editedScore}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            const minScore = -(question.negativeMarks || 0);
+
+                                            // Handle empty or just minus sign
+                                            if (val === "" || val === "-") {
+                                                setEditedScore(val);
+                                                return;
+                                            }
+
+                                            // Parse the number and validate
+                                            const num = parseFloat(val);
+                                            if (
+                                                !isNaN(num) &&
+                                                num <= question.marks &&
+                                                num >= minScore
+                                            ) {
+                                                // Use the parsed number to remove leading zeros
+                                                setEditedScore(String(num));
+                                            }
+                                        }}
+                                        className="h-8 w-20 text-sm text-center"
+                                        min={-(question.negativeMarks || 0)}
+                                        max={question.marks}
+                                        step="0.5"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") handleSaveScore();
+                                            if (e.key === "Escape") handleCancelEdit();
+                                        }}
+                                    />
+                                    <span className="text-sm text-muted-foreground">
+                                        / {question.marks}
+                                    </span>
+                                    {question.negativeMarks > 0 && (
+                                        <span className="text-xs text-muted-foreground">
+                                            (min: -{question.negativeMarks})
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-1 ml-auto">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 text-xs"
+                                        onClick={handleCancelEdit}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={handleSaveScore}
+                                    >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Save
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Edit Remarks Section */}
+                        {isEditingRemarks && (
+                            <div className="space-y-2 p-3 bg-muted/30 rounded-lg">
+                                <Textarea
+                                    value={editedRemarks}
+                                    onChange={(e) => setEditedRemarks(e.target.value)}
+                                    placeholder="Add remarks or feedback for this answer..."
+                                    className="min-h-20 text-sm resize-none"
+                                    autoFocus
+                                />
+                                <div className="flex items-center gap-1 justify-end">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 text-xs"
+                                        onClick={handleCancelRemarks}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={handleSaveRemarks}
+                                    >
+                                        <Check className="h-3 w-3 mr-1" />
+                                        Save Remarks
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Show existing remarks */}
+                        {remarks && !isEditingRemarks && (
+                            <div className="p-3 bg-muted/30 rounded-lg">
+                                <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2">
+                                        <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                        <div>
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                                Remarks
+                                            </span>
+                                            <p className="text-sm mt-1">{remarks}</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6"
+                                        onClick={() => setIsEditingRemarks(true)}
+                                    >
+                                        <Pencil className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </CardContent>
