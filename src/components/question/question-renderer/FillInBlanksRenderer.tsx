@@ -304,7 +304,7 @@ export function FillInBlanksRenderer({
                                                                                 Option {idx + 1}
                                                                             </Badge>
                                                                         )}
-                                                                        <div className="font-mono text-base font-semibold text-green-900 dark:text-green-100 break-words">
+                                                                        <div className="font-mono text-base font-semibold text-green-900 dark:text-green-100 wrap-break-words">
                                                                             {answer}
                                                                         </div>
                                                                     </div>

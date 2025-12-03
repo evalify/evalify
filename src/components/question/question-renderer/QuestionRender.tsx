@@ -9,7 +9,8 @@ import { DescriptiveRenderer } from "./DescriptiveRenderer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ContentPreview } from "@/components/rich-text-editor/content-preview";
 import {
     AlertCircle,
@@ -21,8 +22,12 @@ import {
     Tags,
     Trash2,
     BookOpen,
+    Check,
+    X,
+    Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState, useCallback } from "react";
 
 export interface QuestionRenderProps {
     question: Question;
@@ -33,6 +38,9 @@ export interface QuestionRenderProps {
     isReadOnly?: boolean;
     className?: string;
     compareWithStudentAnswer?: boolean; // If false, just show solutions without comparing to student answers
+
+    studentScore?: number | null; // The score awarded to the student (null if not evaluated)
+    onEditScore?: (questionId: string, newScore: number | null) => void; // null to clear the score
 
     // Actions
     onEdit?: (questionId: string) => void;
@@ -70,6 +78,8 @@ export default function QuestionRender({
     isReadOnly = false,
     className,
     compareWithStudentAnswer = true,
+    studentScore,
+    onEditScore,
     onEdit,
     onDelete,
     selectedOptionId,
@@ -85,6 +95,41 @@ export default function QuestionRender({
     descriptiveAnswer,
     onDescriptiveAnswerChange,
 }: QuestionRenderProps) {
+    const [isEditingScore, setIsEditingScore] = useState(false);
+    const [editedScore, setEditedScore] = useState<string>(
+        studentScore !== null && studentScore !== undefined ? String(studentScore) : ""
+    );
+
+    const handleSaveScore = useCallback(() => {
+        if (!question.id || !onEditScore) return;
+
+        // Allow empty score (clearing the evaluation)
+        if (editedScore.trim() === "") {
+            onEditScore(question.id, null); // Signal to clear the score
+            setIsEditingScore(false);
+            return;
+        }
+
+        const numericScore = parseFloat(editedScore);
+        if (isNaN(numericScore) || numericScore > question.marks) {
+            // Invalid score, reset to original
+            setEditedScore(
+                studentScore !== null && studentScore !== undefined ? String(studentScore) : ""
+            );
+            setIsEditingScore(false);
+            return;
+        }
+
+        onEditScore(question.id, numericScore);
+        setIsEditingScore(false);
+    }, [question.id, question.marks, onEditScore, editedScore, studentScore]);
+
+    const handleCancelEdit = useCallback(() => {
+        setEditedScore(
+            studentScore !== null && studentScore !== undefined ? String(studentScore) : ""
+        );
+        setIsEditingScore(false);
+    }, [studentScore]);
     const renderQuestionContent = () => {
         // Add error boundary for incomplete question data
         if (!question || !question.type) {
@@ -299,16 +344,142 @@ export default function QuestionRender({
                                         </TooltipContent>
                                     </Tooltip>
                                 )}
-                                {/* Marks inline */}
-                                <div className="flex items-center gap-1 ml-auto">
-                                    <Award className="h-3.5 w-3.5 text-blue-600" />
-                                    <span className="font-semibold text-blue-600 text-sm">
-                                        {question.marks}
-                                    </span>
-                                    {question.negativeMarks > 0 && (
-                                        <span className="text-[10px] text-destructive">
-                                            (-{question.negativeMarks})
-                                        </span>
+                                <div className="flex items-center gap-2 ml-auto">
+                                    {(studentScore !== undefined || onEditScore) && (
+                                        <div className="flex items-center gap-1">
+                                            {isEditingScore ? (
+                                                <div className="flex items-center gap-1">
+                                                    <Input
+                                                        type="number"
+                                                        value={editedScore}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            // Allow empty string (for clearing) or valid numbers up to max
+                                                            if (val === "" || val === "-") {
+                                                                setEditedScore(val);
+                                                            } else {
+                                                                const num = parseFloat(val);
+                                                                if (
+                                                                    !isNaN(num) &&
+                                                                    num <= question.marks
+                                                                ) {
+                                                                    setEditedScore(val);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="h-6 w-14 text-xs px-1.5 text-center"
+                                                        max={question.marks}
+                                                        step="0.5"
+                                                        autoFocus
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter")
+                                                                handleSaveScore();
+                                                            if (e.key === "Escape")
+                                                                handleCancelEdit();
+                                                        }}
+                                                    />
+                                                    <span className="text-xs text-muted-foreground">
+                                                        /
+                                                    </span>
+                                                    <span className="text-xs font-medium">
+                                                        {question.marks}
+                                                    </span>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-5 w-5 text-green-600 hover:text-green-700 hover:bg-green-100"
+                                                        onClick={handleSaveScore}
+                                                    >
+                                                        <Check className="h-3 w-3" />
+                                                    </Button>
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="h-5 w-5 text-destructive hover:bg-destructive/10"
+                                                        onClick={handleCancelEdit}
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div
+                                                            className={cn(
+                                                                "flex items-center gap-1 px-1.5 py-0.5 rounded",
+                                                                studentScore !== null &&
+                                                                    studentScore !== undefined
+                                                                    ? studentScore ===
+                                                                      question.marks
+                                                                        ? "bg-green-100 dark:bg-green-900/30"
+                                                                        : studentScore === 0
+                                                                          ? "bg-red-100 dark:bg-red-900/30"
+                                                                          : "bg-yellow-100 dark:bg-yellow-900/30"
+                                                                    : "bg-muted/50",
+                                                                onEditScore &&
+                                                                    "cursor-pointer hover:bg-muted"
+                                                            )}
+                                                            onClick={() =>
+                                                                onEditScore &&
+                                                                setIsEditingScore(true)
+                                                            }
+                                                        >
+                                                            <span
+                                                                className={cn(
+                                                                    "font-semibold text-sm",
+                                                                    studentScore !== null &&
+                                                                        studentScore !== undefined
+                                                                        ? studentScore ===
+                                                                          question.marks
+                                                                            ? "text-green-700 dark:text-green-400"
+                                                                            : studentScore === 0
+                                                                              ? "text-red-700 dark:text-red-400"
+                                                                              : "text-yellow-700 dark:text-yellow-400"
+                                                                        : "text-muted-foreground"
+                                                                )}
+                                                            >
+                                                                {studentScore !== null &&
+                                                                studentScore !== undefined
+                                                                    ? studentScore
+                                                                    : "—"}
+                                                            </span>
+                                                            <span className="text-xs text-muted-foreground">
+                                                                /
+                                                            </span>
+                                                            <span className="text-xs font-medium">
+                                                                {question.marks}
+                                                            </span>
+                                                            {onEditScore && (
+                                                                <Pencil className="h-2.5 w-2.5 ml-0.5 text-muted-foreground" />
+                                                            )}
+                                                        </div>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p>
+                                                            {studentScore !== null &&
+                                                            studentScore !== undefined
+                                                                ? `Score: ${studentScore}/${question.marks}`
+                                                                : "Not evaluated yet"}
+                                                            {onEditScore && " (Click to edit)"}
+                                                        </p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            )}
+                                        </div>
+                                    )}
+                                    {/* Question Marks (only show separately if no student score) */}
+                                    {studentScore === undefined && !onEditScore && (
+                                        <div className="flex items-center gap-1">
+                                            <Award className="h-3.5 w-3.5 text-blue-600" />
+                                            <span className="font-semibold text-blue-600 text-sm">
+                                                {question.marks}
+                                            </span>
+                                            {question.negativeMarks > 0 && (
+                                                <span className="text-[10px] text-destructive">
+                                                    (-{question.negativeMarks})
+                                                </span>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
