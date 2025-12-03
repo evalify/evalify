@@ -13,8 +13,12 @@ import {
     labQuizzesTable,
     quizBatchesTable,
     quizEvaluationSettingsTable,
+    quizResponseTable,
+    batchesTable,
+    batchStudentsTable,
+    usersTable,
 } from "@/db/schema";
-import { eq, and, or, ilike, desc, count, sql } from "drizzle-orm";
+import { eq, and, or, ilike, desc, count, sql, inArray, asc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 /**
@@ -869,6 +873,279 @@ export const facultyQuizRouter = createTRPCRouter({
                 logger.error(
                     { error, userId: ctx.session.user.id, quizId: input.quizId },
                     "Error updating quiz"
+                );
+                throw error;
+            }
+        }),
+
+    getResultsBatches: facultyAndManagerProcedure
+        .input(
+            z.object({
+                quizId: z.uuid(),
+            })
+        )
+        .query(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                const quizAccess = await db
+                    .select({
+                        quizId: quizzesTable.id,
+                        isInstructor: courseInstructorsTable.instructorId,
+                        isManager: semesterManagersTable.managerId,
+                    })
+                    .from(quizzesTable)
+                    .innerJoin(courseQuizzesTable, eq(courseQuizzesTable.quizId, quizzesTable.id))
+                    .innerJoin(coursesTable, eq(coursesTable.id, courseQuizzesTable.courseId))
+                    .leftJoin(
+                        courseInstructorsTable,
+                        and(
+                            eq(courseInstructorsTable.courseId, coursesTable.id),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .leftJoin(
+                        semesterManagersTable,
+                        and(
+                            eq(semesterManagersTable.semesterId, coursesTable.semesterId),
+                            eq(semesterManagersTable.managerId, userId)
+                        )
+                    )
+                    .where(eq(quizzesTable.id, input.quizId))
+                    .limit(1);
+
+                if (
+                    quizAccess.length === 0 ||
+                    (!quizAccess[0].isInstructor && !quizAccess[0].isManager)
+                ) {
+                    throw new Error("Quiz not found or unauthorized");
+                }
+
+                const batches = await db
+                    .select({
+                        id: batchesTable.id,
+                        name: batchesTable.name,
+                        section: batchesTable.section,
+                        joinYear: batchesTable.joinYear,
+                    })
+                    .from(quizBatchesTable)
+                    .innerJoin(batchesTable, eq(batchesTable.id, quizBatchesTable.batchId))
+                    .where(eq(quizBatchesTable.quizId, input.quizId))
+                    .orderBy(asc(batchesTable.name));
+
+                return batches;
+            } catch (error) {
+                logger.error(
+                    { error, userId: ctx.session.user.id, quizId: input.quizId },
+                    "Error getting quiz results batches"
+                );
+                throw error;
+            }
+        }),
+
+    getStudentResponses: facultyAndManagerProcedure
+        .input(
+            z.object({
+                quizId: z.uuid(),
+                batchIds: z.array(z.uuid()).optional(),
+                showIndividualOnly: z.boolean().optional(),
+                searchTerm: z.string().optional(),
+                limit: z.number().min(1).max(100).default(50),
+                offset: z.number().min(0).default(0),
+            })
+        )
+        .query(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                const quizAccess = await db
+                    .select({
+                        quizId: quizzesTable.id,
+                        isInstructor: courseInstructorsTable.instructorId,
+                        isManager: semesterManagersTable.managerId,
+                    })
+                    .from(quizzesTable)
+                    .innerJoin(courseQuizzesTable, eq(courseQuizzesTable.quizId, quizzesTable.id))
+                    .innerJoin(coursesTable, eq(coursesTable.id, courseQuizzesTable.courseId))
+                    .leftJoin(
+                        courseInstructorsTable,
+                        and(
+                            eq(courseInstructorsTable.courseId, coursesTable.id),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .leftJoin(
+                        semesterManagersTable,
+                        and(
+                            eq(semesterManagersTable.semesterId, coursesTable.semesterId),
+                            eq(semesterManagersTable.managerId, userId)
+                        )
+                    )
+                    .where(eq(quizzesTable.id, input.quizId))
+                    .limit(1);
+
+                if (
+                    quizAccess.length === 0 ||
+                    (!quizAccess[0].isInstructor && !quizAccess[0].isManager)
+                ) {
+                    throw new Error("Quiz not found or unauthorized");
+                }
+
+                const conditions = [eq(quizResponseTable.quizId, input.quizId)];
+
+                if (input.showIndividualOnly) {
+                    const individualStudentIds = await db
+                        .select({ studentId: studentQuizzesTable.studentId })
+                        .from(studentQuizzesTable)
+                        .where(eq(studentQuizzesTable.quizId, input.quizId));
+
+                    if (individualStudentIds.length === 0) {
+                        return { students: [], total: 0 };
+                    }
+                    conditions.push(
+                        inArray(
+                            quizResponseTable.studentId,
+                            individualStudentIds.map((s) => s.studentId)
+                        )
+                    );
+                } else if (input.batchIds && input.batchIds.length > 0) {
+                    const batchStudentIds = await db
+                        .select({ studentId: batchStudentsTable.studentId })
+                        .from(batchStudentsTable)
+                        .where(inArray(batchStudentsTable.batchId, input.batchIds));
+
+                    if (batchStudentIds.length === 0) {
+                        return { students: [], total: 0 };
+                    }
+                    conditions.push(
+                        inArray(
+                            quizResponseTable.studentId,
+                            batchStudentIds.map((s) => s.studentId)
+                        )
+                    );
+                }
+
+                if (input.searchTerm) {
+                    const searchCondition = or(
+                        ilike(usersTable.name, `%${input.searchTerm}%`),
+                        ilike(usersTable.email, `%${input.searchTerm}%`),
+                        ilike(usersTable.profileId, `%${input.searchTerm}%`)
+                    );
+                    if (searchCondition) {
+                        conditions.push(searchCondition);
+                    }
+                }
+
+                const students = await db
+                    .select({
+                        id: usersTable.id,
+                        name: usersTable.name,
+                        email: usersTable.email,
+                        profileId: usersTable.profileId,
+                        profileImage: usersTable.profileImage,
+                        submissionStatus: quizResponseTable.submissionStatus,
+                        evaluationStatus: quizResponseTable.evaluationStatus,
+                        score: quizResponseTable.score,
+                        totalScore: quizResponseTable.totalScore,
+                        startTime: quizResponseTable.startTime,
+                        endTime: quizResponseTable.endTime,
+                        submissionTime: quizResponseTable.submissionTime,
+                        isViolated: quizResponseTable.isViolated,
+                    })
+                    .from(quizResponseTable)
+                    .innerJoin(usersTable, eq(usersTable.id, quizResponseTable.studentId))
+                    .where(and(...conditions))
+                    .orderBy(asc(usersTable.name))
+                    .limit(input.limit)
+                    .offset(input.offset);
+
+                const totalResult = await db
+                    .select({ count: count() })
+                    .from(quizResponseTable)
+                    .innerJoin(usersTable, eq(usersTable.id, quizResponseTable.studentId))
+                    .where(and(...conditions));
+
+                return {
+                    students,
+                    total: Number(totalResult[0].count),
+                };
+            } catch (error) {
+                logger.error(
+                    { error, userId: ctx.session.user.id, quizId: input.quizId },
+                    "Error getting student responses"
+                );
+                throw error;
+            }
+        }),
+
+    getResultsStats: facultyAndManagerProcedure
+        .input(z.object({ quizId: z.uuid() }))
+        .query(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                const quizAccess = await db
+                    .select({
+                        quizId: quizzesTable.id,
+                        isInstructor: courseInstructorsTable.instructorId,
+                        isManager: semesterManagersTable.managerId,
+                    })
+                    .from(quizzesTable)
+                    .innerJoin(courseQuizzesTable, eq(courseQuizzesTable.quizId, quizzesTable.id))
+                    .innerJoin(coursesTable, eq(coursesTable.id, courseQuizzesTable.courseId))
+                    .leftJoin(
+                        courseInstructorsTable,
+                        and(
+                            eq(courseInstructorsTable.courseId, coursesTable.id),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .leftJoin(
+                        semesterManagersTable,
+                        and(
+                            eq(semesterManagersTable.semesterId, coursesTable.semesterId),
+                            eq(semesterManagersTable.managerId, userId)
+                        )
+                    )
+                    .where(eq(quizzesTable.id, input.quizId))
+                    .limit(1);
+
+                if (
+                    quizAccess.length === 0 ||
+                    (!quizAccess[0].isInstructor && !quizAccess[0].isManager)
+                ) {
+                    throw new Error("Quiz not found or unauthorized");
+                }
+
+                const responses = await db
+                    .select({
+                        submissionStatus: quizResponseTable.submissionStatus,
+                        isViolated: quizResponseTable.isViolated,
+                    })
+                    .from(quizResponseTable)
+                    .where(eq(quizResponseTable.quizId, input.quizId));
+
+                const total = responses.length;
+                let submitted = 0;
+                let violated = 0;
+
+                for (const response of responses) {
+                    if (
+                        response.submissionStatus === "SUBMITTED" ||
+                        response.submissionStatus === "AUTO_SUBMITTED"
+                    ) {
+                        submitted++;
+                    }
+                    if (response.isViolated) {
+                        violated++;
+                    }
+                }
+
+                return { total, submitted, violated };
+            } catch (error) {
+                logger.error(
+                    { error, userId: ctx.session.user.id, quizId: input.quizId },
+                    "Error getting results stats"
                 );
                 throw error;
             }

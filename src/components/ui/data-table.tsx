@@ -113,6 +113,7 @@ export type DataTableProps<TData, TValue> = {
     columns: ColumnDef<TData, TValue>[];
     data: TData[];
     filterColumn?: string;
+    filterPlaceholder?: string;
     initialPageSize?: number;
     defaultSorting?: SortingState;
     initialFilter?: string;
@@ -133,12 +134,16 @@ export type DataTableProps<TData, TValue> = {
     onFilterChange?: (value: string) => void;
 
     onRowClick?: (row: TData) => void;
+
+    /** Additional elements to render in the toolbar after the filter input */
+    toolbarExtras?: React.ReactNode;
 };
 
 export function DataTable<TData, TValue>({
     columns,
     data,
     filterColumn,
+    filterPlaceholder,
     initialPageSize = 10,
     defaultSorting = [],
     initialFilter = "",
@@ -159,6 +164,8 @@ export function DataTable<TData, TValue>({
     onFilterChange,
 
     onRowClick,
+
+    toolbarExtras,
 }: DataTableProps<TData, TValue>) {
     const [iSorting, iSetSorting] = React.useState<SortingState>(defaultSorting);
     const [iColumnFilters, iSetColumnFilters] = React.useState<ColumnFiltersState>(
@@ -299,12 +306,14 @@ export function DataTable<TData, TValue>({
             <div className="flex items-center gap-2">
                 {filterColumn ? (
                     <Input
-                        placeholder={`Filter ${filterColumn}...`}
+                        placeholder={filterPlaceholder ?? `Filter ${filterColumn}...`}
                         value={boundFilter}
                         onChange={(e) => setBoundFilter(e.target.value)}
                         className="w-60"
                     />
                 ) : null}
+
+                {toolbarExtras}
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
