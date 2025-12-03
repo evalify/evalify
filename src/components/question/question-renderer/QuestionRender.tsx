@@ -1,4 +1,4 @@
-import { Question, QuestionType } from "@/types/questions";
+import { Question, QuestionType, QuizQuestion } from "@/types/questions";
 import { QuestionExplanation } from "./QuestionExplanation";
 import { MCQRenderer } from "./MCQRenderer";
 import { MMCQRenderer } from "./MMCQRenderer";
@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { useState, useCallback } from "react";
 
 export interface QuestionRenderProps {
-    question: Question;
+    question: Question | QuizQuestion;
     questionNumber?: number;
     showMetadata?: boolean;
     showSolution?: boolean;

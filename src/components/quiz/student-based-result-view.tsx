@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,8 +20,6 @@ import {
     AlertCircle,
     Timer,
     AlertTriangle,
-    Save,
-    RotateCcw,
     ChevronLeft,
     ChevronRight,
 } from "lucide-react";
@@ -120,13 +118,22 @@ export function StudentResultView({ quizId, studentId }: StudentResultViewProps)
         null
     );
 
+    // Ref to store pending mutation context for error recovery
+    const pendingMutationRef = useRef<{
+        previousEvaluationResults: EvaluationResults | null;
+    } | null>(null);
+
     const { data, isLoading, error } = trpc.facultyQuiz.getStudentResultDetails.useQuery({
         quizId,
         studentId,
     });
 
     const updateMutation = trpc.facultyQuiz.updateEvaluationResults.useMutation({
-        onSuccess: (result) => {
+        onSuccess: (result, variables) => {
+            // Clear pending mutation context
+            pendingMutationRef.current = null;
+            // Update local state from variables to ensure final consistency
+            setLocalEvaluationResults(variables.evaluationResults as EvaluationResults);
             toast("success", "Marks saved", {
                 description: `Score: ${result.score}`,
             });
@@ -142,6 +149,18 @@ export function StudentResultView({ quizId, studentId }: StudentResultViewProps)
             utils.facultyQuiz.getStudentResponses.invalidate({ quizId });
         },
         onError: (err) => {
+            // Restore previous evaluation state on error using ref
+            const ctx = pendingMutationRef.current;
+            if (ctx) {
+                setLocalEvaluationResults(ctx.previousEvaluationResults);
+                pendingMutationRef.current = null;
+            }
+            // Invalidate cache to refetch authoritative data
+            utils.facultyQuiz.getStudentResultDetails.invalidate({
+                quizId,
+                studentId,
+            });
+            utils.facultyQuiz.getStudentResponses.invalidate({ quizId });
             toast("error", "Error saving", {
                 description: err.message,
             });
@@ -298,6 +317,9 @@ export function StudentResultView({ quizId, studentId }: StudentResultViewProps)
         (questionId: string, newScore: number | null, newRemarks?: string) => {
             if (!evaluationResults) return;
 
+            // Capture previous evaluation state before optimistic update
+            const previousEvaluationResults = localEvaluationResults;
+
             const newResults: EvaluationResults = {
                 ...evaluationResults,
                 data: {
@@ -311,17 +333,22 @@ export function StudentResultView({ quizId, studentId }: StudentResultViewProps)
                 },
             };
 
-            // Update local state for immediate UI feedback
+            // Store context for error recovery before mutating
+            pendingMutationRef.current = {
+                previousEvaluationResults,
+            };
+
+            // Optimistic update for immediate UI feedback
             setLocalEvaluationResults(newResults);
 
-            // Save immediately to server
+            // Save to server
             updateMutation.mutate({
                 quizId,
                 studentId,
                 evaluationResults: newResults,
             });
         },
-        [evaluationResults, quizId, studentId, updateMutation]
+        [evaluationResults, localEvaluationResults, quizId, studentId, updateMutation]
     );
 
     // Calculate total score by summing all individual marks
@@ -558,8 +585,9 @@ export function StudentResultView({ quizId, studentId }: StudentResultViewProps)
             <div className="space-y-4">
                 <h2 className="text-lg font-semibold">Questions & Responses</h2>
                 {formattedQuestions.map((question, index) => {
-                    const studentAnswer = getStudentAnswer(question.id!, question.type);
-                    const evalResult = evaluationResults?.data[question.id!];
+                    if (!question.id) return null;
+                    const studentAnswer = getStudentAnswer(question.id, question.type);
+                    const evalResult = evaluationResults?.data[question.id];
 
                     return (
                         <QuestionRender

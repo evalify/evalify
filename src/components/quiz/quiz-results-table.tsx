@@ -138,12 +138,15 @@ const columns: ColumnDef<StudentResponse>[] = [
         minSize: 80,
         cell: ({ row }) => {
             const student = row.original;
-            if (student.score !== null && student.totalScore !== null) {
+            const score = student.score;
+            const totalScore = student.totalScore;
+            // Check for both null and undefined, and ensure we have actual values
+            if (score != null && totalScore != null) {
                 return (
                     <div className="flex items-center gap-1">
                         <Award className="h-4 w-4 text-primary" />
-                        <span className="font-medium">{student.score}</span>
-                        <span className="text-muted-foreground">/ {student.totalScore}</span>
+                        <span className="font-medium">{score}</span>
+                        <span className="text-muted-foreground">/ {totalScore}</span>
                     </div>
                 );
             }
@@ -221,7 +224,7 @@ export function QuizResultsTable({ quizId, courseId }: QuizResultsTableProps) {
     };
 
     const handleRowClick = (row: StudentResponse) => {
-        router.push(`/course/${courseId}/quiz/${quizId}/results/${row.id}`);
+        router.push(`/course/${courseId}/quiz/${quizId}/results/student/${row.id}`);
     };
 
     const handleFilterChange = (value: string) => {
