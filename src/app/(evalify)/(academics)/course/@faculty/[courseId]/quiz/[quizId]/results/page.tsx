@@ -1,22 +1,37 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, Calendar, Clock, Edit2, Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Calendar, Clock, Edit2, Users, HelpCircle } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { QuizResultsTable } from "@/components/quiz/quiz-results-table";
+import { QuizQuestionsView } from "@/components/quiz/quiz-questions-view";
 
 export default function QuizResultPage() {
     const params = useParams<{ courseId: string; quizId: string }>();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { track } = useAnalytics();
     const courseId = Array.isArray(params.courseId) ? params.courseId[0] : params.courseId;
     const quizId = Array.isArray(params.quizId) ? params.quizId[0] : params.quizId;
+
+    // Get tab from URL or default to "students"
+    const currentTab = searchParams.get("tab") ?? "students";
+
+    const handleTabChange = useCallback(
+        (value: string) => {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("tab", value);
+            router.push(`?${params.toString()}`, { scroll: false });
+        },
+        [router, searchParams]
+    );
 
     useEffect(() => {
         track("quiz_results_page_viewed", { quizId, courseId });
@@ -170,7 +185,24 @@ export default function QuizResultPage() {
                 </Card>
             ) : null}
 
-            <QuizResultsTable quizId={quizId} courseId={courseId} />
+            <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+                <TabsList className="grid w-full max-w-md grid-cols-2">
+                    <TabsTrigger value="students" className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Students
+                    </TabsTrigger>
+                    <TabsTrigger value="questions" className="flex items-center gap-2">
+                        <HelpCircle className="h-4 w-4" />
+                        Questions
+                    </TabsTrigger>
+                </TabsList>
+                <TabsContent value="students" className="mt-6">
+                    <QuizResultsTable quizId={quizId} courseId={courseId} />
+                </TabsContent>
+                <TabsContent value="questions" className="mt-6">
+                    <QuizQuestionsView quizId={quizId} courseId={courseId} />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

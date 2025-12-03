@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect } from "react";
-import { StudentResultView } from "@/components/quiz/student-result-view";
+import { StudentResultView } from "@/components/quiz/student-based-result-view";
 import { useAnalytics } from "@/hooks/use-analytics";
 
 export default function StudentResultPage() {
