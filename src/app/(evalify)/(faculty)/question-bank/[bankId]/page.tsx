@@ -1255,7 +1255,6 @@ export default function QuestionBankPage() {
         </div>
     );
 }
-
 type QuestionListProps = {
     questions: QuestionWithTopics[];
     selectedTopics: string[];
@@ -1285,8 +1284,11 @@ const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
         const virtualizer = useVirtualizer({
             count: questions.length,
             getScrollElement: () => parentRef.current,
-            estimateSize: () => 400, // Estimated height of each question card
-            overscan: 2, // Render 2 extra items above and below viewport
+            // Just a rough guess – actual size will be corrected by measureElement
+            estimateSize: () => 380,
+            overscan: 6,
+            // Keep row identity stable so React does less work
+            getItemKey: (index) => questions[index]?.id ?? index,
         });
 
         // Expose scroll method to parent
@@ -1294,7 +1296,6 @@ const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
             scrollToQuestion: (questionId: string) => {
                 const index = questions.findIndex((q) => q.id === questionId);
                 if (index !== -1) {
-                    // Scroll virtualizer to the index
                     virtualizer.scrollToIndex(index, {
                         align: "center",
                         behavior: "smooth",
@@ -1320,11 +1321,15 @@ const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
                 >
                     {virtualizer.getVirtualItems().map((virtualItem) => {
                         const question = questions[virtualItem.index];
+                        if (!question) return null;
+
                         return (
                             <div
                                 key={question.id}
                                 data-index={virtualItem.index}
                                 ref={(el) => {
+                                    // Let the virtualizer measure the *actual* height
+                                    // so rows get dynamic size based on content
                                     virtualizer.measureElement(el);
                                     if (el && question.id) {
                                         questionRefs.current.set(question.id, el);
@@ -1336,6 +1341,7 @@ const QuestionList = forwardRef<QuestionListRef, QuestionListProps>(
                                     left: 0,
                                     width: "100%",
                                     transform: `translateY(${virtualItem.start}px)`,
+                                    willChange: "transform",
                                 }}
                                 className="pb-6"
                             >
