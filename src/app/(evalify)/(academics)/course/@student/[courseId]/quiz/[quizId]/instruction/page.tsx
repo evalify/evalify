@@ -890,15 +890,6 @@ const QuizInstructionsPage = () => {
                     )}
                 </div>
 
-                {/* Additional Status Information */}
-                {canStartQuiz && (
-                    <div className="text-center mt-6">
-                        <p className="text-sm text-green-600 dark:text-green-400 font-medium">
-                            ✨ Quiz is live and ready to start!
-                        </p>
-                    </div>
-                )}
-
                 {isQuizUpcoming && (
                     <div className="text-center mt-6">
                         <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
