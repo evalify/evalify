@@ -17,6 +17,12 @@ import {
     batchesTable,
     batchStudentsTable,
     usersTable,
+    quizQuestionsTable,
+    questionsTable,
+    bankQuestionsTable,
+    banksTable,
+    topicQuestionsTable,
+    topicsTable,
 } from "@/db/schema";
 import { eq, and, or, ilike, desc, count, sql, inArray, asc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
@@ -1146,6 +1152,323 @@ export const facultyQuizRouter = createTRPCRouter({
                 logger.error(
                     { error, userId: ctx.session.user.id, quizId: input.quizId },
                     "Error getting results stats"
+                );
+                throw error;
+            }
+        }),
+
+    /**
+     * Get detailed student response for evaluation/viewing
+     */
+    getStudentResultDetails: facultyAndManagerProcedure
+        .input(
+            z.object({
+                quizId: z.uuid(),
+                studentId: z.uuid(),
+            })
+        )
+        .query(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                // Verify access
+                const quizAccess = await db
+                    .select({
+                        quizId: quizzesTable.id,
+                        isInstructor: courseInstructorsTable.instructorId,
+                        isManager: semesterManagersTable.managerId,
+                    })
+                    .from(quizzesTable)
+                    .innerJoin(courseQuizzesTable, eq(courseQuizzesTable.quizId, quizzesTable.id))
+                    .innerJoin(coursesTable, eq(coursesTable.id, courseQuizzesTable.courseId))
+                    .leftJoin(
+                        courseInstructorsTable,
+                        and(
+                            eq(courseInstructorsTable.courseId, coursesTable.id),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .leftJoin(
+                        semesterManagersTable,
+                        and(
+                            eq(semesterManagersTable.semesterId, coursesTable.semesterId),
+                            eq(semesterManagersTable.managerId, userId)
+                        )
+                    )
+                    .where(eq(quizzesTable.id, input.quizId))
+                    .limit(1);
+
+                if (
+                    quizAccess.length === 0 ||
+                    (!quizAccess[0].isInstructor && !quizAccess[0].isManager)
+                ) {
+                    throw new Error("Quiz not found or unauthorized");
+                }
+
+                // Get student info
+                const student = await db
+                    .select({
+                        id: usersTable.id,
+                        name: usersTable.name,
+                        email: usersTable.email,
+                        profileId: usersTable.profileId,
+                        profileImage: usersTable.profileImage,
+                    })
+                    .from(usersTable)
+                    .where(eq(usersTable.id, input.studentId))
+                    .limit(1);
+
+                if (student.length === 0) {
+                    throw new Error("Student not found");
+                }
+
+                // Get quiz response
+                const responseData = await db
+                    .select({
+                        startTime: quizResponseTable.startTime,
+                        endTime: quizResponseTable.endTime,
+                        submissionTime: quizResponseTable.submissionTime,
+                        submissionStatus: quizResponseTable.submissionStatus,
+                        evaluationStatus: quizResponseTable.evaluationStatus,
+                        score: quizResponseTable.score,
+                        totalScore: quizResponseTable.totalScore,
+                        response: quizResponseTable.response,
+                        evaluationResults: quizResponseTable.evaluationResults,
+                        isViolated: quizResponseTable.isViolated,
+                        violations: quizResponseTable.violations,
+                        ip: quizResponseTable.ip,
+                    })
+                    .from(quizResponseTable)
+                    .where(
+                        and(
+                            eq(quizResponseTable.quizId, input.quizId),
+                            eq(quizResponseTable.studentId, input.studentId)
+                        )
+                    )
+                    .limit(1);
+
+                if (responseData.length === 0) {
+                    throw new Error("Student response not found");
+                }
+
+                // Get quiz questions with full question data
+                const quizQuestions = await db
+                    .select({
+                        quizQuestionId: quizQuestionsTable.id,
+                        orderIndex: quizQuestionsTable.orderIndex,
+                        bankQuestionId: quizQuestionsTable.bankQuestionId,
+                        questionId: questionsTable.id,
+                        type: questionsTable.type,
+                        question: questionsTable.question,
+                        questionData: questionsTable.questionData,
+                        solution: questionsTable.solution,
+                        explanation: questionsTable.explanation,
+                        marks: questionsTable.marks,
+                        negativeMarks: questionsTable.negativeMarks,
+                        difficulty: questionsTable.difficulty,
+                        courseOutcome: questionsTable.courseOutcome,
+                        bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
+                    })
+                    .from(quizQuestionsTable)
+                    .innerJoin(questionsTable, eq(questionsTable.id, quizQuestionsTable.questionId))
+                    .where(eq(quizQuestionsTable.quizId, input.quizId))
+                    .orderBy(asc(quizQuestionsTable.orderIndex));
+
+                // Get bank names for questions that came from banks
+                const bankQuestionIds = quizQuestions
+                    .filter((q) => q.bankQuestionId)
+                    .map((q) => q.bankQuestionId!);
+
+                let bankNameMap: Map<string, string> = new Map();
+                if (bankQuestionIds.length > 0) {
+                    const bankNames = await db
+                        .select({
+                            bankQuestionId: bankQuestionsTable.id,
+                            bankName: banksTable.name,
+                        })
+                        .from(bankQuestionsTable)
+                        .innerJoin(banksTable, eq(banksTable.id, bankQuestionsTable.bankId))
+                        .where(inArray(bankQuestionsTable.id, bankQuestionIds));
+
+                    bankNameMap = new Map(bankNames.map((b) => [b.bankQuestionId, b.bankName]));
+                }
+
+                // Get topics for all questions
+                const questionIds = quizQuestions.map((q) => q.questionId);
+                const topicsMap: Map<string, { topicId: string; topicName: string }[]> = new Map();
+                if (questionIds.length > 0) {
+                    const topicsData = await db
+                        .select({
+                            questionId: topicQuestionsTable.questionId,
+                            topicId: topicsTable.id,
+                            topicName: topicsTable.name,
+                        })
+                        .from(topicQuestionsTable)
+                        .innerJoin(topicsTable, eq(topicsTable.id, topicQuestionsTable.topicId))
+                        .where(inArray(topicQuestionsTable.questionId, questionIds));
+
+                    for (const topic of topicsData) {
+                        const existing = topicsMap.get(topic.questionId) || [];
+                        existing.push({ topicId: topic.topicId, topicName: topic.topicName });
+                        topicsMap.set(topic.questionId, existing);
+                    }
+                }
+
+                // Format questions for the frontend
+                const questions = quizQuestions.map((q) => ({
+                    id: q.questionId,
+                    quizQuestionId: q.quizQuestionId,
+                    orderIndex: q.orderIndex,
+                    type: q.type,
+                    question: q.question,
+                    questionData: q.questionData,
+                    solution: q.solution,
+                    explanation: q.explanation,
+                    marks: q.marks,
+                    negativeMarks: q.negativeMarks ?? 0,
+                    difficulty: q.difficulty,
+                    courseOutcome: q.courseOutcome,
+                    bloomTaxonomyLevel: q.bloomTaxonomyLevel,
+                    bankName: q.bankQuestionId ? bankNameMap.get(q.bankQuestionId) : null,
+                    topics: topicsMap.get(q.questionId) || [],
+                }));
+
+                return {
+                    student: student[0],
+                    response: responseData[0],
+                    questions,
+                };
+            } catch (error) {
+                logger.error(
+                    {
+                        error,
+                        userId: ctx.session.user.id,
+                        quizId: input.quizId,
+                        studentId: input.studentId,
+                    },
+                    "Error getting student result details"
+                );
+                throw error;
+            }
+        }),
+
+    /**
+     * Update evaluation results for a student's quiz response
+     */
+    updateEvaluationResults: facultyAndManagerProcedure
+        .input(
+            z.object({
+                quizId: z.uuid(),
+                studentId: z.uuid(),
+                evaluationResults: z.object({
+                    data: z.record(
+                        z.string(),
+                        z.object({
+                            status: z.enum(["UNEVALUATED", "EVALUATED", "EVALUATED_MANUALLY"]),
+                            mark: z.number(),
+                            remarks: z.string().optional(),
+                        })
+                    ),
+                    v: z.string(),
+                }),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                // Verify access
+                const quizAccess = await db
+                    .select({
+                        quizId: quizzesTable.id,
+                        isInstructor: courseInstructorsTable.instructorId,
+                        isManager: semesterManagersTable.managerId,
+                    })
+                    .from(quizzesTable)
+                    .innerJoin(courseQuizzesTable, eq(courseQuizzesTable.quizId, quizzesTable.id))
+                    .innerJoin(coursesTable, eq(coursesTable.id, courseQuizzesTable.courseId))
+                    .leftJoin(
+                        courseInstructorsTable,
+                        and(
+                            eq(courseInstructorsTable.courseId, coursesTable.id),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .leftJoin(
+                        semesterManagersTable,
+                        and(
+                            eq(semesterManagersTable.semesterId, coursesTable.semesterId),
+                            eq(semesterManagersTable.managerId, userId)
+                        )
+                    )
+                    .where(eq(quizzesTable.id, input.quizId))
+                    .limit(1);
+
+                if (
+                    quizAccess.length === 0 ||
+                    (!quizAccess[0].isInstructor && !quizAccess[0].isManager)
+                ) {
+                    throw new Error("Quiz not found or unauthorized");
+                }
+
+                // Calculate total score from evaluation results
+                let totalAwardedScore = 0;
+                const evaluationData = input.evaluationResults.data;
+                for (const questionId in evaluationData) {
+                    totalAwardedScore += evaluationData[questionId].mark;
+                }
+
+                // Determine evaluation status
+                const allEvaluated = Object.values(evaluationData).every(
+                    (e) => e.status !== "UNEVALUATED"
+                );
+                const hasManualEvaluation = Object.values(evaluationData).some(
+                    (e) => e.status === "EVALUATED_MANUALLY"
+                );
+
+                let evaluationStatus: "NOT_EVALUATED" | "EVALUATED" | "EVALUATED_MANUALLY" =
+                    "NOT_EVALUATED";
+                if (allEvaluated) {
+                    evaluationStatus = hasManualEvaluation ? "EVALUATED_MANUALLY" : "EVALUATED";
+                }
+
+                // Update quiz response
+                await db
+                    .update(quizResponseTable)
+                    .set({
+                        evaluationResults: input.evaluationResults,
+                        score: String(totalAwardedScore),
+                        evaluationStatus: evaluationStatus,
+                        updated_at: new Date(),
+                    })
+                    .where(
+                        and(
+                            eq(quizResponseTable.quizId, input.quizId),
+                            eq(quizResponseTable.studentId, input.studentId)
+                        )
+                    );
+
+                logger.info(
+                    {
+                        userId,
+                        quizId: input.quizId,
+                        studentId: input.studentId,
+                        newScore: totalAwardedScore,
+                        evaluationStatus,
+                    },
+                    "Evaluation results updated successfully"
+                );
+
+                return { success: true, score: totalAwardedScore, evaluationStatus };
+            } catch (error) {
+                logger.error(
+                    {
+                        error,
+                        userId: ctx.session.user.id,
+                        quizId: input.quizId,
+                        studentId: input.studentId,
+                    },
+                    "Error updating evaluation results"
                 );
                 throw error;
             }
