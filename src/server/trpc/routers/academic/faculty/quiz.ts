@@ -153,13 +153,13 @@ export const facultyQuizRouter = createTRPCRouter({
                 const questionCounts =
                     quizIds.length > 0
                         ? await db
-                              .select({
-                                  quizId: sql<string>`quiz_id`,
-                                  count: count(),
-                              })
-                              .from(sql`quiz_questions`)
-                              .where(sql`quiz_id IN ${quizIds}`)
-                              .groupBy(sql`quiz_id`)
+                            .select({
+                                quizId: sql<string>`quiz_id`,
+                                count: count(),
+                            })
+                            .from(sql`quiz_questions`)
+                            .where(sql`quiz_id IN ${quizIds}`)
+                            .groupBy(sql`quiz_id`)
                         : [];
 
                 const questionCountMap = new Map(
@@ -363,19 +363,19 @@ export const facultyQuizRouter = createTRPCRouter({
                     batchIds: batches.map((b) => b.batchId),
                     scoring: evaluationSettings[0]
                         ? {
-                              mcqGlobalPartialMarking:
-                                  evaluationSettings[0].mcqGlobalPartialMarking,
-                              mcqGlobalNegativeMark: evaluationSettings[0].mcqGlobalNegativeMark,
-                              mcqGlobalNegativePercent:
-                                  evaluationSettings[0].mcqGlobalNegativePercent,
-                              codingGlobalPartialMarking:
-                                  evaluationSettings[0].codingGlobalPartialMarking,
-                              llmEvaluationEnabled: evaluationSettings[0].llmEvaluationEnabled,
-                              llmProvider: evaluationSettings[0].llmProvider,
-                              llmModelName: evaluationSettings[0].llmModelName,
-                              fitbLlmSystemPrompt: evaluationSettings[0].fitbLlmSystemPrompt,
-                              descLlmSystemPrompt: evaluationSettings[0].descLlmSystemPrompt,
-                          }
+                            mcqGlobalPartialMarking:
+                                evaluationSettings[0].mcqGlobalPartialMarking,
+                            mcqGlobalNegativeMark: evaluationSettings[0].mcqGlobalNegativeMark,
+                            mcqGlobalNegativePercent:
+                                evaluationSettings[0].mcqGlobalNegativePercent,
+                            codingGlobalPartialMarking:
+                                evaluationSettings[0].codingGlobalPartialMarking,
+                            llmEvaluationEnabled: evaluationSettings[0].llmEvaluationEnabled,
+                            llmProvider: evaluationSettings[0].llmProvider,
+                            llmModelName: evaluationSettings[0].llmModelName,
+                            fitbLlmSystemPrompt: evaluationSettings[0].fitbLlmSystemPrompt,
+                            descLlmSystemPrompt: evaluationSettings[0].descLlmSystemPrompt,
+                        }
                         : undefined,
                 };
             } catch (error) {
@@ -1642,6 +1642,87 @@ export const facultyQuizRouter = createTRPCRouter({
                     "Error getting question responses"
                 );
                 throw error;
+            }
+        }),
+
+    /**
+     * Delete a quiz and all its associated data
+     */
+    delete: facultyAndManagerProcedure
+        .input(
+            z.object({
+                quizId: z.uuid(),
+                courseId: z.uuid(),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                // Verify user has access to this course
+                const courseAccess = await db
+                    .select({
+                        courseId: coursesTable.id,
+                        isInstructor: courseInstructorsTable.instructorId,
+                        isManager: semesterManagersTable.managerId,
+                    })
+                    .from(coursesTable)
+                    .leftJoin(
+                        courseInstructorsTable,
+                        and(
+                            eq(courseInstructorsTable.courseId, coursesTable.id),
+                            eq(courseInstructorsTable.instructorId, userId)
+                        )
+                    )
+                    .leftJoin(
+                        semesterManagersTable,
+                        and(
+                            eq(semesterManagersTable.semesterId, coursesTable.semesterId),
+                            eq(semesterManagersTable.managerId, userId)
+                        )
+                    )
+                    .where(eq(coursesTable.id, input.courseId))
+                    .limit(1);
+
+                if (
+                    courseAccess.length === 0 ||
+                    (!courseAccess[0]?.isInstructor && !courseAccess[0]?.isManager)
+                ) {
+                    throw new Error("You do not have permission to delete quizzes in this course");
+                }
+
+                // Verify quiz belongs to this course
+                const [quizCourse] = await db
+                    .select()
+                    .from(courseQuizzesTable)
+                    .where(
+                        and(
+                            eq(courseQuizzesTable.quizId, input.quizId),
+                            eq(courseQuizzesTable.courseId, input.courseId)
+                        )
+                    )
+                    .limit(1);
+
+                if (!quizCourse) {
+                    throw new Error("Quiz not found in this course");
+                }
+
+                // Delete quiz and all associated data (cascading deletes should handle most of this)
+                // But we'll explicitly delete some relations to be safe
+                await db.delete(quizzesTable).where(eq(quizzesTable.id, input.quizId));
+
+                logger.info({ userId, quizId: input.quizId }, "Quiz deleted successfully");
+
+                return { quizId: input.quizId };
+            } catch (error) {
+                logger.error(
+                    { error, userId: ctx.session.user.id, quizId: input.quizId },
+                    "Error deleting quiz"
+                );
+                if (error instanceof Error) {
+                    throw error;
+                }
+                throw new Error("Failed to delete quiz. Please try again.");
             }
         }),
 });
