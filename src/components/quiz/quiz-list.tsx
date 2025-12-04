@@ -31,6 +31,9 @@ import {
     Calculator,
     EyeOff,
     Timer,
+    MoreVertical,
+    Trash2,
+    Copy,
 } from "lucide-react";
 import { format, isPast, isFuture, isWithinInterval } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -39,6 +42,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -49,6 +53,10 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty";
+import { DeleteQuizDialog } from "@/components/quiz/delete-quiz-dialog";
+import { trpc } from "@/lib/trpc/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAnalytics } from "@/hooks/use-analytics";
 
 export interface Quiz {
     id: string;
@@ -82,6 +90,7 @@ interface QuizListProps {
     onEdit?: (quizId: string) => void;
     onManageQuestions?: (quizId: string) => void;
     onViewResults?: (quizId: string) => void;
+    onDelete?: (quizId: string) => void;
     isLoading?: boolean;
 }
 
@@ -94,12 +103,18 @@ export default function QuizList({
     onEdit,
     onManageQuestions,
     onViewResults,
+    onDelete,
     isLoading = false,
 }: QuizListProps) {
     const router = useRouter();
+    const { success, error } = useToast();
+    const { track } = useAnalytics();
+    const utils = trpc.useUtils();
     const [searchTerm, setSearchTerm] = useState("");
     const [viewMode, setViewMode] = useState<ViewMode>("grid");
     const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
 
     // Get quiz status
     const getQuizStatus = (quiz: Quiz) => {
@@ -134,6 +149,22 @@ export default function QuizList({
         });
     }, [quizzes, searchTerm, filterStatus]);
 
+    // Delete quiz mutation
+    const deleteQuizMutation = trpc.facultyQuiz.delete.useMutation({
+        onSuccess: () => {
+            success("Quiz deleted successfully!");
+            setDeleteDialogOpen(false);
+            setQuizToDelete(null);
+            if (courseId) {
+                utils.facultyQuiz.listByCourse.invalidate({ courseId });
+            }
+            track("quiz_deleted", { quizId: quizToDelete?.id, courseId });
+        },
+        onError: (err) => {
+            error(err.message || "Failed to delete quiz");
+        },
+    });
+
     // Handle actions
     const handleEdit = (quizId: string) => {
         if (onEdit) {
@@ -157,6 +188,29 @@ export default function QuizList({
         } else if (courseId) {
             router.push(`/course/${courseId}/quiz/${quizId}/results`);
         }
+    };
+
+    const handleDeleteClick = (quiz: Quiz) => {
+        setQuizToDelete(quiz);
+        setDeleteDialogOpen(true);
+    };
+
+    const handleDeleteConfirm = () => {
+        if (quizToDelete && courseId) {
+            deleteQuizMutation.mutate({
+                quizId: quizToDelete.id,
+                courseId,
+            });
+        } else if (quizToDelete && onDelete) {
+            onDelete(quizToDelete.id);
+            setDeleteDialogOpen(false);
+            setQuizToDelete(null);
+        }
+    };
+
+    const handleDuplicate = (quizId: string) => {
+        // TODO: Implement duplication later
+        console.log("Duplicate quiz:", quizId);
     };
 
     // Get status badge
@@ -306,10 +360,23 @@ export default function QuizList({
                             onEdit={handleEdit}
                             onManageQuestions={handleManageQuestions}
                             onViewResults={handleViewResults}
+                            onDelete={handleDeleteClick}
+                            onDuplicate={handleDuplicate}
                             getStatusBadge={getStatusBadge}
                         />
                     ))}
                 </div>
+            )}
+
+            {/* Delete Confirmation Dialog */}
+            {quizToDelete && (
+                <DeleteQuizDialog
+                    isOpen={deleteDialogOpen}
+                    onOpenChange={setDeleteDialogOpen}
+                    quizName={quizToDelete.name}
+                    onConfirm={handleDeleteConfirm}
+                    isDeleting={deleteQuizMutation.isPending}
+                />
             )}
         </div>
     );
@@ -322,6 +389,8 @@ interface QuizCardProps {
     onEdit: (quizId: string) => void;
     onManageQuestions: (quizId: string) => void;
     onViewResults: (quizId: string) => void;
+    onDelete: (quiz: Quiz) => void;
+    onDuplicate: (quizId: string) => void;
     getStatusBadge: (quiz: Quiz) => JSX.Element;
 }
 
@@ -331,6 +400,8 @@ function QuizCard({
     onEdit,
     onManageQuestions,
     onViewResults,
+    onDelete,
+    onDuplicate,
     getStatusBadge,
 }: QuizCardProps) {
     if (viewMode === "list") {
@@ -392,24 +463,33 @@ function QuizCard({
                                 {/* Actions */}
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="sm">
-                                            Actions
+                                        <Button variant="ghost" size="icon">
+                                            <MoreVertical className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem onClick={() => onEdit(quiz.id)}>
                                             <Edit className="mr-2 h-4 w-4" />
-                                            Edit Quiz
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => onManageQuestions(quiz.id)}
-                                        >
-                                            <ClipboardList className="mr-2 h-4 w-4" />
-                                            Manage Questions
+                                            Edit
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => onViewResults(quiz.id)}>
                                             <BarChart3 className="mr-2 h-4 w-4" />
-                                            View Results
+                                            Results
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={() => onDelete(quiz)}
+                                            className="text-destructive focus:text-destructive"
+                                        >
+                                            <Trash2 className="mr-2 h-4 w-4" />
+                                            Delete
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            onClick={() => onDuplicate(quiz.id)}
+                                            disabled
+                                        >
+                                            <Copy className="mr-2 h-4 w-4" />
+                                            Duplicate
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -502,7 +582,42 @@ function QuizCard({
             <CardHeader>
                 <div className="flex items-start justify-between gap-2">
                     <div className="space-y-1 flex-1">
-                        <CardTitle className="text-lg line-clamp-2">{quiz.name}</CardTitle>
+                        <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-lg line-clamp-2">{quiz.name}</CardTitle>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 shrink-0"
+                                    >
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => onEdit(quiz.id)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => onViewResults(quiz.id)}>
+                                        <BarChart3 className="mr-2 h-4 w-4" />
+                                        Results
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={() => onDelete(quiz)}
+                                        className="text-destructive focus:text-destructive"
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => onDuplicate(quiz.id)} disabled>
+                                        <Copy className="mr-2 h-4 w-4" />
+                                        Duplicate
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                         <div className="flex items-center gap-2 flex-wrap">
                             {getStatusBadge(quiz)}
                             {!quiz.publishQuiz && (
@@ -527,16 +642,21 @@ function QuizCard({
                                     <TooltipContent>Results Published</TooltipContent>
                                 </Tooltip>
                             )}
+                            {quiz.password && (
+                                <Tooltip>
+                                    <TooltipTrigger>
+                                        <Badge
+                                            variant="outline"
+                                            className="gap-1 bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                                        >
+                                            <Lock className="h-3 w-3" />
+                                        </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Password Protected</TooltipContent>
+                                </Tooltip>
+                            )}
                         </div>
                     </div>
-                    {quiz.password && (
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <Lock className="h-4 w-4 text-red-500 dark:text-red-400" />
-                            </TooltipTrigger>
-                            <TooltipContent>Password Protected</TooltipContent>
-                        </Tooltip>
-                    )}
                 </div>
                 {quiz.description && (
                     <CardDescription className="line-clamp-2">{quiz.description}</CardDescription>
@@ -606,7 +726,7 @@ function QuizCard({
                     </div>
                 </div>
 
-                {/* Actions */}
+                {/* Action Buttons */}
                 <div className="flex flex-col gap-2">
                     <Button
                         variant="outline"
