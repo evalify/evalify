@@ -53,6 +53,7 @@ export interface BatchResponse {
     section: string;
     isActive: string;
     joinYear: number;
+    courseId?: string; // Optional: present when fetched via course-batch relationship
 }
 
 export interface QuizParticipantData {

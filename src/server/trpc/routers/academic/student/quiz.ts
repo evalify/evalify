@@ -119,8 +119,52 @@ export const studentQuizRouter = createTRPCRouter({
                 const accessibleQuizzes = quizzes.filter((quiz) =>
                     accessibleQuizIds.includes(quiz.id)
                 );
+
+                // Group quizzes by quiz ID to handle multiple courses per quiz
+                const quizMap = new Map<
+                    string,
+                    (typeof accessibleQuizzes)[0] & {
+                        courses: Array<{
+                            id: string;
+                            name: string | null;
+                            code: string | null;
+                        }>;
+                    }
+                >();
+
+                for (const quiz of accessibleQuizzes) {
+                    if (!quizMap.has(quiz.id)) {
+                        quizMap.set(quiz.id, {
+                            ...quiz,
+                            courses: [
+                                {
+                                    id: quiz.courseId,
+                                    name: quiz.courseName,
+                                    code: quiz.courseCode,
+                                },
+                            ],
+                            // Keep first course info for backward compatibility
+                            courseId: quiz.courseId,
+                            courseName: quiz.courseName,
+                            courseCode: quiz.courseCode,
+                        });
+                    } else {
+                        // Add additional course to existing quiz
+                        const existing = quizMap.get(quiz.id);
+                        if (existing) {
+                            existing.courses.push({
+                                id: quiz.courseId,
+                                name: quiz.courseName,
+                                code: quiz.courseCode,
+                            });
+                        }
+                    }
+                }
+
+                const uniqueQuizzes = Array.from(quizMap.values());
+
                 let filteredQuizzes = await Promise.all(
-                    accessibleQuizzes.map(async (quiz) => {
+                    uniqueQuizzes.map(async (quiz) => {
                         const studentStatus = await getStudentQuizStatus(
                             quiz.id,
                             userId,
@@ -154,8 +198,15 @@ export const studentQuizRouter = createTRPCRouter({
                         (quiz) =>
                             quiz.name.toLowerCase().includes(searchLower) ||
                             quiz.description?.toLowerCase().includes(searchLower) ||
-                            quiz.courseName?.toLowerCase().includes(searchLower) ||
-                            quiz.courseCode?.toLowerCase().includes(searchLower)
+                            quiz.courses.some(
+                                (course: {
+                                    id: string;
+                                    name: string | null;
+                                    code: string | null;
+                                }) =>
+                                    course.name?.toLowerCase().includes(searchLower) ||
+                                    course.code?.toLowerCase().includes(searchLower)
+                            )
                     );
                 }
 

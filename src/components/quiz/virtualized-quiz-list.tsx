@@ -38,6 +38,11 @@ export interface VirtualizedQuiz {
     courseName: string | null;
     courseCode: string | null;
     courseId: string;
+    courses?: Array<{
+        id: string;
+        name: string | null;
+        code: string | null;
+    }>;
     instructorName: string | null;
     instructorEmail: string | null;
     instructorImage: string | null;
@@ -188,10 +193,29 @@ function QuizCard({ quiz }: { quiz: VirtualizedQuiz }) {
                                     <StatusIcon className="size-3" />
                                     {statusConfig.label}
                                 </Badge>
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                                    <GraduationCap className="size-3.5" />
-                                    {quiz.courseCode}
-                                </div>
+                                {quiz.courses && quiz.courses.length > 0 ? (
+                                    <>
+                                        {quiz.courses.slice(0, 2).map((course, idx) => (
+                                            <div
+                                                key={course.id || idx}
+                                                className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium"
+                                            >
+                                                <GraduationCap className="size-3.5" />
+                                                {course.code}
+                                            </div>
+                                        ))}
+                                        {quiz.courses.length > 2 && (
+                                            <Badge variant="secondary" className="text-xs">
+                                                +{quiz.courses.length - 2} more
+                                            </Badge>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                        <GraduationCap className="size-3.5" />
+                                        {quiz.courseCode}
+                                    </div>
+                                )}
                             </div>
                             <h3 className="text-base font-semibold line-clamp-1">{quiz.name}</h3>
                         </div>
@@ -332,6 +356,7 @@ export default function VirtualizedQuizList({
         return sections;
     }, [grouped]);
 
+    // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Virtual's useVirtualizer is safe to use here
     const rowVirtualizer = useVirtualizer({
         count: flattenedQuizzes.length,
         getScrollElement: () => parentRef.current,

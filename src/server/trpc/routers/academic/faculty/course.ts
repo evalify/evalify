@@ -5,6 +5,7 @@ import {
     coursesTable,
     courseInstructorsTable,
     courseStudentsTable,
+    courseBatchesTable,
     semestersTable,
     semesterManagersTable,
     usersTable,
@@ -271,4 +272,228 @@ export const facultyCourseRouter = createTRPCRouter({
             throw error;
         }
     }),
+
+    /**
+     * Get batches for specific courses (using course-batch relationship)
+     * This is used to show only relevant batches when courses are selected in quiz creation
+     */
+    getBatchesByCourses: facultyAndManagerProcedure
+        .input(
+            z.object({
+                courseIds: z.array(z.string().uuid()),
+            })
+        )
+        .query(async ({ input, ctx }) => {
+            try {
+                if (input.courseIds.length === 0) {
+                    return [];
+                }
+
+                // Get batches associated with the selected courses via courseBatchesTable
+                const batches = await db
+                    .select({
+                        id: batchesTable.id,
+                        name: batchesTable.name,
+                        joinYear: batchesTable.joinYear,
+                        graduationYear: batchesTable.graduationYear,
+                        section: batchesTable.section,
+                        departmentId: batchesTable.departmentId,
+                        isActive: batchesTable.isActive,
+                        courseId: courseBatchesTable.courseId,
+                    })
+                    .from(courseBatchesTable)
+                    .innerJoin(batchesTable, eq(courseBatchesTable.batchId, batchesTable.id))
+                    .where(
+                        and(
+                            inArray(courseBatchesTable.courseId, input.courseIds),
+                            eq(batchesTable.isActive, "ACTIVE")
+                        )
+                    )
+                    .orderBy(desc(batchesTable.graduationYear), batchesTable.section);
+
+                logger.info(
+                    {
+                        userId: ctx.session.user.id,
+                        courseIds: input.courseIds,
+                        count: batches.length,
+                    },
+                    "Batches by courses retrieved"
+                );
+
+                return batches;
+            } catch (error) {
+                logger.error(
+                    { error, userId: ctx.session.user.id, courseIds: input.courseIds },
+                    "Error getting batches by courses"
+                );
+                throw error;
+            }
+        }),
+
+    /**
+     * Get students by batch IDs
+     * Returns students enrolled in the specified batches
+     */
+    getStudentsByBatches: facultyAndManagerProcedure
+        .input(
+            z.object({
+                batchIds: z.array(z.string().uuid()),
+            })
+        )
+        .query(async ({ input, ctx }) => {
+            try {
+                if (input.batchIds.length === 0) {
+                    return [];
+                }
+
+                // Get students from the specified batches
+                const students = await db
+                    .select({
+                        id: usersTable.id,
+                        name: usersTable.name,
+                        email: usersTable.email,
+                        profileId: usersTable.profileId,
+                        batchId: batchStudentsTable.batchId,
+                    })
+                    .from(batchStudentsTable)
+                    .innerJoin(usersTable, eq(batchStudentsTable.studentId, usersTable.id))
+                    .where(inArray(batchStudentsTable.batchId, input.batchIds))
+                    .orderBy(usersTable.name);
+
+                logger.info(
+                    {
+                        userId: ctx.session.user.id,
+                        batchIds: input.batchIds,
+                        count: students.length,
+                    },
+                    "Students by batches retrieved"
+                );
+
+                return students;
+            } catch (error) {
+                logger.error(
+                    { error, userId: ctx.session.user.id, batchIds: input.batchIds },
+                    "Error getting students by batches"
+                );
+                throw error;
+            }
+        }),
+
+    /**
+     * Get students for quiz assignment
+     * Returns students enrolled in selected courses (via batches or direct enrollment)
+     * excluding those in specified batch IDs
+     */
+    getStudentsForQuizAssignment: facultyAndManagerProcedure
+        .input(
+            z.object({
+                courseIds: z.array(z.uuid()),
+                excludeBatchIds: z.array(z.uuid()).optional().default([]),
+            })
+        )
+        .query(async ({ input, ctx }) => {
+            try {
+                if (input.courseIds.length === 0) {
+                    return [];
+                }
+
+                // Get batches for the selected courses
+                const courseBatches = await db
+                    .select({
+                        batchId: courseBatchesTable.batchId,
+                    })
+                    .from(courseBatchesTable)
+                    .where(inArray(courseBatchesTable.courseId, input.courseIds));
+
+                const allBatchIds = courseBatches.map((cb) => cb.batchId);
+
+                // Get students from batches (excluding specified batches)
+                const batchIdsToInclude =
+                    input.excludeBatchIds.length > 0
+                        ? allBatchIds.filter((id) => !input.excludeBatchIds.includes(id))
+                        : allBatchIds;
+
+                const studentsFromBatches =
+                    batchIdsToInclude.length > 0
+                        ? await db
+                              .select({
+                                  id: usersTable.id,
+                                  name: usersTable.name,
+                                  email: usersTable.email,
+                                  profileId: usersTable.profileId,
+                              })
+                              .from(batchStudentsTable)
+                              .innerJoin(
+                                  usersTable,
+                                  eq(batchStudentsTable.studentId, usersTable.id)
+                              )
+                              .where(inArray(batchStudentsTable.batchId, batchIdsToInclude))
+                        : [];
+
+                // Get students directly enrolled in courses
+                const directStudents = await db
+                    .select({
+                        id: usersTable.id,
+                        name: usersTable.name,
+                        email: usersTable.email,
+                        profileId: usersTable.profileId,
+                    })
+                    .from(courseStudentsTable)
+                    .innerJoin(usersTable, eq(courseStudentsTable.studentId, usersTable.id))
+                    .where(inArray(courseStudentsTable.courseId, input.courseIds));
+
+                // If there are batches to exclude, filter out direct students who are in those batches
+                let filteredDirectStudents = directStudents;
+                if (input.excludeBatchIds.length > 0) {
+                    const studentsInExcludedBatches = await db
+                        .select({
+                            studentId: batchStudentsTable.studentId,
+                        })
+                        .from(batchStudentsTable)
+                        .where(inArray(batchStudentsTable.batchId, input.excludeBatchIds));
+
+                    const excludedStudentIds = new Set(
+                        studentsInExcludedBatches.map((s) => s.studentId)
+                    );
+                    filteredDirectStudents = directStudents.filter(
+                        (s) => !excludedStudentIds.has(s.id)
+                    );
+                }
+
+                // Deduplicate by student ID
+                const studentMap = new Map<string, (typeof studentsFromBatches)[number]>();
+                [...studentsFromBatches, ...filteredDirectStudents].forEach((student) => {
+                    if (!studentMap.has(student.id)) {
+                        studentMap.set(student.id, student);
+                    }
+                });
+
+                const students = Array.from(studentMap.values()).sort((a, b) =>
+                    a.name.localeCompare(b.name)
+                );
+
+                logger.info(
+                    {
+                        userId: ctx.session.user.id,
+                        courseIds: input.courseIds,
+                        excludeBatchIds: input.excludeBatchIds,
+                        count: students.length,
+                    },
+                    "Students for quiz assignment retrieved"
+                );
+
+                return students;
+            } catch (error) {
+                logger.error(
+                    {
+                        error,
+                        userId: ctx.session.user.id,
+                        courseIds: input.courseIds,
+                        excludeBatchIds: input.excludeBatchIds,
+                    },
+                    "Error getting students for quiz assignment"
+                );
+                throw error;
+            }
+        }),
 });
