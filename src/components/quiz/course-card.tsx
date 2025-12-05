@@ -53,7 +53,7 @@ export function CourseCard({ course, colorClass, basePath = "/course" }: CourseC
                             </Badge>
                         </div>
                     </div>
-                    <div className="mb-3 min-h-[2.75rem]">
+                    <div className="mb-3 min-h-11">
                         <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                             {course.description}
                         </p>

@@ -373,8 +373,44 @@ export default function StudentDashboard() {
                                                                             {quiz.name}
                                                                         </h4>
                                                                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                                            {quiz.courseName} •{" "}
-                                                                            {quiz.courseCode}
+                                                                            {quiz.courses &&
+                                                                            quiz.courses.length > 0
+                                                                                ? quiz.courses.map(
+                                                                                      (
+                                                                                          c: {
+                                                                                              id: string;
+                                                                                              name:
+                                                                                                  | string
+                                                                                                  | null;
+                                                                                              code:
+                                                                                                  | string
+                                                                                                  | null;
+                                                                                          },
+                                                                                          idx: number
+                                                                                      ) => (
+                                                                                          <span
+                                                                                              key={
+                                                                                                  c.id ||
+                                                                                                  idx
+                                                                                              }
+                                                                                          >
+                                                                                              {
+                                                                                                  c.name
+                                                                                              }{" "}
+                                                                                              •{" "}
+                                                                                              {
+                                                                                                  c.code
+                                                                                              }
+                                                                                              {idx <
+                                                                                                  quiz
+                                                                                                      .courses!
+                                                                                                      .length -
+                                                                                                      1 &&
+                                                                                                  " | "}
+                                                                                          </span>
+                                                                                      )
+                                                                                  )
+                                                                                : `${quiz.courseName} • ${quiz.courseCode}`}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -463,8 +499,44 @@ export default function StudentDashboard() {
                                                                             {quiz.name}
                                                                         </h4>
                                                                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                                            {quiz.courseName} •{" "}
-                                                                            {quiz.courseCode}
+                                                                            {quiz.courses &&
+                                                                            quiz.courses.length > 0
+                                                                                ? quiz.courses.map(
+                                                                                      (
+                                                                                          c: {
+                                                                                              id: string;
+                                                                                              name:
+                                                                                                  | string
+                                                                                                  | null;
+                                                                                              code:
+                                                                                                  | string
+                                                                                                  | null;
+                                                                                          },
+                                                                                          idx: number
+                                                                                      ) => (
+                                                                                          <span
+                                                                                              key={
+                                                                                                  c.id ||
+                                                                                                  idx
+                                                                                              }
+                                                                                          >
+                                                                                              {
+                                                                                                  c.name
+                                                                                              }{" "}
+                                                                                              •{" "}
+                                                                                              {
+                                                                                                  c.code
+                                                                                              }
+                                                                                              {idx <
+                                                                                                  quiz
+                                                                                                      .courses!
+                                                                                                      .length -
+                                                                                                      1 &&
+                                                                                                  " | "}
+                                                                                          </span>
+                                                                                      )
+                                                                                  )
+                                                                                : `${quiz.courseName} • ${quiz.courseCode}`}
                                                                         </p>
                                                                     </div>
                                                                 </div>

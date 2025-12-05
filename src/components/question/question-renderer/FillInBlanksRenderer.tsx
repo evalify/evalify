@@ -157,7 +157,7 @@ export function FillInBlanksRenderer({
                                     {/* Blank Header */}
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-sm border border-primary/20">
+                                            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-linear-to-br from-primary/20 to-primary/10 text-primary font-bold text-sm border border-primary/20">
                                                 #{blankIndex}
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -288,7 +288,7 @@ export function FillInBlanksRenderer({
                                                         (answer, idx) => (
                                                             <div
                                                                 key={idx}
-                                                                className="group relative p-4 rounded-lg border-2 border-green-500 bg-gradient-to-br from-green-50 via-emerald-50/50 to-green-50 dark:from-green-950/40 dark:via-emerald-950/20 dark:to-green-950/40 dark:border-green-600 transition-all hover:shadow-md"
+                                                                className="group relative p-4 rounded-lg border-2 border-green-500 bg-linear-to-br from-green-50 via-emerald-50/50 to-green-50 dark:from-green-950/40 dark:via-emerald-950/20 dark:to-green-950/40 dark:border-green-600 transition-all hover:shadow-md"
                                                             >
                                                                 <div className="flex items-center gap-3">
                                                                     <div className="shrink-0 w-8 h-8 rounded-full bg-green-500 dark:bg-green-600 flex items-center justify-center shadow-sm">
@@ -304,7 +304,7 @@ export function FillInBlanksRenderer({
                                                                                 Option {idx + 1}
                                                                             </Badge>
                                                                         )}
-                                                                        <div className="font-mono text-base font-semibold text-green-900 dark:text-green-100 break-words">
+                                                                        <div className="font-mono text-base font-semibold text-green-900 dark:text-green-100 wrap-break-word">
                                                                             {answer}
                                                                         </div>
                                                                     </div>
