@@ -221,15 +221,23 @@ export function QuestionResultView({ quizId, courseId, questionId }: QuestionRes
                 // Capture previous evaluation state before optimistic update
                 const previousEvaluation = localEvaluations[studentId] ?? serverEvaluation;
 
+                // Safe default for missing per-question evaluation entry
+                const prevQuestionEval = evaluationResults.data[qId] ?? {
+                    status: "UNEVALUATED" as EvaluationStatus,
+                    mark: 0,
+                    remarks: "",
+                };
+                const isCleared = newScore === null;
+
                 const newResults: EvaluationData = {
                     ...evaluationResults,
                     data: {
                         ...evaluationResults.data,
                         [qId]: {
-                            ...evaluationResults.data[qId],
-                            status: "EVALUATED_MANUALLY",
-                            mark: newScore ?? 0,
-                            remarks: newRemarks,
+                            ...prevQuestionEval,
+                            status: isCleared ? "UNEVALUATED" : "EVALUATED_MANUALLY",
+                            mark: isCleared ? 0 : (newScore ?? 0),
+                            remarks: newRemarks ?? prevQuestionEval.remarks,
                         },
                     },
                 };
@@ -436,17 +444,18 @@ export function QuestionResultView({ quizId, courseId, questionId }: QuestionRes
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <EvaluationBadge status={evaluation.status} />
-                                        {evaluation.mark !== null && (
-                                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-linear-to-r from-primary/10 to-primary/5 border border-primary/20">
-                                                <Award className="h-4 w-4 text-primary" />
-                                                <span className="font-semibold text-primary">
-                                                    {evaluation.mark}
-                                                </span>
-                                                <span className="text-muted-foreground">
-                                                    / {question.marks}
-                                                </span>
-                                            </div>
-                                        )}
+                                        {evaluation.status !== "UNEVALUATED" &&
+                                            evaluation.mark !== null && (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-linear-to-r from-primary/10 to-primary/5 border border-primary/20">
+                                                    <Award className="h-4 w-4 text-primary" />
+                                                    <span className="font-semibold text-primary">
+                                                        {evaluation.mark}
+                                                    </span>
+                                                    <span className="text-muted-foreground">
+                                                        / {question.marks}
+                                                    </span>
+                                                </div>
+                                            )}
                                     </div>
                                 </div>
                                 <CardContent className="p-4">
