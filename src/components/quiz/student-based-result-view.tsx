@@ -320,15 +320,23 @@ export function StudentResultView({ quizId, studentId }: StudentResultViewProps)
             // Capture previous evaluation state before optimistic update
             const previousEvaluationResults = localEvaluationResults;
 
+            // Safe default for missing per-question evaluation entry
+            const prevEval = evaluationResults.data[questionId] ?? {
+                status: "UNEVALUATED" as EvaluationResult["status"],
+                mark: 0,
+                remarks: "",
+            };
+            const isCleared = newScore === null;
+
             const newResults: EvaluationResults = {
                 ...evaluationResults,
                 data: {
                     ...evaluationResults.data,
                     [questionId]: {
-                        ...evaluationResults.data[questionId],
-                        status: "EVALUATED_MANUALLY",
-                        mark: newScore ?? 0,
-                        remarks: newRemarks,
+                        ...prevEval,
+                        status: isCleared ? "UNEVALUATED" : "EVALUATED_MANUALLY",
+                        mark: isCleared ? 0 : (newScore ?? 0),
+                        remarks: newRemarks ?? prevEval.remarks,
                     },
                 },
             };
