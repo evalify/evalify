@@ -78,6 +78,8 @@ const nextConfig: NextConfig = {
     // This is required to support PostHog trailing slash API requests
     skipTrailingSlashRedirect: true,
     output: "standalone",
+    // Externalize pino to avoid bundling issues with its test files
+    serverExternalPackages: ["pino", "pino-pretty", "thread-stream"],
 };
 
 export default nextConfig;
