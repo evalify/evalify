@@ -27,7 +27,9 @@ import { cn } from "@/lib/utils";
 
 export interface QuizParticipantProps {
     data: QuizParticipantData;
-    updateData: (data: QuizParticipantData) => void;
+    updateData: (
+        data: QuizParticipantData | ((prev: QuizParticipantData) => QuizParticipantData)
+    ) => void;
 }
 
 export function QuizParticipant({ data, updateData }: QuizParticipantProps) {
@@ -191,22 +193,26 @@ export function QuizParticipant({ data, updateData }: QuizParticipantProps) {
             // Get all batch IDs from the fetched batches for selected courses
             const availableBatchIds = batchesData.map((batch: BatchResponse) => batch.id);
 
-            // Add any new batches that aren't already selected
-            const newBatches = availableBatchIds.filter(
-                (batchId: string) => !data.batches.includes(batchId)
-            );
+            // Use functional updater to avoid stale closures
+            updateData((currentData: QuizParticipantData) => {
+                // Add any new batches that aren't already selected
+                const newBatches = availableBatchIds.filter(
+                    (batchId: string) => !currentData.batches.includes(batchId)
+                );
 
-            if (newBatches.length > 0) {
-                updateData({
-                    ...data,
-                    batches: [...data.batches, ...newBatches],
-                });
-            }
+                if (newBatches.length > 0) {
+                    return {
+                        ...currentData,
+                        batches: [...currentData.batches, ...newBatches],
+                    };
+                }
+                return currentData;
+            });
         }
 
         // Update previous courses
         previousCoursesRef.current = data.courses;
-    }, [batchesData, data.courses]);
+    }, [batchesData, data.courses, updateData]);
 
     const handleCourseToggle = (courseId: string) => {
         const isSelected = data.courses.includes(courseId);
@@ -369,7 +375,6 @@ export function QuizParticipant({ data, updateData }: QuizParticipantProps) {
                                     studentsError?.message ||
                                     batchesError?.message ||
                                     allBatchesError?.message ||
-                                    batchesError?.message ||
                                     labsError?.message}
                             </p>
                         </div>
