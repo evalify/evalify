@@ -4,7 +4,7 @@ import s3Client from "@/lib/storage/s3/s3";
 import { logger } from "@/lib/logger";
 import { randomUUID } from "crypto";
 
-const UPLOADS_BUCKET = process.env.S3_BUCKET_NAME || "evaliify";
+const UPLOADS_BUCKET = process.env.S3_BUCKET_NAME || "evalify";
 
 // Allowed image MIME types
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
@@ -109,6 +109,12 @@ export const fileUploadRouter = createTRPCRouter({
             try {
                 const userId = ctx.session.user.id;
 
+                const expectedPrefix = `images/${userId}/`;
+                // Security check: ensure the key belongs to the user
+                if (!input.key.startsWith(expectedPrefix)) {
+                    throw new Error("You can only confirm your own uploads");
+                }
+
                 // Verify the file exists
                 const exists = await s3Client.fileExists(UPLOADS_BUCKET, input.key);
                 if (!exists) {
@@ -117,7 +123,13 @@ export const fileUploadRouter = createTRPCRouter({
 
                 // Construct the public URL using S3_ENDPOINT and S3_PORT
                 const endpoint = process.env.S3_ENDPOINT || "";
+                if (!endpoint) {
+                    logger.error("S3_ENDPOINT environment variable is not set");
+                }
                 const port = process.env.S3_PORT;
+                if (!port) {
+                    logger.error("S3_PORT environment variable is not set, using default port");
+                }
 
                 // Parse the endpoint and add port if needed
                 let imageUrl: string;
@@ -161,8 +173,9 @@ export const fileUploadRouter = createTRPCRouter({
                 const userId = ctx.session.user.id;
 
                 // Security check: ensure the key belongs to the user
-                if (!input.key.includes(`/${userId}/`)) {
-                    throw new Error("You can only delete your own uploads");
+                const expectedPrefix = `images/${userId}/`;
+                if (!input.key.startsWith(expectedPrefix)) {
+                    throw new Error("You can only delete your own images");
                 }
 
                 await s3Client.deleteFile(UPLOADS_BUCKET, input.key);
