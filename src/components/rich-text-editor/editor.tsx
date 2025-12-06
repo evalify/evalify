@@ -8,12 +8,13 @@ import { TextStyle } from "@tiptap/extension-text-style";
 import { ToolbarProvider } from "@/components/rich-text-editor/toolbars/toolbar-provider";
 import { EditorToolbar } from "@/components/rich-text-editor/editor-toolbar";
 import { ImageExtension } from "@/components/rich-text-editor/toolbars/image";
-// import { ImagePlaceholder } from "@/components/rich-text-editor/toolbars/image-placeholder";
+import { ImagePlaceholder } from "@/components/rich-text-editor/toolbars/image-placeholder";
 import { LaTeX, LatexNodeExtension } from "@/components/rich-text-editor/toolbars/latex-extension";
 import { EditorErrorBoundary } from "@/components/rich-text-editor/editor-error-boundary";
 import { cn } from "@/lib/utils";
 import { useEffect, forwardRef, useImperativeHandle } from "react";
 import DOMPurify from "isomorphic-dompurify";
+import "@/components/rich-text-editor/css/preview.css";
 
 interface EditorProps {
     className?: string;
@@ -44,12 +45,21 @@ export const TiptapEditor = forwardRef<TiptapEditorRef, EditorProps>(
                         class: "list-disc",
                     },
                 },
+                blockquote: {
+                    HTMLAttributes: {
+                        class: "border-l-4 border-border pl-4 ml-0 text-muted-foreground",
+                    },
+                },
                 code: {
                     HTMLAttributes: {
                         class: "bg-accent rounded-md p-1",
                     },
                 },
-                horizontalRule: false, // Disable horizontal rule to prevent ___ from converting
+                horizontalRule: {
+                    HTMLAttributes: {
+                        class: "my-4 border-t border-border",
+                    },
+                },
                 codeBlock: {
                     HTMLAttributes: {
                         class: "bg-primary text-primary-foreground p-2 text-sm rounded-md p-1",
@@ -70,30 +80,30 @@ export const TiptapEditor = forwardRef<TiptapEditorRef, EditorProps>(
             LaTeX,
             LatexNodeExtension,
             ImageExtension,
-            // ImagePlaceholder.configure({
-            //     allowedMimeTypes: {
-            //         "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
-            //     },
-            //     maxFiles: 1,
-            //     maxSize: 5 * 1024 * 1024, // 5MB
-            //     onDrop: (files) => {
-            //         console.log(`Successfully uploaded ${files.length} image(s)`);
-            //     },
-            //     onDropRejected: (files) => {
-            //         const reasons = [];
-            //         for (const file of files) {
-            //             if (file.size > 5 * 1024 * 1024) {
-            //                 reasons.push(`File "${file.name}" exceeds the 5MB size limit`);
-            //             } else {
-            //                 reasons.push(`File "${file.name}" has an unsupported format`);
-            //             }
-            //         }
-            //         console.error("Image upload failed:", reasons.join(", "));
-            //     },
-            //     onEmbed: (url) => {
-            //         console.log(`Image embedded from URL: ${url}`);
-            //     },
-            // }),
+            ImagePlaceholder.configure({
+                allowedMimeTypes: {
+                    "image/*": [".jpg", ".jpeg", ".png", ".gif", ".webp"],
+                },
+                maxFiles: 1,
+                maxSize: 5 * 1024 * 1024, // 5MB
+                onDrop: (files) => {
+                    console.log(`Successfully uploaded ${files.length} image(s)`);
+                },
+                onDropRejected: (files) => {
+                    const reasons = [];
+                    for (const file of files) {
+                        if (file.size > 5 * 1024 * 1024) {
+                            reasons.push(`File "${file.name}" exceeds the 5MB size limit`);
+                        } else {
+                            reasons.push(`File "${file.name}" has an unsupported format`);
+                        }
+                    }
+                    console.error("Image upload failed:", reasons.join(", "));
+                },
+                onEmbed: (url) => {
+                    console.log(`Image embedded from URL: ${url}`);
+                },
+            }),
         ];
         const editor = useEditor({
             extensions,
