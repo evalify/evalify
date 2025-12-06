@@ -61,6 +61,7 @@ export default function ManageQuizPage() {
 
     return (
         <QuizCreationTabs
+            key={isCreateMode ? "create" : quizId}
             courseId={courseId}
             quizId={isCreateMode ? undefined : quizId}
             existingQuiz={isCreateMode ? undefined : quizData}

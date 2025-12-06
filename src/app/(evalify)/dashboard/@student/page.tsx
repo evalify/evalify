@@ -40,6 +40,33 @@ interface DashboardStats {
  *
  * @returns The React element for the Student Dashboard page.
  */
+// Helper function to render course information with proper null handling
+function renderCourseInfo(
+    courses:
+        | Array<{
+              id: string;
+              name: string | null;
+              code: string | null;
+          }>
+        | null
+        | undefined,
+    fallbackName: string | null | undefined,
+    fallbackCode: string | null | undefined
+): React.ReactNode {
+    // If we have an array of courses, render them with separators
+    if (courses && courses.length > 0) {
+        return courses.map((c, idx) => (
+            <span key={c.id || idx}>
+                {c.name || "Unknown"} • {c.code || "N/A"}
+                {idx < courses.length - 1 && " | "}
+            </span>
+        ));
+    }
+
+    // Otherwise, use the fallback values
+    return `${fallbackName || "Unknown"} • ${fallbackCode || "N/A"}`;
+}
+
 export default function StudentDashboard() {
     const router = useRouter();
     const { track } = useAnalytics();
@@ -382,44 +409,11 @@ export default function StudentDashboard() {
                                                                             {quiz.name}
                                                                         </h4>
                                                                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                                            {quiz.courses &&
-                                                                            quiz.courses.length > 0
-                                                                                ? quiz.courses.map(
-                                                                                      (
-                                                                                          c: {
-                                                                                              id: string;
-                                                                                              name:
-                                                                                                  | string
-                                                                                                  | null;
-                                                                                              code:
-                                                                                                  | string
-                                                                                                  | null;
-                                                                                          },
-                                                                                          idx: number
-                                                                                      ) => (
-                                                                                          <span
-                                                                                              key={
-                                                                                                  c.id ||
-                                                                                                  idx
-                                                                                              }
-                                                                                          >
-                                                                                              {
-                                                                                                  c.name
-                                                                                              }{" "}
-                                                                                              •{" "}
-                                                                                              {
-                                                                                                  c.code
-                                                                                              }
-                                                                                              {idx <
-                                                                                                  quiz
-                                                                                                      .courses!
-                                                                                                      .length -
-                                                                                                      1 &&
-                                                                                                  " | "}
-                                                                                          </span>
-                                                                                      )
-                                                                                  )
-                                                                                : `${quiz.courseName} • ${quiz.courseCode}`}
+                                                                            {renderCourseInfo(
+                                                                                quiz.courses,
+                                                                                quiz.courseName,
+                                                                                quiz.courseCode
+                                                                            )}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -508,44 +502,11 @@ export default function StudentDashboard() {
                                                                             {quiz.name}
                                                                         </h4>
                                                                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                                                                            {quiz.courses &&
-                                                                            quiz.courses.length > 0
-                                                                                ? quiz.courses.map(
-                                                                                      (
-                                                                                          c: {
-                                                                                              id: string;
-                                                                                              name:
-                                                                                                  | string
-                                                                                                  | null;
-                                                                                              code:
-                                                                                                  | string
-                                                                                                  | null;
-                                                                                          },
-                                                                                          idx: number
-                                                                                      ) => (
-                                                                                          <span
-                                                                                              key={
-                                                                                                  c.id ||
-                                                                                                  idx
-                                                                                              }
-                                                                                          >
-                                                                                              {
-                                                                                                  c.name
-                                                                                              }{" "}
-                                                                                              •{" "}
-                                                                                              {
-                                                                                                  c.code
-                                                                                              }
-                                                                                              {idx <
-                                                                                                  quiz
-                                                                                                      .courses!
-                                                                                                      .length -
-                                                                                                      1 &&
-                                                                                                  " | "}
-                                                                                          </span>
-                                                                                      )
-                                                                                  )
-                                                                                : `${quiz.courseName} • ${quiz.courseCode}`}
+                                                                            {renderCourseInfo(
+                                                                                quiz.courses,
+                                                                                quiz.courseName,
+                                                                                quiz.courseCode
+                                                                            )}
                                                                         </p>
                                                                     </div>
                                                                 </div>
