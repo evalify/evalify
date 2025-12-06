@@ -76,6 +76,30 @@
     --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
     --sidebar-border: oklch(0.929 0.013 255.508);
     --sidebar-ring: oklch(0.704 0.04 256.788);
+
+    /* Text colors for rich text editor */
+    --text-default: inherit;
+    --text-gray: #6b7280;
+    --text-brown: #92400e;
+    --text-orange: #ea580c;
+    --text-yellow: #ca8a04;
+    --text-green: #16a34a;
+    --text-blue: #2563eb;
+    --text-purple: #9333ea;
+    --text-pink: #db2777;
+    --text-red: #dc2626;
+
+    /* Highlight colors for rich text editor */
+    --highlight-default: transparent;
+    --highlight-gray: #e5e7eb;
+    --highlight-brown: #fef3c7;
+    --highlight-orange: #ffedd5;
+    --highlight-yellow: #fef9c3;
+    --highlight-green: #dcfce7;
+    --highlight-blue: #dbeafe;
+    --highlight-purple: #f3e8ff;
+    --highlight-pink: #fce7f3;
+    --highlight-red: #fee2e2;
 }
 
 .dark {
@@ -110,6 +134,30 @@
     --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.551 0.027 264.364);
+
+    /* Text colors for rich text editor (dark mode) */
+    --text-default: inherit;
+    --text-gray: #9ca3af;
+    --text-brown: #d97706;
+    --text-orange: #fb923c;
+    --text-yellow: #facc15;
+    --text-green: #4ade80;
+    --text-blue: #60a5fa;
+    --text-purple: #c084fc;
+    --text-pink: #f472b6;
+    --text-red: #f87171;
+
+    /* Highlight colors for rich text editor (dark mode) */
+    --highlight-default: transparent;
+    --highlight-gray: #374151;
+    --highlight-brown: #78350f;
+    --highlight-orange: #7c2d12;
+    --highlight-yellow: #713f12;
+    --highlight-green: #14532d;
+    --highlight-blue: #1e3a8a;
+    --highlight-purple: #581c87;
+    --highlight-pink: #831843;
+    --highlight-red: #7f1d1d;
 }
 
 @layer base {

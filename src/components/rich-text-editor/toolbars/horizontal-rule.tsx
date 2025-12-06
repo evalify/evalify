@@ -21,9 +21,10 @@ const HorizontalRuleToolbar = React.forwardRef<HTMLButtonElement, ButtonProps>(
                         size="icon"
                         className={cn("h-8 w-8", className)}
                         onClick={(e) => {
-                            editor?.chain().focus().insertContent("<hr/>").run();
+                            editor?.chain().focus().setHorizontalRule().run();
                             onClick?.(e);
                         }}
+                        disabled={!editor?.can().chain().focus().setHorizontalRule().run()}
                         ref={ref}
                         {...props}
                     >
