@@ -4,6 +4,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { QuizQuestion } from "../context/quiz-context";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ContentPreview } from "@/components/rich-text-editor/content-preview";
+import { QuestionHeader } from "./question-header";
 import type { DescriptiveStudentAnswer } from "../lib/types";
 import { debounce } from "lodash-es";
 
@@ -54,8 +56,12 @@ export function DescriptiveQuestion({ question, onAnswerChange }: DescriptiveQue
 
     return (
         <div className="space-y-6">
+            {/* Question metadata header */}
+            <QuestionHeader question={question} />
+
+            {/* Question content */}
             <div className="prose prose-sm max-w-none dark:prose-invert">
-                <div dangerouslySetInnerHTML={{ __html: (question.question as string) || "" }} />
+                <ContentPreview content={(question.question as string) || ""} />
             </div>
 
             <div className="space-y-2">

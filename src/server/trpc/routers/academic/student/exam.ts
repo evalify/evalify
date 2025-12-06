@@ -117,10 +117,6 @@ export const examRouter = createTRPCRouter({
                         bloomTaxonomyLevel: questionsTable.bloomTaxonomyLevel,
                         question: questionsTable.question,
                         questionData: questionsTable.questionData,
-                        explanation: questionsTable.explanation,
-                        createdBy: questionsTable.createdById,
-                        createdAt: questionsTable.created_at,
-                        updatedAt: questionsTable.updated_at,
                     })
                     .from(questionsTable)
                     .innerJoin(

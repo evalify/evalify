@@ -135,3 +135,55 @@ export function useDebounceCallback<TArgs extends unknown[]>(
         [delay]
     );
 }
+
+import { StudentAnswer } from "./lib/types";
+
+/**
+ * Checks if a response is truly "answered" (not empty/null)
+ *
+ * @param response - The student response to check
+ * @returns true if the response contains a valid answer, false otherwise
+ */
+export function isResponseAnswered(response?: StudentAnswer | null): boolean {
+    if (!response) return false;
+
+    // Check if it's an object with studentAnswer property
+    if (typeof response !== "object") return false;
+    if (!("studentAnswer" in response)) return false;
+
+    const val = (response as { studentAnswer?: unknown }).studentAnswer;
+
+    // Check for null/undefined
+    if (val === null || val === undefined) return false;
+
+    // Check based on type
+    if (Array.isArray(val)) {
+        return val.length > 0;
+    }
+
+    if (typeof val === "string") {
+        return val.trim() !== "";
+    }
+
+    if (typeof val === "object") {
+        // Coding answer
+        if ("code" in val) {
+            return typeof val.code === "string" && val.code.trim() !== "";
+        }
+
+        // File upload
+        if ("fileUrl" in val) {
+            return typeof val.fileUrl === "string" && val.fileUrl.trim() !== "";
+        }
+
+        // Record types (FillInBlanks, Matching)
+        const keys = Object.keys(val);
+        if (keys.length === 0) return false;
+
+        // Check if values are non-empty
+        // For matching/FIB, values are strings, at least one blank filled counts as attempted? Yes.
+        return Object.values(val).every((v) => typeof v === "string" && v.trim() !== "");
+    }
+
+    return true;
+}
