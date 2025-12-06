@@ -199,29 +199,38 @@ export function QuizParticipant({ data, updateData }: QuizParticipantProps) {
             (courseId) => !previousCoursesRef.current.includes(courseId)
         );
 
-        if (newCourses.length > 0 && batchesData && batchesData.length > 0) {
-            // Get all batch IDs from the fetched batches for selected courses
-            const availableBatchIds = batchesData.map((batch: BatchResponse) => batch.id);
+        // Only proceed if we have new courses to process
+        if (newCourses.length > 0) {
+            // If batch data is available, auto-select batches and update the ref
+            if (batchesData && batchesData.length > 0) {
+                // Get all batch IDs from the fetched batches for selected courses
+                const availableBatchIds = batchesData.map((batch: BatchResponse) => batch.id);
 
-            // Use functional updater to avoid stale closures
-            updateData((currentData: QuizParticipantData) => {
-                // Add any new batches that aren't already selected
-                const newBatches = availableBatchIds.filter(
-                    (batchId: string) => !currentData.batches.includes(batchId)
-                );
+                // Use functional updater to avoid stale closures
+                updateData((currentData: QuizParticipantData) => {
+                    // Add any new batches that aren't already selected
+                    const newBatches = availableBatchIds.filter(
+                        (batchId: string) => !currentData.batches.includes(batchId)
+                    );
 
-                if (newBatches.length > 0) {
-                    return {
-                        ...currentData,
-                        batches: [...currentData.batches, ...newBatches],
-                    };
-                }
-                return currentData;
-            });
+                    if (newBatches.length > 0) {
+                        return {
+                            ...currentData,
+                            batches: [...currentData.batches, ...newBatches],
+                        };
+                    }
+                    return currentData;
+                });
+
+                // Only update previousCoursesRef after successfully processing batches
+                previousCoursesRef.current = data.courses;
+            }
+            // If batch data is not ready yet, DON'T update previousCoursesRef
+            // This ensures we'll retry when batchesData becomes available
+        } else if (newCourses.length === 0) {
+            // No new courses, just keep previousCoursesRef in sync
+            previousCoursesRef.current = data.courses;
         }
-
-        // Update previous courses
-        previousCoursesRef.current = data.courses;
     }, [batchesData, data.courses, updateData]);
 
     const handleCourseToggle = (courseId: string) => {

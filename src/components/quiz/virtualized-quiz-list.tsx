@@ -209,7 +209,7 @@ function QuizCard({ quiz }: { quiz: VirtualizedQuiz }) {
                                                 className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium"
                                             >
                                                 <GraduationCap className="size-3.5" />
-                                                {course.code}
+                                                {course.code || "N/A"}
                                             </div>
                                         ))}
                                         {quiz.courses.length > 2 && (
