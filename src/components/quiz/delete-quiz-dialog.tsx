@@ -22,6 +22,16 @@ interface DeleteQuizDialogProps {
     isDeleting?: boolean;
 }
 
+/**
+ * Renders a confirmation dialog that requires typing the exact quiz name to confirm deletion.
+ *
+ * @param isOpen - Whether the dialog is currently open.
+ * @param onOpenChange - Callback invoked with the new open state when the dialog is opened or closed.
+ * @param quizName - The exact quiz name the user must type to confirm deletion.
+ * @param onConfirm - Callback invoked when deletion is confirmed (only called if the typed name matches `quizName`).
+ * @param isDeleting - When true, disables inputs and shows a deleting state on the confirm button.
+ * @returns The dialog element that prompts the user to confirm and triggers deletion when validated.
+ */
 export function DeleteQuizDialog({
     isOpen,
     onOpenChange,
