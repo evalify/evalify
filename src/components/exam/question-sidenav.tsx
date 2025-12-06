@@ -7,7 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Flag } from "lucide-react";
 import QuizTimer from "./quiz-timer";
 import { useQuizContext } from "./context/quiz-context";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+
+import { isResponseAnswered } from "./utils";
 
 export default function QuestionSidenav() {
     const ctx = useQuizContext();
@@ -18,9 +31,9 @@ export default function QuestionSidenav() {
             // Or if we want global index, we find it in the global list
             // The user asked for "question Index", which usually means the sequential number.
             // Let's use the global index from the main questions list.
-            const globalIndex = ctx.questions.findIndex((qq) => qq.id === q.id) + 1;
+            const globalIndex = ctx.sanitizedQuestions.findIndex((qq) => qq.id === q.id) + 1;
 
-            const isAnswered = !!(q.response && Object.keys(q.response).length > 0);
+            const isAnswered = isResponseAnswered(q.response);
             const isVisited = !!q._visited && !isAnswered;
             const isMarked = !!q._markedForReview;
             const isSelected = q.id === ctx.selectedQuestion;
@@ -34,7 +47,7 @@ export default function QuestionSidenav() {
                 isSelected,
             };
         });
-    }, [ctx.sectionQuestions, ctx.questions, ctx.selectedQuestion]);
+    }, [ctx.sectionQuestions, ctx.questions, ctx.selectedQuestion, ctx.sanitizedQuestions]);
 
     const stats = useMemo(() => ctx.getQuestionStats(), [ctx]);
 
@@ -52,11 +65,11 @@ export default function QuestionSidenav() {
         if (q.isSelected) {
             return "bg-blue-500 text-white hover:bg-blue-600 border-blue-600 dark:bg-blue-700 dark:hover:bg-blue-800";
         }
-        if (q.isAnswered) {
-            return "bg-green-500 text-white hover:bg-green-600 border-green-600 dark:bg-green-700 dark:hover:bg-green-800";
-        }
         if (q.isMarked) {
             return "bg-yellow-500 text-black hover:bg-yellow-600 border-yellow-400 dark:bg-yellow-600 dark:hover:bg-yellow-400 dark:text-black";
+        }
+        if (q.isAnswered) {
+            return "bg-green-500 text-white hover:bg-green-600 border-green-600 dark:bg-green-700 dark:hover:bg-green-800";
         }
         if (q.isVisited) {
             return "bg-gray-400 text-white hover:bg-gray-500 border-gray-500 dark:bg-gray-700 dark:hover:bg-gray-800";
@@ -190,6 +203,67 @@ export default function QuestionSidenav() {
                         <span className="text-muted-foreground">Total Questions:</span>{" "}
                         <span className="font-medium">{stats.total}</span>
                     </div>
+                </div>
+
+                {/* Submit Button Section */}
+                <div className="shrink-0 pt-2">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button className="w-full" variant="outline">
+                                Submit Quiz
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Submit Quiz?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to submit the quiz? This action cannot be
+                                    undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col gap-1 p-3 border rounded-md bg-muted/50">
+                                        <span className="text-xs text-muted-foreground">
+                                            Completed
+                                        </span>
+                                        <span className="text-2xl font-bold text-green-600">
+                                            {stats.answered}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-1 p-3 border rounded-md bg-muted/50">
+                                        <span className="text-xs text-muted-foreground">
+                                            Marked for Review
+                                        </span>
+                                        <span className="text-2xl font-bold text-yellow-600">
+                                            {stats.markedForReview}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-1 p-3 border rounded-md bg-muted/50">
+                                        <span className="text-xs text-muted-foreground">
+                                            Unattempted
+                                        </span>
+                                        <span className="text-2xl font-bold text-muted-foreground">
+                                            {stats.unattempted}
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col gap-1 p-3 border rounded-md bg-muted/50">
+                                        <span className="text-xs text-muted-foreground">Total</span>
+                                        <span className="text-2xl font-bold">{stats.total}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    onClick={() => ctx.submitQuiz()}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                    Submit
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
                 </div>
             </CardContent>
         </Card>

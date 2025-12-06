@@ -60,6 +60,8 @@ export function createQuestionsCollection(
         queryCollectionOptions<QuestionItem, string>({
             id: `questions-${quizId}-${studentId}`,
             queryKey: examQueryKeys.questions.byQuiz(quizId), // Query key can remain quiz-based as questions are same for all students usually, but if personalized, might need change. Keeping as is for now unless requested.
+            staleTime: Infinity,
+            gcTime: Infinity,
             queryClient,
             getKey: (item) => item.id,
             queryFn,
@@ -105,10 +107,11 @@ export function createResponsesCollection(
     queryClient: QueryClient,
     saveAnswerFn?: (responsePatch: Record<string, StudentAnswer>) => Promise<void>
 ): Collection<QuestionResponse, string, never, never, QuestionResponse> {
-    return createCollection(
+    const collection = createCollection(
         queryCollectionOptions<QuestionResponse, string>({
             id: `responses-${quizId}-${studentId}`,
             queryKey: examQueryKeys.responses.byQuiz(quizId), // Ideally this should be specific to student, but typically query keys are [..., quizId, 'responses']. If the queryFn fetches for current user, it's fine.
+            staleTime: Infinity,
             queryClient,
             getKey: (item) => item.questionId,
             queryFn: async () => {
@@ -140,13 +143,28 @@ export function createResponsesCollection(
                 const responsePatch: Record<string, StudentAnswer> = {};
                 for (const mutation of transaction.mutations) {
                     const resp = mutation.modified;
-                    responsePatch[resp.questionId] = resp.response;
+                    if (resp) {
+                        responsePatch[resp.questionId] = resp.response;
+                    }
                 }
 
                 console.log("[Response Update]", { quizId, responsePatch });
 
                 try {
                     await saveAnswerFn(responsePatch);
+
+                    // Manually persist changes to the synced store since we are skipping refetch
+                    collection.utils.writeBatch(() => {
+                        for (const mutation of transaction.mutations) {
+                            if (mutation.modified) {
+                                collection.utils.writeUpsert(mutation.modified);
+                            }
+                        }
+                    });
+
+                    // Return refetch: false to prevent overwriting optimistic update with
+                    // potentially stale server data. The local state is already correct.
+                    return { refetch: false };
                 } catch (error) {
                     console.error("[Response Update] Error saving to server:", error);
                     throw error; // Re-throw to trigger rollback
@@ -166,20 +184,37 @@ export function createResponsesCollection(
                 const responsePatch: Record<string, StudentAnswer> = {};
                 for (const mutation of transaction.mutations) {
                     const resp = mutation.modified;
-                    responsePatch[resp.questionId] = resp.response;
+                    if (resp) {
+                        responsePatch[resp.questionId] = resp.response;
+                    }
                 }
 
                 console.log("[Response Insert]", { quizId, responsePatch });
 
                 try {
                     await saveAnswerFn(responsePatch);
+
+                    // Manually persist changes to the synced store since we are skipping refetch
+                    collection.utils.writeBatch(() => {
+                        for (const mutation of transaction.mutations) {
+                            if (mutation.modified) {
+                                collection.utils.writeUpsert(mutation.modified);
+                            }
+                        }
+                    });
+
+                    // Return refetch: false to prevent overwriting optimistic update with
+                    // potentially stale server data. The local state is already correct.
+                    return { refetch: false };
                 } catch (error) {
                     console.error("[Response Insert] Error saving to server:", error);
                     throw error; // Re-throw to trigger rollback
                 }
             },
         })
-    ) as Collection<QuestionResponse, string, never, never, QuestionResponse>;
+    );
+
+    return collection as Collection<QuestionResponse, string, never, never, QuestionResponse>;
 }
 
 /**
@@ -222,10 +257,11 @@ export function createQuestionStateCollection(
     questionIds: string[],
     queryClient: QueryClient
 ): Collection<QuestionState, string, never, never, QuestionState> {
-    return createCollection(
+    const collection = createCollection(
         queryCollectionOptions<QuestionState, string>({
             id: `state-${quizId}-${studentId}`,
             queryKey: examQueryKeys.state.byQuiz(quizId),
+            staleTime: Infinity,
             queryClient,
             getKey: (item) => item.questionId,
             queryFn: async () => {
@@ -239,14 +275,31 @@ export function createQuestionStateCollection(
                 return initialState;
             },
             // Client-side only, no server sync needed
-            onUpdate: async () => {
-                // No-op for client-side state
+            // But we need to persist to the collection store
+            onUpdate: async ({ transaction }) => {
+                collection.utils.writeBatch(() => {
+                    for (const mutation of transaction.mutations) {
+                        if (mutation.modified) {
+                            collection.utils.writeUpsert(mutation.modified);
+                        }
+                    }
+                });
+                return { refetch: false };
             },
-            onInsert: async () => {
-                // No-op for client-side state
+            onInsert: async ({ transaction }) => {
+                collection.utils.writeBatch(() => {
+                    for (const mutation of transaction.mutations) {
+                        if (mutation.modified) {
+                            collection.utils.writeUpsert(mutation.modified);
+                        }
+                    }
+                });
+                return { refetch: false };
             },
         })
-    ) as Collection<QuestionState, string, never, never, QuestionState>;
+    );
+
+    return collection as Collection<QuestionState, string, never, never, QuestionState>;
 }
 
 /**

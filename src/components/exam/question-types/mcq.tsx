@@ -6,7 +6,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ContentPreview } from "@/components/rich-text-editor/content-preview";
+import { QuestionHeader } from "./question-header";
 import type { MCQStudentAnswer, MMCQStudentAnswer } from "../lib/types";
+
+/** Option structure for MCQ/MMCQ questions */
+interface MCQOption {
+    id: string;
+    optionText: string;
+    orderIndex?: number;
+}
+
+/** Extended question data that may have nested structure */
+interface ExtendedMCQData {
+    options?: MCQOption[];
+    data?: {
+        options?: MCQOption[];
+    };
+}
 
 interface MCQQuestionProps {
     question: QuizQuestion;
@@ -15,24 +31,29 @@ interface MCQQuestionProps {
 }
 
 export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQuestionProps) {
-    // Extract options from questionData - questionData is directly MCQData or MMCQData
-    const mcqData = question.questionData;
+    // Extract options from questionData - handle various nested structures
+    const mcqData = question.questionData as ExtendedMCQData | undefined;
 
-    const rawOptions = mcqData?.options || [];
+    // Try multiple possible locations for options
+    let rawOptions: MCQOption[] = [];
+
+    if (mcqData?.options && Array.isArray(mcqData.options)) {
+        rawOptions = mcqData.options;
+    } else if (mcqData?.data?.options && Array.isArray(mcqData.data.options)) {
+        // Handle nested { data: { options: [] } } structure
+        rawOptions = mcqData.data.options;
+    } else if ((question as QuizQuestion & { options?: MCQOption[] }).options) {
+        // Options might be directly on question
+        rawOptions = (question as QuizQuestion & { options: MCQOption[] }).options;
+    }
 
     // Sort options by orderIndex if available
-    const options = Array.isArray(rawOptions)
-        ? [...rawOptions].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
-        : [];
-
-    // Helper to get option ID and Text
-    const getOptionId = (opt: { id: string; optionText: string }) => opt.id;
-    const getOptionText = (opt: { id: string; optionText: string }) => opt.optionText;
+    const options = [...rawOptions].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
 
     // Handle current answer - properly typed based on question type
     const currentAnswer = isMMCQ
-        ? (question.response as MMCQStudentAnswer | undefined)?.studentAnswer || []
-        : (question.response as MCQStudentAnswer | undefined)?.studentAnswer || "";
+        ? ((question.response as MMCQStudentAnswer | undefined)?.studentAnswer ?? [])
+        : ((question.response as MCQStudentAnswer | undefined)?.studentAnswer ?? "");
 
     const handleSingleSelect = (value: string) => {
         const answer: MCQStudentAnswer = { studentAnswer: value };
@@ -60,68 +81,110 @@ export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQue
         return currentAnswer === optionId;
     };
 
+    // Debug: if no options found, show helpful message
+    if (options.length === 0) {
+        return (
+            <div className="space-y-6">
+                <QuestionHeader question={question} />
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <ContentPreview content={(question.question as string) || ""} />
+                </div>
+                <div className="p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200">
+                    <p className="text-sm font-medium">No options available for this question.</p>
+                    <details className="mt-2">
+                        <summary className="text-xs cursor-pointer">Debug Info</summary>
+                        <pre className="mt-2 text-xs overflow-auto p-2 bg-background rounded border">
+                            {JSON.stringify({ questionData: question.questionData }, null, 2)}
+                        </pre>
+                    </details>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
+            {/* Question metadata header */}
+            <QuestionHeader question={question} />
+
+            {/* Question content */}
             <div className="prose prose-sm max-w-none dark:prose-invert">
                 <ContentPreview content={(question.question as string) || ""} />
             </div>
 
-            <div className="space-y-3">
-                {options.map((option) => {
-                    const optionId = getOptionId(option);
-                    const optionText = getOptionText(option);
-                    const selected = isSelected(optionId);
+            {/* Options */}
+            {isMMCQ ? (
+                // MMCQ: Multiple selection with checkboxes
+                <div className="space-y-3">
+                    {options.map((option) => {
+                        const selected = isSelected(option.id);
 
-                    return (
-                        <div
-                            key={optionId}
-                            className={cn(
-                                "flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50",
-                                selected ? "border-primary bg-primary/5" : "border-input"
-                            )}
-                            onClick={() => {
-                                if (isMMCQ) {
-                                    handleMultiSelect(optionId, !selected);
-                                } else {
-                                    handleSingleSelect(optionId);
-                                }
-                            }}
-                        >
-                            <div className="flex items-center h-6 shrink-0">
-                                {isMMCQ ? (
+                        return (
+                            <Label
+                                key={option.id}
+                                htmlFor={`mmcq-${question.id}-${option.id}`}
+                                className={cn(
+                                    "flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50",
+                                    selected ? "border-primary bg-primary/5" : "border-input"
+                                )}
+                            >
+                                <div className="flex items-center h-6 shrink-0">
                                     <Checkbox
                                         checked={selected}
                                         onCheckedChange={(checked) =>
-                                            handleMultiSelect(optionId, checked as boolean)
+                                            handleMultiSelect(option.id, checked === true)
                                         }
-                                        id={optionId}
+                                        id={`mmcq-${question.id}-${option.id}`}
                                     />
-                                ) : (
-                                    <RadioGroup
-                                        value={currentAnswer as string}
-                                        onValueChange={handleSingleSelect}
-                                    >
-                                        <RadioGroupItem value={optionId} id={optionId} />
-                                    </RadioGroup>
-                                )}
-                            </div>
-                            <div className="flex-grow min-w-0">
-                                <Label
-                                    htmlFor={optionId}
-                                    className="cursor-pointer font-normal block"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
+                                </div>
+                                <div className="flex-grow min-w-0">
                                     <ContentPreview
-                                        content={optionText}
+                                        content={option.optionText}
                                         noProse
                                         className="p-0 border-0"
                                     />
-                                </Label>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+                                </div>
+                            </Label>
+                        );
+                    })}
+                </div>
+            ) : (
+                // MCQ: Single selection with RadioGroup
+                <RadioGroup
+                    value={typeof currentAnswer === "string" ? currentAnswer : ""}
+                    onValueChange={handleSingleSelect}
+                    className="space-y-3"
+                >
+                    {options.map((option) => {
+                        const selected = isSelected(option.id);
+
+                        return (
+                            <Label
+                                key={option.id}
+                                htmlFor={`mcq-${question.id}-${option.id}`}
+                                className={cn(
+                                    "flex items-start space-x-3 p-4 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50",
+                                    selected ? "border-primary bg-primary/5" : "border-input"
+                                )}
+                            >
+                                <div className="flex items-center h-6 shrink-0">
+                                    <RadioGroupItem
+                                        value={option.id}
+                                        id={`mcq-${question.id}-${option.id}`}
+                                    />
+                                </div>
+                                <div className="flex-grow min-w-0">
+                                    <ContentPreview
+                                        content={option.optionText}
+                                        noProse
+                                        className="p-0 border-0"
+                                    />
+                                </div>
+                            </Label>
+                        );
+                    })}
+                </RadioGroup>
+            )}
         </div>
     );
 }

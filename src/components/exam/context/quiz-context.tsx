@@ -6,6 +6,7 @@ import { ExamQueryProvider, useExamCollectionsContext } from "../providers/exam-
 import { useQuestionResponses, useQuestionState } from "../hooks/use-exam-collections";
 import { useAutoSubmit } from "../hooks/use-auto-submit";
 import { QuestionItem, StudentAnswer } from "../lib/types";
+import { isResponseAnswered } from "../utils";
 
 export interface QuizSection {
     id: string;
@@ -67,6 +68,7 @@ type QuizContextValue = {
     getQuestionStats: () => QuestionStats;
     getSectionStats: (sectionId: string) => QuestionStats;
     isAutoSubmitting: boolean;
+    isSubmitted: boolean;
 };
 
 const QuizContext = createContext<QuizContextValue | undefined>(undefined);
@@ -134,27 +136,22 @@ function QuizContextInner({
         console.warn("setQuestions is deprecated. State is managed by TanStack DB.");
     }, []);
 
-    const sanitizedQuestions = useMemo(() => {
-        return questions.map((q) => {
-            const {
-                solution: _solution,
-                explaination: _explaination,
-                ...rest
-            } = q as QuizQuestion & {
-                solution?: unknown;
-                explaination?: unknown;
-            };
-            return rest;
-        });
-    }, [questions]);
-
     // helper to extract a section id from question object (various shapes)
-    const getSectionId = (q: QuizQuestion): string | null =>
-        q?.sectionId ??
-        (q as QuizQuestion & { section?: { id: string } })?.section?.id ??
-        (q as QuizQuestion & { quizSectionId?: string })?.quizSectionId ??
-        (q as QuizQuestion & { section_id?: string })?.section_id ??
-        null;
+    const getSectionId = (q: QuizQuestion): string | null => {
+        // Check various possible locations for section ID
+        if (q.sectionId) return q.sectionId;
+
+        // Handle nested section object
+        const withSection = q as QuizQuestion & { section?: { id: string } };
+        if (withSection.section?.id) return withSection.section.id;
+
+        // Handle alternative field names
+        const withAltFields = q as QuizQuestion & {
+            quizSectionId?: string;
+            section_id?: string;
+        };
+        return withAltFields.quizSectionId ?? withAltFields.section_id ?? null;
+    };
 
     // Normalize sections from various shapes
     const normalizedSections = useMemo((): QuizSection[] => {
@@ -164,6 +161,32 @@ function QuizContextInner({
         if (quizInfo?.parts) return quizInfo.parts;
         return [];
     }, [sections, quizInfo]);
+
+    const sanitizedQuestions = useMemo(() => {
+        const sortedQuestions = [...questions].sort((a, b) => {
+            const sectionA = normalizedSections.find((s) => s.id === getSectionId(a));
+            const sectionB = normalizedSections.find((s) => s.id === getSectionId(b));
+
+            // If both have sections, sort by section order
+            if (sectionA && sectionB) {
+                if (sectionA.orderIndex !== sectionB.orderIndex) {
+                    return sectionA.orderIndex - sectionB.orderIndex;
+                }
+            }
+            // Fallback to existing order if no section or same section
+            return 0;
+        });
+
+        return sortedQuestions.map((q) => {
+            // Remove solution and explanation from questions to prevent cheating
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { solution, explanation, ...rest } = q as QuizQuestion & {
+                solution?: QuizQuestion["solution"];
+                explanation?: string;
+            };
+            return rest;
+        });
+    }, [questions, normalizedSections]);
 
     const sectionQuestions = useMemo((): QuizQuestion[] => {
         if (!selectedSection) return questions;
@@ -195,12 +218,10 @@ function QuizContextInner({
     );
 
     const getQuestionStats = useCallback((): QuestionStats => {
-        const answered = questions.filter(
-            (q) => q.response && Object.keys(q.response).length > 0
-        ).length;
+        const answered = questions.filter((q) => isResponseAnswered(q.response)).length;
         const markedForReview = questions.filter((q) => q._markedForReview).length;
         const visited = questions.filter(
-            (q) => q._visited && !(q.response && Object.keys(q.response).length > 0)
+            (q) => q._visited && !isResponseAnswered(q.response)
         ).length;
         const total = questions.length;
         const unattempted = total - answered - visited;
@@ -210,12 +231,10 @@ function QuizContextInner({
     const getSectionStats = useCallback(
         (sectionId: string): QuestionStats => {
             const sectionQs = questions.filter((q) => getSectionId(q) === sectionId);
-            const answered = sectionQs.filter(
-                (q) => q.response && Object.keys(q.response).length > 0
-            ).length;
+            const answered = sectionQs.filter((q) => isResponseAnswered(q.response)).length;
             const markedForReview = sectionQs.filter((q) => q._markedForReview).length;
             const visited = sectionQs.filter(
-                (q) => q._visited && !(q.response && Object.keys(q.response).length > 0)
+                (q) => q._visited && !isResponseAnswered(q.response)
             ).length;
             const total = sectionQs.length;
             const unattempted = total - answered - visited;
@@ -239,11 +258,22 @@ function QuizContextInner({
     }, [currentQuestion, selectedQuestion]);
 
     // Automatically mark question as visited when it's viewed
+    // Automatically mark question as visited when it's viewed
     useEffect(() => {
         if (currentQuestion?.id) {
             markAsVisited(currentQuestion.id);
         }
     }, [currentQuestion?.id, markAsVisited]);
+
+    // Automatically switch section if the current question belongs to a different section
+    useEffect(() => {
+        if (currentQuestion && normalizedSections.length > 0) {
+            const questionSectionId = getSectionId(currentQuestion);
+            if (questionSectionId && questionSectionId !== selectedSection) {
+                queueMicrotask(() => setSelectedSection(questionSectionId));
+            }
+        }
+    }, [currentQuestion, normalizedSections, selectedSection]);
 
     // const submitMutation = trpc.exam.submitQuiz.useMutation(); // Moved up
 
@@ -293,6 +323,7 @@ function QuizContextInner({
             getQuestionStats,
             getSectionStats,
             isAutoSubmitting,
+            isSubmitted: submitMutation.isSuccess,
         }),
         [
             quizId,
@@ -313,6 +344,7 @@ function QuizContextInner({
             getQuestionStats,
             getSectionStats,
             isAutoSubmitting,
+            submitMutation.isSuccess,
         ]
     );
 

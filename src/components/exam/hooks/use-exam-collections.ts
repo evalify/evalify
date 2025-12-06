@@ -13,6 +13,7 @@ import { useMemo, useCallback } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
 import type { Collection } from "@tanstack/db";
 import type { QuestionResponse, QuestionState, StudentAnswer } from "../lib/types";
+import { isResponseAnswered } from "../utils";
 
 /**
  * Hook for managing question responses
@@ -90,11 +91,8 @@ export function useQuestionResponses(
     const isAnswered = useCallback(
         (questionId: string) => {
             const response = responsesCollection.get(questionId);
-            return (
-                response !== undefined &&
-                response.response !== null &&
-                Object.keys(response.response).length > 0
-            );
+            const val = response?.response;
+            return isResponseAnswered(val);
         },
         [responsesCollection]
     );

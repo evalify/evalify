@@ -2,6 +2,9 @@ import { serverTRPC } from "@/server/trpc/server";
 import ExamHeader from "@/components/exam/exam-header";
 import QuizProvider from "@/components/exam/context/quiz-context";
 import QuizPageClient from "@/components/exam/quiz-page-client";
+import { CheckCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 type Props = {
     params: Promise<{
@@ -54,10 +57,35 @@ export default async function Page({ params }: Props) {
             </div>
         );
     } catch (error) {
-        return (
-            <div className="p-4">
-                Error loading quiz: {(error as Error).message || String(error)}
-            </div>
-        );
+        const errorMessage = (error as Error).message || String(error);
+
+        if (
+            errorMessage.includes("Cannot access questions for a submitted quiz") ||
+            errorMessage.includes("Cannot access sections for a submitted quiz") ||
+            errorMessage.includes("Quiz already submitted")
+        ) {
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+                    <div className="flex flex-col items-center gap-6 max-w-md p-6 text-center">
+                        <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/20">
+                            <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-500" />
+                        </div>
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-bold tracking-tight">
+                                Quiz Submitted Successfully!
+                            </h2>
+                            <p className="text-muted-foreground">
+                                Your answers have been recorded. You can now return to your Quizzes.
+                            </p>
+                        </div>
+                        <Link href="/student/quiz">
+                            <Button>Go to Quizzes</Button>
+                        </Link>
+                    </div>
+                </div>
+            );
+        }
+
+        return <div className="p-4">Error loading quiz: {errorMessage}</div>;
     }
 }

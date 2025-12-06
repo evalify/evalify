@@ -5,6 +5,8 @@ import { QuizQuestion } from "../context/quiz-context";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { ContentPreview } from "@/components/rich-text-editor/content-preview";
+import { QuestionHeader } from "./question-header";
 import type { TrueFalseStudentAnswer } from "../lib/types";
 
 interface TrueFalseQuestionProps {
@@ -24,38 +26,38 @@ export function TrueFalseQuestion({ question, onAnswerChange }: TrueFalseQuestio
 
     return (
         <div className="space-y-6">
+            {/* Question metadata header */}
+            <QuestionHeader question={question} />
+
+            {/* Question content */}
             <div className="prose prose-sm max-w-none dark:prose-invert">
-                <div dangerouslySetInnerHTML={{ __html: (question.question as string) || "" }} />
+                <ContentPreview content={(question.question as string) || ""} />
             </div>
 
+            {/* Options - RadioGroup wraps all items */}
             <RadioGroup
                 value={currentAnswer}
                 onValueChange={handleValueChange}
                 className="grid grid-cols-2 gap-4"
             >
                 {options.map((option) => (
-                    <div
+                    <Label
                         key={option}
+                        htmlFor={`tf-option-${question.id}-${option}`}
                         className={cn(
                             "flex items-center justify-center p-6 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50",
                             currentAnswer === option
                                 ? "border-primary bg-primary/5"
                                 : "border-input"
                         )}
-                        onClick={() => handleValueChange(option)}
                     >
                         <RadioGroupItem
                             value={option}
-                            id={`option-${option}`}
+                            id={`tf-option-${question.id}-${option}`}
                             className="sr-only"
                         />
-                        <Label
-                            htmlFor={`option-${option}`}
-                            className="text-lg font-medium cursor-pointer"
-                        >
-                            {option}
-                        </Label>
-                    </div>
+                        <span className="text-lg font-medium">{option}</span>
+                    </Label>
                 ))}
             </RadioGroup>
         </div>
