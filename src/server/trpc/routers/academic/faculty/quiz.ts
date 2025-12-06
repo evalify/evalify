@@ -153,13 +153,13 @@ export const facultyQuizRouter = createTRPCRouter({
                 const questionCounts =
                     quizIds.length > 0
                         ? await db
-                            .select({
-                                quizId: sql<string>`quiz_id`,
-                                count: count(),
-                            })
-                            .from(sql`quiz_questions`)
-                            .where(sql`quiz_id IN ${quizIds}`)
-                            .groupBy(sql`quiz_id`)
+                              .select({
+                                  quizId: sql<string>`quiz_id`,
+                                  count: count(),
+                              })
+                              .from(sql`quiz_questions`)
+                              .where(sql`quiz_id IN ${quizIds}`)
+                              .groupBy(sql`quiz_id`)
                         : [];
 
                 const questionCountMap = new Map(
@@ -363,19 +363,19 @@ export const facultyQuizRouter = createTRPCRouter({
                     batchIds: batches.map((b) => b.batchId),
                     scoring: evaluationSettings[0]
                         ? {
-                            mcqGlobalPartialMarking:
-                                evaluationSettings[0].mcqGlobalPartialMarking,
-                            mcqGlobalNegativeMark: evaluationSettings[0].mcqGlobalNegativeMark,
-                            mcqGlobalNegativePercent:
-                                evaluationSettings[0].mcqGlobalNegativePercent,
-                            codingGlobalPartialMarking:
-                                evaluationSettings[0].codingGlobalPartialMarking,
-                            llmEvaluationEnabled: evaluationSettings[0].llmEvaluationEnabled,
-                            llmProvider: evaluationSettings[0].llmProvider,
-                            llmModelName: evaluationSettings[0].llmModelName,
-                            fitbLlmSystemPrompt: evaluationSettings[0].fitbLlmSystemPrompt,
-                            descLlmSystemPrompt: evaluationSettings[0].descLlmSystemPrompt,
-                        }
+                              mcqGlobalPartialMarking:
+                                  evaluationSettings[0].mcqGlobalPartialMarking,
+                              mcqGlobalNegativeMark: evaluationSettings[0].mcqGlobalNegativeMark,
+                              mcqGlobalNegativePercent:
+                                  evaluationSettings[0].mcqGlobalNegativePercent,
+                              codingGlobalPartialMarking:
+                                  evaluationSettings[0].codingGlobalPartialMarking,
+                              llmEvaluationEnabled: evaluationSettings[0].llmEvaluationEnabled,
+                              llmProvider: evaluationSettings[0].llmProvider,
+                              llmModelName: evaluationSettings[0].llmModelName,
+                              fitbLlmSystemPrompt: evaluationSettings[0].fitbLlmSystemPrompt,
+                              descLlmSystemPrompt: evaluationSettings[0].descLlmSystemPrompt,
+                          }
                         : undefined,
                 };
             } catch (error) {

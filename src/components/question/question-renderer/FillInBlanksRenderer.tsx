@@ -113,8 +113,8 @@ export function FillInBlanksRenderer({
                                             correctAnswers === totalBlanks
                                                 ? "bg-green-50 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300"
                                                 : correctAnswers > 0
-                                                    ? "bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-950 dark:text-yellow-300"
-                                                    : "bg-red-50 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300"
+                                                  ? "bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-950 dark:text-yellow-300"
+                                                  : "bg-red-50 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300"
                                         )}
                                     >
                                         {correctAnswers}/{totalBlanks} Correct
@@ -158,11 +158,11 @@ export function FillInBlanksRenderer({
                             className={cn(
                                 "transition-all duration-200",
                                 showSolution &&
-                                compareWithStudentAnswer &&
-                                isCorrect !== null &&
-                                (isCorrect
-                                    ? "border-green-500/60 shadow-sm"
-                                    : "border-red-500/60 shadow-sm")
+                                    compareWithStudentAnswer &&
+                                    isCorrect !== null &&
+                                    (isCorrect
+                                        ? "border-green-500/60 shadow-sm"
+                                        : "border-red-500/60 shadow-sm")
                             )}
                         >
                             <CardContent className="p-6">
@@ -249,8 +249,8 @@ export function FillInBlanksRenderer({
                                                                 isCorrect
                                                                     ? "bg-green-500"
                                                                     : userAnswer
-                                                                        ? "bg-red-500"
-                                                                        : "bg-gray-400"
+                                                                      ? "bg-red-500"
+                                                                      : "bg-gray-400"
                                                             )}
                                                         />
                                                         Your Answer
@@ -261,8 +261,8 @@ export function FillInBlanksRenderer({
                                                             isCorrect
                                                                 ? "bg-green-50/50 border-green-300 text-green-900 dark:bg-green-950/20 dark:border-green-700 dark:text-green-100"
                                                                 : userAnswer
-                                                                    ? "bg-red-50/50 border-red-300 text-red-900 dark:bg-red-950/20 dark:border-red-700 dark:text-red-100"
-                                                                    : "bg-gray-50 border-gray-300 text-gray-500 dark:bg-gray-900/20 dark:border-gray-700 italic"
+                                                                  ? "bg-red-50/50 border-red-300 text-red-900 dark:bg-red-950/20 dark:border-red-700 dark:text-red-100"
+                                                                  : "bg-gray-50 border-gray-300 text-gray-500 dark:bg-gray-900/20 dark:border-gray-700 italic"
                                                         )}
                                                     >
                                                         {userAnswer || "No answer provided"}
@@ -310,13 +310,13 @@ export function FillInBlanksRenderer({
                                                                     <div className="flex-1 min-w-0">
                                                                         {acceptableAnswers?.answers
                                                                             .length > 1 && (
-                                                                                <Badge
-                                                                                    variant="secondary"
-                                                                                    className="mb-2 text-[10px] font-bold bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100 border-green-300 dark:border-green-700"
-                                                                                >
-                                                                                    Option {idx + 1}
-                                                                                </Badge>
-                                                                            )}
+                                                                            <Badge
+                                                                                variant="secondary"
+                                                                                className="mb-2 text-[10px] font-bold bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-100 border-green-300 dark:border-green-700"
+                                                                            >
+                                                                                Option {idx + 1}
+                                                                            </Badge>
+                                                                        )}
                                                                         <div className="font-mono text-base font-semibold text-green-900 dark:text-green-100 warp-break-words">
                                                                             {answer}
                                                                         </div>
@@ -336,8 +336,8 @@ export function FillInBlanksRenderer({
                                                         isCorrect
                                                             ? "bg-green-50/50 border-green-500 dark:bg-green-950/20"
                                                             : !userAnswer
-                                                                ? "bg-blue-50/50 border-blue-500 dark:bg-blue-950/20"
-                                                                : "bg-red-50/50 border-red-500 dark:bg-red-950/20"
+                                                              ? "bg-blue-50/50 border-blue-500 dark:bg-blue-950/20"
+                                                              : "bg-red-50/50 border-red-500 dark:bg-red-950/20"
                                                     )}
                                                 >
                                                     <AlertDescription
@@ -346,8 +346,8 @@ export function FillInBlanksRenderer({
                                                             isCorrect
                                                                 ? "text-green-800 dark:text-green-200"
                                                                 : !userAnswer
-                                                                    ? "text-blue-800 dark:text-blue-200"
-                                                                    : "text-red-800 dark:text-red-200"
+                                                                  ? "text-blue-800 dark:text-blue-200"
+                                                                  : "text-red-800 dark:text-red-200"
                                                         )}
                                                     >
                                                         {isCorrect ? (
@@ -361,10 +361,11 @@ export function FillInBlanksRenderer({
                                                                 <AlertCircle className="h-4 w-4 shrink-0" />
                                                                 {`You didn't provide an answer for
                                                                     this blank. Review the correct 
-                                                                    ${acceptableAnswers?.answers
-                                                                        .length > 1
-                                                                        ? "answers"
-                                                                        : "answer"
+                                                                    ${
+                                                                        acceptableAnswers?.answers
+                                                                            .length > 1
+                                                                            ? "answers"
+                                                                            : "answer"
                                                                     }
                                                                     above.`}
                                                             </span>
@@ -374,11 +375,12 @@ export function FillInBlanksRenderer({
                                                                 {`Your answer doesn't match the
                                                                 expected response. Review the
                                                                 correct 
-                                                                ${acceptableAnswers?.answers
+                                                                ${
+                                                                    acceptableAnswers?.answers
                                                                         .length > 1
                                                                         ? "answers"
                                                                         : "answer"
-                                                                    } above.`}
+                                                                } above.`}
                                                             </span>
                                                         )}
                                                     </AlertDescription>
