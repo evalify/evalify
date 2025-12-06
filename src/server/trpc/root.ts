@@ -15,6 +15,7 @@ import { facultyQuizRouter } from "./routers/academic/faculty/quiz";
 import { topicRouter } from "./routers/academic/faculty/topic";
 import { sectionRouter } from "./routers/academic/faculty/section";
 import { profileImageRouter } from "./routers/profile-image";
+import { fileUploadRouter } from "./routers/file-upload";
 
 /**
  * Root tRPC router
@@ -37,6 +38,7 @@ export const appRouter = createTRPCRouter({
     facultyQuiz: facultyQuizRouter,
     section: sectionRouter,
     profileImage: profileImageRouter,
+    fileUpload: fileUploadRouter,
 });
 
 // Export type definition of API
