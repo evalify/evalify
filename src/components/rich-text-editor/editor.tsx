@@ -11,6 +11,7 @@ import { ImageExtension } from "@/components/rich-text-editor/toolbars/image";
 import { ImagePlaceholder } from "@/components/rich-text-editor/toolbars/image-placeholder";
 import { LaTeX, LatexNodeExtension } from "@/components/rich-text-editor/toolbars/latex-extension";
 import { EditorErrorBoundary } from "@/components/rich-text-editor/editor-error-boundary";
+import { useImageDeletion } from "@/components/rich-text-editor/hooks/use-image-deletion";
 import { cn } from "@/lib/utils";
 import { useEffect, forwardRef, useImperativeHandle } from "react";
 import DOMPurify from "isomorphic-dompurify";
@@ -124,6 +125,8 @@ export const TiptapEditor = forwardRef<TiptapEditorRef, EditorProps>(
             },
             immediatelyRender: false,
         });
+
+        useImageDeletion(editor);
 
         // Expose the editor instance and reset method through the ref
         useImperativeHandle(

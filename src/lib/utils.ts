@@ -76,3 +76,30 @@ export function processImageUrl(imageUrl: string): string {
 
     return imageUrl;
 }
+
+/**
+ * Check if an image URL is from our MinIO storage
+ * @param url - The image URL to check
+ * @returns true if the URL is from our MinIO storage
+ */
+export function isMinioImageUrl(url: string): boolean {
+    if (!url) return false;
+
+    // Check if URL contains /images/ pattern from our MinIO storage
+    return url.includes("/images/") && !url.startsWith("data:");
+}
+
+export function extractMinioKeyFromUrl(url: string): string | null {
+    if (!url || !isMinioImageUrl(url)) return null;
+
+    try {
+        // Find the /images/ part and extract everything from there
+        const imagesIndex = url.indexOf("/images/");
+        if (imagesIndex === -1) return null;
+
+        // Return the key starting from "images/"
+        return url.substring(imagesIndex + 1); // +1 to skip the leading /
+    } catch {
+        return null;
+    }
+}
