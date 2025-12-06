@@ -97,6 +97,19 @@ interface QuizListProps {
 type ViewMode = "grid" | "list";
 type FilterStatus = "all" | "upcoming" | "active" | "completed" | "published" | "unpublished";
 
+/**
+ * Render a searchable, filterable list of quizzes with grid and list presentation modes and per-quiz actions.
+ *
+ * @param quizzes - Array of quiz objects to display.
+ * @param courseId - Optional course identifier used for navigation and for performing course-scoped delete mutations; when provided some actions navigate within the course context.
+ * @param onEdit - Optional callback invoked with a quiz id when the Edit action is triggered.
+ * @param onManageQuestions - Optional callback invoked with a quiz id when the Manage Questions action is triggered.
+ * @param onViewResults - Optional callback invoked with a quiz id when the View Results action is triggered.
+ * @param onDelete - Optional callback invoked with a quiz id to perform deletion when no courseId is provided.
+ * @param isLoading - When true, renders loading skeletons instead of the quiz list.
+ *
+ * @returns The QuizList UI element containing search, filters, results count, quiz cards, and delete confirmation handling.
+ */
 export default function QuizList({
     quizzes,
     courseId,
@@ -394,6 +407,19 @@ interface QuizCardProps {
     getStatusBadge: (quiz: Quiz) => JSX.Element;
 }
 
+/**
+ * Render a quiz card in either "grid" or "list" layout, including status badges, feature indicators, and action handlers.
+ *
+ * @param quiz - The quiz object to display (contains id, name, description, timing, counts, feature flags, and publish/password state).
+ * @param viewMode - Layout mode, either `"grid"` or `"list"`.
+ * @param onEdit - Callback invoked with the quiz id when the Edit action is triggered.
+ * @param onManageQuestions - Callback invoked with the quiz id to manage questions for the quiz.
+ * @param onViewResults - Callback invoked with the quiz id to view quiz results.
+ * @param onDelete - Callback invoked with the full `quiz` object when the Delete action is triggered.
+ * @param onDuplicate - Callback invoked with the quiz id to duplicate the quiz (currently disabled in UI).
+ * @param getStatusBadge - Function that receives the quiz and returns a badge element representing its status (e.g., upcoming, active, completed).
+ * @returns A React element representing the quiz card in the selected view mode.
+ */
 function QuizCard({
     quiz,
     viewMode,

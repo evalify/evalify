@@ -53,6 +53,15 @@ type QuestionWithQuizMetadata = Question & {
     orderIndex: number;
 };
 
+/**
+ * Page component for managing sections and questions of a specific quiz within a course.
+ *
+ * Renders quiz info, KPIs, and an interface to create, edit, reorder, move, and delete sections and questions,
+ * including drag-and-drop support and dialogs for creating/editing sections, confirming deletes, and adding
+ * questions from a question bank.
+ *
+ * @returns The React element for the quiz questions management page.
+ */
 export default function QuizQuestionsPage() {
     const params = useParams<{ courseId: string; quizId: string }>();
     const router = useRouter();
@@ -698,6 +707,20 @@ export default function QuizQuestionsPage() {
     );
 }
 
+/**
+ * Render an accordion item for a quiz section with controls to view, add, edit, delete, and manage its questions.
+ *
+ * @param section - Object containing the section's `id` and `name`.
+ * @param quizId - Identifier of the quiz that the section belongs to.
+ * @param courseId - Identifier of the course that contains the quiz.
+ * @param onEdit - Callback invoked with the current section name to start editing the section.
+ * @param onDelete - Callback invoked to request deletion; receives the section's name and the current question count.
+ * @param onAddQuestion - Callback invoked with the section `id` to add a new question directly into this section.
+ * @param onAddFromBank - Callback invoked with the section `id` to add questions from the question bank into this section.
+ * @param dragHandleProps - Optional props spread onto the section's drag handle to enable drag-and-drop.
+ * @param isDragging - Optional boolean that indicates whether the section is currently being dragged (affects styling).
+ * @returns A JSX element rendering the section accordion, its question list, and action controls.
+ */
 function SectionItem({
     section,
     quizId,

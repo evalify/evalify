@@ -30,6 +30,16 @@ export interface QuizParticipantProps {
     updateData: (data: QuizParticipantData) => void;
 }
 
+/**
+ * Renders the participant selection UI for a quiz, allowing selection of courses, batches, individual students, and lab restrictions.
+ *
+ * The component shows summary counts, searchable lists, bulk student selection, and collapsible sections for optional selections.
+ * It also synchronizes selections: when courses are added their associated batches are auto-selected (skipped on initial mount), selecting a batch removes its students from individual selections, and deselecting a course removes its associated batches.
+ *
+ * @param data - Current QuizParticipantData containing selected courses, batches, students, and labs.
+ * @param updateData - Callback invoked with an updated QuizParticipantData object to persist selection changes.
+ * @returns The rendered React element for the quiz participant selection interface.
+ */
 export function QuizParticipant({ data, updateData }: QuizParticipantProps) {
     const [searchStudents, setSearchStudents] = useState("");
     const [searchLabs, setSearchLabs] = useState("");

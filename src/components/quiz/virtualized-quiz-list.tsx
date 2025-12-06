@@ -146,6 +146,14 @@ function StatusSection({
     );
 }
 
+/**
+ * Render a quiz card showing title, courses, instructor, schedule, status indicator, and context-sensitive actions.
+ *
+ * Displays start time, duration, time-until-start or time-until-end when applicable, and action buttons that navigate to the quiz instructions or results pages. Buttons are enabled or shown based on quiz timing (instructions available five minutes before start), status, and the `publishResult` flag.
+ *
+ * @param quiz - The quiz data used to populate the card. Must include identifiers (`id`, `courseId`), timing (`startTime`, `endTime`, `duration`), `status`, and fields used for display such as `name`, optional `courses`, `courseCode`, `instructorName`, `instructorImage`, and `publishResult`.
+ * @returns A JSX element representing the quiz card.
+ */
 function QuizCard({ quiz }: { quiz: VirtualizedQuiz }) {
     const router = useRouter();
     const statusConfig = getStatusConfig(quiz.status);
@@ -314,6 +322,13 @@ function QuizCard({ quiz }: { quiz: VirtualizedQuiz }) {
     );
 }
 
+/**
+ * Render a virtualized list of quizzes grouped by status, displaying a section header and quiz cards for each group.
+ *
+ * @param quizzes - The quizzes to display; items are grouped by their `status` into sections.
+ * @param estimatedSize - Estimated height in pixels for each quiz item used by the virtualizer (defaults to 350).
+ * @returns The component tree for a scrollable, virtualized list of status sections and quiz cards, or an empty-state message when `quizzes` is empty.
+ */
 export default function VirtualizedQuizList({
     quizzes,
     estimatedSize = 350,

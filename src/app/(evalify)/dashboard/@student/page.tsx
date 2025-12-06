@@ -31,6 +31,15 @@ interface DashboardStats {
     missedQuizzes: number;
 }
 
+/**
+ * Renders the student dashboard UI showing course and quiz overviews, lists, and navigation actions.
+ *
+ * Displays overview statistic cards, live and upcoming quizzes with actions, quiz performance metrics,
+ * and student information (courses, active semesters, batch). Fetches course and quiz data, computes
+ * derived stats and lists, and tracks user interactions before navigating.
+ *
+ * @returns The React element for the Student Dashboard page.
+ */
 export default function StudentDashboard() {
     const router = useRouter();
     const { track } = useAnalytics();

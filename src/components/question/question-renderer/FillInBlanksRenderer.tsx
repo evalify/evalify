@@ -16,6 +16,19 @@ interface FillInBlanksRendererProps {
     compareWithStudentAnswer?: boolean;
 }
 
+/**
+ * Render a Fill in the Blanks question UI with optional solution display, per-blank inputs, and scoring feedback.
+ *
+ * Renders interactive inputs when solutions are hidden and a read-only solution view with comparison, correct answers, and per-blank feedback when solutions are shown. When enabled, compares student answers against configured acceptable answers and computes per-blank correctness and total score using configured blank weights.
+ *
+ * @param props.question - Question data including `blankConfig` (blank count, acceptable answers, optional weights and types).
+ * @param props.showSolution - When true, displays correct answers, per-blank feedback, and scoring visuals.
+ * @param props.answers - Mapping from blank index (1-based) to the user's supplied answer.
+ * @param props.onAnswerChange - Callback invoked as onAnswerChange(blankIndex, value) when a user edits an answer.
+ * @param props.isReadOnly - When true, input fields are disabled and edits are prevented.
+ * @param props.compareWithStudentAnswer - When true and `showSolution` is enabled, compares student answers to acceptable answers and shows correctness and scoring.
+ * @returns The rendered React element for the fill-in-the-blanks question, or an error alert if the question configuration is missing.
+ */
 export function FillInBlanksRenderer({
     question,
     showSolution = false,

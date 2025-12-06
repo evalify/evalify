@@ -13,6 +13,16 @@ interface CourseCardProps {
     basePath?: string;
 }
 
+/**
+ * Renders a stylized information card for a course including code, name, semester and status badges, description, type badge, and a "View Quizzes" action.
+ *
+ * The "View Quizzes" button navigates to the quizzes route constructed as `${basePath}/${course.id}/quiz`.
+ *
+ * @param course - Course data used to populate the card (code, name, description, semester, year, status, type, id)
+ * @param colorClass - CSS class applied to the banner area to control its color/styling
+ * @param basePath - Base URL used for navigation; defaults to "/course"
+ * @returns A React element representing the course card
+ */
 export function CourseCard({ course, colorClass, basePath = "/course" }: CourseCardProps) {
     const router = useRouter();
 

@@ -27,6 +27,20 @@ interface MultiSelectProps {
     maxHeight?: number;
     estimateSize?: number;
 }
+/**
+ * A configurable multi-select dropdown that supports searching, tag-style selected items, and virtualized option rendering.
+ *
+ * Renders a control that allows selecting multiple options from `options`, displays selected items as removable badges, and filters visible options by the search input.
+ *
+ * @param options - Array of option objects with `label` and `value` fields to present in the list.
+ * @param selected - Array of selected option `value`s; the component uses this to determine which options are selected.
+ * @param onChange - Callback invoked with the updated array of selected values when the selection changes.
+ * @param className - Optional additional CSS class names applied to the root container.
+ * @param placeholder - Optional placeholder text shown in the search input (default: "Select...").
+ * @param maxHeight - Optional maximum pixel height for the options list scroll area (default: 160).
+ * @param estimateSize - Optional per-item height estimate (in pixels) for the virtualizer; when omitted, the component measures item heights.
+ * @returns The rendered MultiSelect React element.
+ */
 function MultiSelect({
     options,
     selected,

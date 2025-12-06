@@ -127,6 +127,14 @@ const tabs = [
 
 type TabId = (typeof tabs)[number]["id"];
 
+/**
+ * Render a three-tab interface for creating or editing a quiz, providing metadata, participant selection, and scoring configuration.
+ *
+ * @param courseId - The ID of the course to which the quiz belongs.
+ * @param quizId - Optional ID of the quiz being edited; when provided the component initializes in edit mode.
+ * @param existingQuiz - Optional existing quiz data used to populate initial form state when editing.
+ * @returns A React element rendering the quiz creation/editing UI with validation and save/update behavior.
+ */
 export function QuizCreationTabs({
     courseId,
     quizId,
