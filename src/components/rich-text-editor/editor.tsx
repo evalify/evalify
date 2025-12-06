@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, forwardRef, useImperativeHandle } from "react";
 import DOMPurify from "isomorphic-dompurify";
 import "@/components/rich-text-editor/css/preview.css";
+import { logger } from "@/lib/logger";
 
 interface EditorProps {
     className?: string;
@@ -87,7 +88,7 @@ export const TiptapEditor = forwardRef<TiptapEditorRef, EditorProps>(
                 maxFiles: 1,
                 maxSize: 5 * 1024 * 1024, // 5MB
                 onDrop: (files) => {
-                    console.log(`Successfully uploaded ${files.length} image(s)`);
+                    logger.info(`Successfully uploaded ${files.length} image(s)`);
                 },
                 onDropRejected: (files) => {
                     const reasons = [];
@@ -98,10 +99,10 @@ export const TiptapEditor = forwardRef<TiptapEditorRef, EditorProps>(
                             reasons.push(`File "${file.name}" has an unsupported format`);
                         }
                     }
-                    console.error("Image upload failed:", reasons.join(", "));
+                    logger.error("Image upload failed:", reasons.join(", "));
                 },
                 onEmbed: (url) => {
-                    console.log(`Image embedded from URL: ${url}`);
+                    logger.info(`Image embedded from URL: ${url}`);
                 },
             }),
         ];

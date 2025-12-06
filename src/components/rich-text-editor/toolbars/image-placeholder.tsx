@@ -18,6 +18,7 @@ import { Image as LucideImage, Link, Upload } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc/client";
+import { useId } from "react";
 
 export interface ImagePlaceholderOptions {
     HTMLAttributes: Record<string, unknown>;
@@ -86,6 +87,7 @@ export const ImagePlaceholder = Node.create<ImagePlaceholderOptions>({
 });
 
 function ImagePlaceholderComponent(props: NodeViewProps) {
+    const inputId = useId();
     const { editor, extension, selected, deleteNode } = props;
     const { error: showError } = useToast();
 
@@ -228,7 +230,7 @@ function ImagePlaceholderComponent(props: NodeViewProps) {
         if (acceptedFiles.length === 0) return;
 
         const file = acceptedFiles[0];
-        uploadFile(file);
+        await uploadFile(file);
 
         if (extension.options.onDrop) {
             extension.options.onDrop(acceptedFiles, editor);
@@ -258,7 +260,6 @@ function ImagePlaceholderComponent(props: NodeViewProps) {
                 showError("Error", {
                     description: error instanceof Error ? error.message : "Failed to embed image",
                 });
-                deleteNode();
             }
         }
     };
@@ -327,11 +328,11 @@ function ImagePlaceholderComponent(props: NodeViewProps) {
                                     multiple={extension.options.maxFiles !== 1}
                                     onChange={handleFileInputChange}
                                     className="hidden"
-                                    id="file-input"
+                                    id={inputId}
                                     disabled={isUploading}
                                 />
                                 <label
-                                    htmlFor="file-input"
+                                    htmlFor={inputId}
                                     className={cn(
                                         "flex h-28 w-full flex-col items-center justify-center text-center",
                                         isUploading ? "cursor-not-allowed" : "cursor-pointer"
