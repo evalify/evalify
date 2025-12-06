@@ -151,14 +151,14 @@ export default function QuizList({
 
     // Delete quiz mutation
     const deleteQuizMutation = trpc.facultyQuiz.delete.useMutation({
-        onSuccess: () => {
+        onSuccess: (_, variables) => {
             success("Quiz deleted successfully!");
             setDeleteDialogOpen(false);
             setQuizToDelete(null);
             if (courseId) {
                 utils.facultyQuiz.listByCourse.invalidate({ courseId });
             }
-            track("quiz_deleted", { quizId: quizToDelete?.id, courseId });
+            track("quiz_deleted", { quizId: variables.quizId, courseId: variables.courseId });
         },
         onError: (err) => {
             error(err.message || "Failed to delete quiz");
@@ -208,9 +208,9 @@ export default function QuizList({
         }
     };
 
-    const handleDuplicate = (quizId: string) => {
+    const handleDuplicate = (_quizId: string) => {
         // TODO: Implement duplication later
-        console.log("Duplicate quiz:", quizId);
+        // Placeholder - duplication feature not yet implemented
     };
 
     // Get status badge

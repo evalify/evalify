@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -288,23 +288,11 @@ export function QuizCreationTabs({
         };
     }, [existingQuiz]);
 
-    // Use initialQuizData and initialParticipantData directly instead of syncing via effect
-    // This avoids cascading renders while still responding to prop changes
-    const [quizData, setQuizData] = useState<QuizCreationData>(() => initialQuizData);
-    const [participantData, setParticipantData] = useState<QuizParticipantData>(
-        () => initialParticipantData
-    );
-
-    // Reset state when existingQuiz ID changes (switching between create/edit)
-    const previousQuizIdRef = useRef(existingQuiz?.id);
-    if (existingQuiz?.id !== previousQuizIdRef.current) {
-        previousQuizIdRef.current = existingQuiz?.id;
-        // Only reset if we're switching to a different quiz or from edit to create
-        if (existingQuiz?.id) {
-            setQuizData(initialQuizData);
-            setParticipantData(initialParticipantData);
-        }
-    }
+    // Derive state directly from props - state initializes with latest data
+    // When existingQuiz?.id changes (route navigation), component remounts with fresh state
+    const [quizData, setQuizData] = useState<QuizCreationData>(initialQuizData);
+    const [participantData, setParticipantData] =
+        useState<QuizParticipantData>(initialParticipantData);
 
     const utils = trpc.useUtils();
 
@@ -413,6 +401,10 @@ export function QuizCreationTabs({
 
         if (!metadata.duration.value || metadata.duration.value <= 0) {
             validationErrors.push("Duration must be greater than 0");
+        }
+
+        if (participantData.courses.length === 0) {
+            validationErrors.push("Select at least one course for the quiz");
         }
 
         // Validate participants: must have at least one batch OR one student selected
