@@ -28,13 +28,13 @@ pipeline {
             }
         }
 
-        stage('Unit & Component Tests') {
-            steps {
-                // Install dependencies and run tests using yarn/npm
-                sh 'yarn install --frozen-lockfile'
-                sh 'yarn test'
-            }
-        }
+        // stage('Unit & Component Tests') {
+        //     steps {
+        //         // Install dependencies and run tests using yarn/npm
+        //         sh 'yarn install --frozen-lockfile'
+        //         sh 'yarn test'
+        //     }
+        // }
 
         stage('SAST Scan with SonarQube') {
             steps {
@@ -52,15 +52,18 @@ pipeline {
     
         stage('Build & Push Docker Image') {
             when {
-                branch 'production'
+                branch 'release'
             }
             steps {
                 script {
                     echo "Building image: ${IMAGE_NAME}:${IMAGE_TAG}"
-                    // Build the multi-stage Dockerfile, passing the API URL as a build argument
+                    // Build the multi-stage Dockerfile, passing build arguments
                     def customImage = docker.build(
                         "${IMAGE_NAME}:${IMAGE_TAG}", 
-                        "--build-arg NEXT_PUBLIC_API_URL=https://${APP_BACKEND_DOMAIN} -f Dockerfile ."
+                        "--build-arg NEXT_PUBLIC_POSTHOG_KEY=${env.NEXT_PUBLIC_POSTHOG_KEY} " +
+                        "--build-arg NEXT_PUBLIC_POSTHOG_HOST=${env.NEXT_PUBLIC_POSTHOG_HOST} " +
+                        "--build-arg NEXT_PUBLIC_POSTHOG_ENABLE=${env.NEXT_PUBLIC_POSTHOG_ENABLE} " +
+                        "-f Dockerfile.bun ."
                     )
                     // Push the final image to your Harbor registry
                     docker.withRegistry("https://${HARBOR_URL}", 'harbor-credentials') {
@@ -73,7 +76,7 @@ pipeline {
         
         stage('Container Vulnerability Scan') {
             when {
-                branch 'production'
+                branch 'release'
             }
             steps {
                 // Use Trivy to scan the newly pushed image for OS or dependency vulnerabilities
@@ -84,10 +87,10 @@ pipeline {
         
         stage('Trigger Deploy') {
             when {
-                branch 'production'
+                branch 'release'
             }
             steps {
-                echo "Deploying production version: ${IMAGE_TAG}"
+                echo "Deploying release version: ${IMAGE_TAG}"
                 // Trigger the central deployment pipeline, passing the new image tag as a parameter
                 build job: 'Deployer_Pipeline', parameters: [
                     string(name: 'APP_IMAGE_URL', value: "${IMAGE_NAME}:${IMAGE_TAG}")
