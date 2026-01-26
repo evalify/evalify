@@ -17,7 +17,6 @@ pipeline {
         HARBOR_URL = "harbor.${env.DOMAIN}"
         APP_BACKEND_DOMAIN = "api.${env.DOMAIN}"
         IMAGE_NAME = "${HARBOR_URL}/evalify/app"
-        IMAGE_TAG = env.TAG_NAME ?: "${env.BRANCH_NAME}-${env.BUILD_NUMBER}".replaceAll('/', '-')
     }
 
     stages {
@@ -25,6 +24,10 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
+                script {
+                    def branchName = env.BRANCH_NAME.replaceAll('/', '-')
+                    env.IMAGE_TAG = env.TAG_NAME ?: "${branchName}-${env.BUILD_NUMBER}"
+                }
             }
         }
 
