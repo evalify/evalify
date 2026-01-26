@@ -1,112 +1,9 @@
 import NextAuth from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
 import { decodeJwt } from "jose";
-
-interface KeycloakToken {
-    access_token: string;
-    refresh_token?: string;
-    expires_at: number;
-    session_expires_at?: number;
-    groups: string[];
-    roles?: string[];
-    id_token?: string;
-    error?: string;
-    id?: string;
-    sub?: string;
-    [key: string]: unknown;
-}
-
-interface DecodedJWT {
-    realm_access?: {
-        roles?: string[];
-    };
-    groups?: string[];
-    [key: string]: unknown;
-}
-
-function processDecodedToken(decoded: DecodedJWT | null): {
-    roles: string[];
-    groups: string[];
-} {
-    let roles: string[] = [];
-    let groups: string[] = [];
-    if (decoded && typeof decoded === "object" && !Array.isArray(decoded)) {
-        const decodedJWT = decoded as DecodedJWT;
-        roles = decodedJWT.realm_access?.roles || [];
-        groups = (decodedJWT.groups || []).map((group: string) => group.replace(/^\//, ""));
-    }
-    return { roles, groups };
-}
-
-async function refreshKeycloakAccessToken(token: KeycloakToken): Promise<KeycloakToken | null> {
-    try {
-        console.log("Attempting to refresh Keycloak access token...");
-
-        const response = await fetch(
-            `${process.env.AUTH_KEYCLOAK_ISSUER!}/protocol/openid-connect/token`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                    grant_type: "refresh_token",
-                    refresh_token: token.refresh_token!,
-                    client_id: process.env.AUTH_KEYCLOAK_ID!,
-                    client_secret: process.env.AUTH_KEYCLOAK_SECRET!,
-                }),
-            }
-        );
-
-        const refreshedTokens = await response.json();
-        if (!response.ok) {
-            // If session is not active, return null to invalidate the session gracefully
-            if (
-                refreshedTokens.error === "invalid_grant" &&
-                refreshedTokens.error_description === "Session not active"
-            ) {
-                console.log("Session has expired, invalidating session");
-                return null;
-            }
-
-            console.error("Failed to refresh access token:", {
-                status: response.status,
-                statusText: response.statusText,
-                error: refreshedTokens,
-            });
-            throw new Error(
-                `Token refresh failed: ${
-                    refreshedTokens.error_description || refreshedTokens.error || "Unknown error"
-                }`
-            );
-        }
-
-        const decoded = decodeJwt(refreshedTokens.access_token);
-        const { roles, groups } = processDecodedToken(decoded);
-
-        console.log("Successfully refreshed access token");
-        return {
-            ...token,
-            access_token: refreshedTokens.access_token,
-            refresh_token: refreshedTokens.refresh_token ?? token.refresh_token,
-            expires_at: Math.floor(Date.now() / 1000) + refreshedTokens.expires_in,
-            roles: roles,
-            groups: groups,
-            id_token: refreshedTokens.id_token ?? token.id_token,
-            error: undefined,
-        };
-    } catch (error: unknown) {
-        console.error("Error refreshing access token:", error);
-
-        let errorMessage = "RefreshAccessTokenError";
-        if (error instanceof Error) {
-            errorMessage = `RefreshAccessTokenError: ${error.message}`;
-        }
-
-        return {
-            ...token,
-            error: errorMessage,
-        };
-    }
-}
+import { KeycloakToken, DecodedJWT } from "./types";
+import { processDecodedToken, refreshKeycloakAccessToken } from "./utils";
+import { logger } from "../logger";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
     providers: [
@@ -131,11 +28,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     trustHost: true,
     secret: process.env.NEXTAUTH_SECRET,
     callbacks: {
+        async redirect({ url, baseUrl }) {
+            if (url.startsWith("/")) return `${baseUrl}${url}`;
+            else if (new URL(url).origin === baseUrl) return url;
+            return baseUrl;
+        },
         async jwt({ token, account, user }) {
             // Initial sign-in
             if (account && user) {
                 const decoded = decodeJwt(account.access_token!);
-                const { roles, groups } = processDecodedToken(decoded);
+                const { roles, groups } = processDecodedToken(decoded as DecodedJWT);
                 // Calculate session expiry based on Keycloak's refresh token expiry
                 const refreshExpiresIn =
                     typeof account.refresh_expires_in === "number"
@@ -159,7 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 typeof token.session_expires_at === "number" &&
                 Date.now() > token.session_expires_at * 1000
             ) {
-                console.log("Session has expired based on Keycloak refresh token expiry");
+                logger.info("Session has expired based on Keycloak refresh token expiry");
                 return null;
             }
 
@@ -203,17 +105,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
                     const response = await fetch(logoutUrl, { method: "GET" });
                     if (response.ok) {
-                        console.log("Keycloak session terminated successfully");
+                        logger.info("Keycloak session terminated successfully");
                     } else {
-                        console.error(
-                            "Keycloak logout failed:",
-                            response.status,
-                            response.statusText
+                        logger.error(
+                            {
+                                status: response.status,
+                                statusText: response.statusText,
+                            },
+                            "Keycloak logout failed"
                         );
                     }
-                    console.log("Keycloak session terminated successfully");
+                    logger.info("Keycloak session terminated successfully");
                 } catch (error) {
-                    console.error("Error terminating Keycloak session:", error);
+                    logger.error({ err: error }, "Error terminating Keycloak session");
                 }
             }
         },
