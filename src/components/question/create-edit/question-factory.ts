@@ -6,11 +6,12 @@ import {
     FillInBlanksEvaluationType,
 } from "@/types/questions";
 import type { ComponentType } from "react";
-import MCQComponent from "./create-edit/mcq";
-import FillInBlanksComponent from "./create-edit/fill-in-blanks";
-import TrueFalseComponent from "./create-edit/true-false";
-import DescriptiveComponent from "./create-edit/descriptive";
-import MatchTheFollowingComponent from "./create-edit/match-the-following";
+import MCQComponent from "./mcq";
+import FillInBlanksComponent from "./fill-in-blanks";
+import TrueFalseComponent from "./true-false";
+import DescriptiveComponent from "./descriptive";
+import MatchTheFollowingComponent from "./match-the-following";
+import FileUploadComponent from "./file-upload";
 
 export interface QuestionComponentProps<T extends Question = Question> {
     value: T;
@@ -32,6 +33,8 @@ export function getQuestionComponent(
             return DescriptiveComponent as ComponentType<QuestionComponentProps<Question>>;
         case QuestionType.MATCHING:
             return MatchTheFollowingComponent as ComponentType<QuestionComponentProps<Question>>;
+        case QuestionType.FILE_UPLOAD:
+            return FileUploadComponent as ComponentType<QuestionComponentProps<Question>>;
         default:
             throw new Error(`Unsupported question type: ${questionType}`);
     }
@@ -105,6 +108,15 @@ export function createDefaultQuestion(questionType: QuestionType): Question {
                 ...baseQuestion,
                 type: QuestionType.MATCHING,
                 options: [],
+            };
+        case QuestionType.FILE_UPLOAD:
+            return {
+                ...baseQuestion,
+                type: QuestionType.FILE_UPLOAD,
+                attachedFiles: [],
+                fileUploadConfig: {
+                    maxFiles: 1,
+                },
             };
         default:
             throw new Error(`Unsupported question type: ${questionType}`);

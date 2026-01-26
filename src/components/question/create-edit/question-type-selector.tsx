@@ -56,7 +56,7 @@ const questionTypes: {
         type: QuestionType.FILE_UPLOAD,
         label: "File Upload",
         description: "Upload a file as an answer",
-        isDisabled: true,
+        isDisabled: false,
     },
 ];
 
