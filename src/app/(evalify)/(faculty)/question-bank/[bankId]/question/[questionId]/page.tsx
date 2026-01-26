@@ -89,7 +89,8 @@ export default function QuestionPage() {
             utils.question.listByTopics.invalidate({ bankId });
 
             // Reload the page to reset the form
-            router.push(`/question-bank/${bankId}/question/create`);
+            // router.push(`/question-bank/${bankId}/question/create`);
+            router.refresh();
         },
         onError: (err) => {
             error(err.message || "Failed to create question");

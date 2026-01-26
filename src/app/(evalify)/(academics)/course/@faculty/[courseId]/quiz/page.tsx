@@ -3,11 +3,10 @@
 import { use } from "react";
 import QuizList from "@/components/quiz/quiz-list";
 import { Button } from "@/components/ui/button";
-import { Plus, BookOpen, GraduationCap, AlertCircle } from "lucide-react";
+import { Plus, BookOpen, GraduationCap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc/client";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 
 type Props = {
     params: Promise<{
@@ -34,21 +33,6 @@ export default function QuizPage({ params }: Props) {
     const handleCreateQuiz = () => {
         router.push(`/course/${courseId}/quiz/create/manage`);
     };
-
-    if (!courseInfo) {
-        return (
-            <div className="p-6">
-                <Card className="border-destructive">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-2 text-destructive">
-                            <AlertCircle className="h-5 w-5" />
-                            <p>Failed to load course information</p>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-        );
-    }
 
     return (
         <div className="p-6 space-y-6">

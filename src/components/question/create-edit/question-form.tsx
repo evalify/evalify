@@ -5,7 +5,7 @@ import { Question, QuestionType } from "@/types/questions";
 import { useToast } from "@/hooks/use-toast";
 import QuestionTypeSelector from "./question-type-selector";
 import QuestionSettings from "./question-settings";
-import { getQuestionComponent, createDefaultQuestion } from "../question-factory";
+import { getQuestionComponent, createDefaultQuestion } from "./question-factory";
 import { validateQuestion } from "../question-validator";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
