@@ -52,7 +52,7 @@ pipeline {
     
         stage('Build & Push Docker Image') {
             when {
-                branch 'release'
+                branch 'production'
             }
             steps {
                 script {
@@ -73,7 +73,7 @@ pipeline {
         
         stage('Container Vulnerability Scan') {
             when {
-                branch 'release'
+                branch 'production'
             }
             steps {
                 // Use Trivy to scan the newly pushed image for OS or dependency vulnerabilities
@@ -84,10 +84,10 @@ pipeline {
         
         stage('Trigger Deploy') {
             when {
-                branch 'release'
+                branch 'production'
             }
             steps {
-                echo "Deploying release version: ${IMAGE_TAG}"
+                echo "Deploying production version: ${IMAGE_TAG}"
                 // Trigger the central deployment pipeline, passing the new image tag as a parameter
                 build job: 'Deployer_Pipeline', parameters: [
                     string(name: 'APP_IMAGE_URL', value: "${IMAGE_NAME}:${IMAGE_TAG}")
