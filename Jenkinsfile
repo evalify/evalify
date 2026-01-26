@@ -1,4 +1,5 @@
 // frontend-repo/Jenkinsfile
+
 pipeline {
     agent {
         // Use a Node.js agent that also has Docker installed or available
@@ -29,10 +30,9 @@ pipeline {
 
         stage('Unit & Component Tests') {
             steps {
-                // Enable pnpm and install dependencies
-                sh 'corepack enable && corepack prepare pnpm@10.24.0 --activate'
-                sh 'pnpm install --frozen-lockfile'
-                sh 'pnpm test'
+                // Install dependencies and run tests using yarn/npm
+                sh 'yarn install --frozen-lockfile'
+                sh 'yarn test'
             }
         }
 
@@ -60,10 +60,7 @@ pipeline {
                     // Build the multi-stage Dockerfile, passing the API URL as a build argument
                     def customImage = docker.build(
                         "${IMAGE_NAME}:${IMAGE_TAG}", 
-                        """--build-arg NEXT_PUBLIC_API_URL=https://${APP_BACKEND_DOMAIN} \
-                           --build-arg NEXT_PUBLIC_POSTHOG_KEY=${env.NEXT_PUBLIC_POSTHOG_KEY} \
-                           --build-arg NEXT_PUBLIC_POSTHOG_HOST=${env.NEXT_PUBLIC_POSTHOG_HOST} \
-                           -f Dockerfile ."""
+                        "--build-arg NEXT_PUBLIC_API_URL=https://${APP_BACKEND_DOMAIN} -f Dockerfile ."
                     )
                     // Push the final image to your Harbor registry
                     docker.withRegistry("https://${HARBOR_URL}", 'harbor-credentials') {
