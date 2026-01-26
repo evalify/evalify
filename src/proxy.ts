@@ -10,7 +10,7 @@ export default auth((req) => {
     if (
         pathname.startsWith("/api/utils") &&
         isExternalAPIProtected &&
-        req.headers.get("API_KEY") !== process.env.EVALUATION_SERVICE_API_KEY
+        req.headers.get("API_KEY") !== process.env.API_KEY
     ) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
