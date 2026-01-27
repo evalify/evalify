@@ -4,8 +4,8 @@ pipeline {
     agent {
         // Use a Node.js agent that also has Docker installed or available
         docker {
-            image 'node:20-bookworm' // A standard Node image
-            args '-v /var/run/docker.sock:/var/run/docker.sock' // Mount docker socket for Trivy
+            image 'jenkins-agent-node-docker:latest' // Custom image with docker-cli
+            args "-v /var/run/docker.sock:/var/run/docker.sock --group-add ${env.DOCKER_GID}" // Mount docker socket
         }
     }
 
