@@ -44,9 +44,13 @@ interface UploadOptions {
  */
 class S3ClientSingleton {
     private static instance: S3ClientSingleton;
-    private client: S3Client;
+    private _client: S3Client | null = null;
 
-    private constructor() {
+    private constructor() {}
+
+    private get client(): S3Client {
+        if (this._client) return this._client;
+
         // Validate required environment variables
         const endpoint = process.env.S3_ENDPOINT;
         const region = process.env.S3_REGION;
@@ -91,8 +95,10 @@ class S3ClientSingleton {
             forcePathStyle: true, // Required for MinIO/S3 compatible
         };
 
-        this.client = new S3Client(config);
+        this._client = new S3Client(config);
         logger.info({ endpoint: config.endpoint, region: config.region }, "S3 client initialized");
+
+        return this._client;
     }
 
     /**
