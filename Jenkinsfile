@@ -69,6 +69,11 @@ pipeline {
                         "--build-arg NEXT_PUBLIC_POSTHOG_KEY=${env.NEXT_PUBLIC_POSTHOG_KEY} " +
                         "--build-arg NEXT_PUBLIC_POSTHOG_HOST=${env.NEXT_PUBLIC_POSTHOG_HOST} " +
                         "--build-arg NEXT_PUBLIC_POSTHOG_ENABLE=${env.NEXT_PUBLIC_POSTHOG_ENABLE} " +
+                        "--build-arg S3_ENDPOINT=http://minio.${env.DOMAIN}:9000 " +
+                        "--build-arg S3_ACCESS_KEY_ID=minio " +
+                        "--build-arg S3_SECRET_ACCESS_KEY=minio123 " +
+                        "--build-arg S3_BUCKET_NAME=evalify " +
+                        "--build-arg S3_REGION=us-east-1 " +
                         "-f Dockerfile.bun ."
                     )
                     // Push the final image to your Harbor registry
