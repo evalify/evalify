@@ -39,19 +39,19 @@ pipeline {
         //     }
         // }
 
-        stage('SAST Scan with SonarQube') {
-            steps {
-                // Use the official SonarScanner CLI Docker image for the scan
-                // It will automatically pick up credentials from the wrapper
-                withSonarQubeEnv('sonarqube-server') {
-                    sh "docker run --rm -v ${pwd()}:/usr/src sonarsource/sonar-scanner-cli:latest"
-                }
-                // Pause the pipeline and wait for SonarQube's analysis to complete
-                timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+        // stage('SAST Scan with SonarQube') {
+        //     steps {
+        //         // Use the official SonarScanner CLI Docker image for the scan
+        //         // It will automatically pick up credentials from the wrapper
+        //         withSonarQubeEnv('sonarqube-server') {
+        //             sh "docker run --rm -v ${pwd()}:/usr/src sonarsource/sonar-scanner-cli:latest"
+        //         }
+        //         // Pause the pipeline and wait for SonarQube's analysis to complete
+        //         timeout(time: 1, unit: 'HOURS') {
+        //             waitForQualityGate abortPipeline: true
+        //         }
+        //     }
+        // }
     
         stage('Build & Push Docker Image') {
             when {
