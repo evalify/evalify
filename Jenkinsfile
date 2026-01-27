@@ -55,7 +55,10 @@ pipeline {
     
         stage('Build & Push Docker Image') {
             when {
-                branch 'release'
+                anyOf {
+                    branch 'release'
+                    branch 'production'
+                }
             }
             steps {
                 script {
@@ -79,7 +82,10 @@ pipeline {
         
         stage('Container Vulnerability Scan') {
             when {
-                branch 'release'
+                anyOf {
+                    branch 'release'
+                    branch 'production'
+                }
             }
             steps {
                 // Use Trivy to scan the newly pushed image for OS or dependency vulnerabilities
@@ -90,7 +96,10 @@ pipeline {
         
         stage('Trigger Deploy') {
             when {
-                branch 'release'
+                anyOf {
+                    branch 'release'
+                    branch 'production'
+                }
             }
             steps {
                 echo "Deploying release version: ${IMAGE_TAG}"
