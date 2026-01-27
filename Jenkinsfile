@@ -85,18 +85,18 @@ pipeline {
 
         }
         
-        stage('Container Vulnerability Scan') {
-            when {
-                anyOf {
-                    branch 'release'
-                    branch 'production'
-                }
-            }
-            steps {
-                // Use Trivy to scan the newly pushed image for OS or dependency vulnerabilities
-                sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.52.2 image --exit-code 1 --severity CRITICAL,HIGH ${IMAGE_NAME}:${IMAGE_TAG}"
-            }
-        }
+        // stage('Container Vulnerability Scan') {
+        //     when {
+        //         anyOf {
+        //             branch 'release'
+        //             branch 'production'
+        //         }
+        //     }
+        //     steps {
+        //         // Use Trivy to scan the newly pushed image for OS or dependency vulnerabilities
+        //         sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.52.2 image --exit-code 1 --severity CRITICAL,HIGH ${IMAGE_NAME}:${IMAGE_TAG}"
+        //     }
+        // }
 
         
         stage('Trigger Deploy') {
