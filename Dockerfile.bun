@@ -33,7 +33,7 @@ ENV NEXT_PUBLIC_POSTHOG_ENABLE=${NEXT_PUBLIC_POSTHOG_ENABLE}
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN bun run build
+RUN bun run build:bun
 
 # Production image, copy all the files and run next
 FROM base AS runner
