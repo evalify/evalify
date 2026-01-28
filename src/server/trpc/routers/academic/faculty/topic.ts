@@ -119,6 +119,21 @@ export const topicRouter = createTRPCRouter({
                     throw new Error("You do not have write access to this bank");
                 }
 
+                // Check if a topic with the same name already exists in this bank
+                const [existingTopic] = await db
+                    .select({ id: topicsTable.id, name: topicsTable.name })
+                    .from(topicsTable)
+                    .where(
+                        and(eq(topicsTable.bankId, input.bankId), eq(topicsTable.name, input.name))
+                    )
+                    .limit(1);
+
+                if (existingTopic) {
+                    throw new Error(
+                        `A topic with the name "${input.name}" already exists in this bank. Please use a different name.`
+                    );
+                }
+
                 // Create topic
                 const [topic] = await db
                     .insert(topicsTable)
@@ -141,6 +156,9 @@ export const topicRouter = createTRPCRouter({
                 return topic;
             } catch (error) {
                 logger.error({ error, input }, "Error creating topic");
+                if (error instanceof Error) {
+                    throw error;
+                }
                 throw new Error("Failed to create topic. Please try again.");
             }
         }),
@@ -199,6 +217,21 @@ export const topicRouter = createTRPCRouter({
 
                 if (!hasWriteAccess) {
                     throw new Error("You do not have write access to this bank");
+                }
+
+                // Check if another topic with the same name already exists in this bank
+                const [existingTopic] = await db
+                    .select({ id: topicsTable.id, name: topicsTable.name })
+                    .from(topicsTable)
+                    .where(
+                        and(eq(topicsTable.bankId, topic.bankId), eq(topicsTable.name, input.name))
+                    )
+                    .limit(1);
+
+                if (existingTopic && existingTopic.id !== input.topicId) {
+                    throw new Error(
+                        `A topic with the name "${input.name}" already exists in this bank. Please use a different name.`
+                    );
                 }
 
                 // Update topic
