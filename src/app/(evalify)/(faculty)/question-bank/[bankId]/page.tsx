@@ -33,6 +33,15 @@ import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { cn } from "@/lib/utils";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuestionRender } from "@/components/question/question-renderer";
 import type { Question } from "@/types/questions";
@@ -96,6 +105,8 @@ export default function QuestionBankPage() {
     const [editingTopicName, setEditingTopicName] = useState("");
     const [topicToDelete, setTopicToDelete] = useState<{ id: string; name: string } | null>(null);
     const [questionToDelete, setQuestionToDelete] = useState<{ id: string } | null>(null);
+    const [topicErrorDialogOpen, setTopicErrorDialogOpen] = useState(false);
+    const [topicErrorMessage, setTopicErrorMessage] = useState("");
 
     // Question type filter state
     const [selectedQuestionTypes, setSelectedQuestionTypes] = useState<string[]>([]);
@@ -317,7 +328,10 @@ export default function QuestionBankPage() {
             track("topic_created", { bankId, topicId: newTopic.id });
         },
         onError: (err) => {
-            error(err.message || "Failed to create topic");
+            const message = err.message || "Failed to create topic";
+            // Always show error in alert dialog for better user visibility
+            setTopicErrorMessage(message);
+            setTopicErrorDialogOpen(true);
         },
     });
 
@@ -353,7 +367,10 @@ export default function QuestionBankPage() {
             track("topic_updated", { bankId, topicId: updatedTopic.id });
         },
         onError: (err) => {
-            error(err.message || "Failed to update topic");
+            const message = err.message || "Failed to update topic";
+            // Always show error in alert dialog for better user visibility
+            setTopicErrorMessage(message);
+            setTopicErrorDialogOpen(true);
         },
     });
 
@@ -1252,6 +1269,21 @@ export default function QuestionBankPage() {
                     if (!open) setQuestionToDelete(null);
                 }}
             />
+
+            {/* Topic Error Alert Dialog */}
+            <AlertDialog open={topicErrorDialogOpen} onOpenChange={setTopicErrorDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Unable to Save Topic</AlertDialogTitle>
+                        <AlertDialogDescription>{topicErrorMessage}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setTopicErrorDialogOpen(false)}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
