@@ -1298,22 +1298,19 @@ export default function QuestionBankPage() {
             />
 
             {/* Topic Error Alert Dialog */}
-            <ConfirmationDialog
-                title="Unable to Save Topic"
-                message={topicErrorMessage}
-                onAccept={() => setTopicErrorDialogOpen(false)}
-                confirmButtonText="OK"
-                isOpen={topicErrorDialogOpen}
-                onOpenChange={setTopicErrorDialogOpen}
-            />
-
-            {/* Upload Questions Dialog */}
-            <UploadQuestionsDialog
-                isOpen={isUploadDialogOpen}
-                onClose={() => setIsUploadDialogOpen(false)}
-                selectedTopics={topics ? topics.filter((t) => selectedTopics.includes(t.id)) : []}
-                bankId={bankId}
-            />
+            <AlertDialog open={topicErrorDialogOpen} onOpenChange={setTopicErrorDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Unable to Save Topic</AlertDialogTitle>
+                        <AlertDialogDescription>{topicErrorMessage}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setTopicErrorDialogOpen(false)}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
