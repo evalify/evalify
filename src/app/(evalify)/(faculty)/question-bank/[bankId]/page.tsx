@@ -15,6 +15,17 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Loader2,
@@ -624,8 +635,8 @@ export default function QuestionBankPage() {
                                             editingTopicId === topic.id
                                                 ? "bg-accent border-primary"
                                                 : selectedTopics.includes(topic.id)
-                                                  ? "bg-accent border-primary cursor-pointer hover:border-primary/50 hover:bg-accent"
-                                                  : "bg-background cursor-pointer hover:border-primary/50 hover:bg-accent"
+                                                    ? "bg-accent border-primary cursor-pointer hover:border-primary/50 hover:bg-accent"
+                                                    : "bg-background cursor-pointer hover:border-primary/50 hover:bg-accent"
                                         )}
                                         onClick={() => {
                                             if (editingTopicId !== topic.id) {
@@ -908,8 +919,8 @@ export default function QuestionBankPage() {
                                                 {selectedTopics.includes(NO_TOPIC_ID)
                                                     ? "No Topic"
                                                     : selectedTopics.length === 1
-                                                      ? "1 topic"
-                                                      : `${selectedTopics.length} topics`}
+                                                        ? "1 topic"
+                                                        : `${selectedTopics.length} topics`}
                                             </>
                                         )}
                                     </p>
@@ -1051,9 +1062,9 @@ export default function QuestionBankPage() {
                                                         onClick={() =>
                                                             handleSort(
                                                                 key as
-                                                                    | "difficulty"
-                                                                    | "marks"
-                                                                    | "courseOutcome"
+                                                                | "difficulty"
+                                                                | "marks"
+                                                                | "courseOutcome"
                                                             )
                                                         }
                                                     >
@@ -1091,7 +1102,7 @@ export default function QuestionBankPage() {
                                                             {sortBy === "courseOutcome"
                                                                 ? "Course Outcome"
                                                                 : sortBy.charAt(0).toUpperCase() +
-                                                                  sortBy.slice(1)}
+                                                                sortBy.slice(1)}
                                                             {sortOrder === "asc" ? " ↑" : " ↓"}
                                                         </Badge>
                                                     </div>
@@ -1219,37 +1230,37 @@ export default function QuestionBankPage() {
                                             {searchQuery.trim()
                                                 ? `No questions found matching "${searchQuery.trim()}". Try different keywords or clear your search.`
                                                 : selectedQuestionTypes.length > 0
-                                                  ? "No questions match your current filters. Try adjusting or clearing the filters above."
-                                                  : `No questions found for the selected topic${selectedTopics.length !== 1 ? "s" : ""}.`}
+                                                    ? "No questions match your current filters. Try adjusting or clearing the filters above."
+                                                    : `No questions found for the selected topic${selectedTopics.length !== 1 ? "s" : ""}.`}
                                         </p>
                                         {(selectedQuestionTypes.length > 0 ||
                                             sortBy ||
                                             searchQuery.trim()) && (
-                                            <>
-                                                <div className="flex gap-2">
-                                                    {searchQuery.trim() && (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={handleClearSearch}
-                                                        >
-                                                            <X className="h-4 w-4 mr-2" />
-                                                            Clear Search
-                                                        </Button>
-                                                    )}
-                                                    {selectedQuestionTypes.length > 0 && (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={handleClearQuestionTypeFilters}
-                                                        >
-                                                            <X className="h-4 w-4 mr-2" />
-                                                            Clear Filters
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
+                                                <>
+                                                    <div className="flex gap-2">
+                                                        {searchQuery.trim() && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={handleClearSearch}
+                                                            >
+                                                                <X className="h-4 w-4 mr-2" />
+                                                                Clear Search
+                                                            </Button>
+                                                        )}
+                                                        {selectedQuestionTypes.length > 0 && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={handleClearQuestionTypeFilters}
+                                                            >
+                                                                <X className="h-4 w-4 mr-2" />
+                                                                Clear Filters
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
                                         {hasEditAccess &&
                                             selectedQuestionTypes.length === 0 &&
                                             !sortBy &&
@@ -1298,19 +1309,22 @@ export default function QuestionBankPage() {
             />
 
             {/* Topic Error Alert Dialog */}
-            <AlertDialog open={topicErrorDialogOpen} onOpenChange={setTopicErrorDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Unable to Save Topic</AlertDialogTitle>
-                        <AlertDialogDescription>{topicErrorMessage}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setTopicErrorDialogOpen(false)}>
-                            OK
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <ConfirmationDialog
+                title="Unable to Save Topic"
+                message={topicErrorMessage}
+                onAccept={() => setTopicErrorDialogOpen(false)}
+                confirmButtonText="OK"
+                isOpen={topicErrorDialogOpen}
+                onOpenChange={setTopicErrorDialogOpen}
+            />
+
+            {/* Upload Questions Dialog */}
+            <UploadQuestionsDialog
+                isOpen={isUploadDialogOpen}
+                onClose={() => setIsUploadDialogOpen(false)}
+                selectedTopics={topics ? topics.filter((t) => selectedTopics.includes(t.id)) : []}
+                bankId={bankId}
+            />
         </div>
     );
 }
