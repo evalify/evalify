@@ -286,6 +286,7 @@ export function MCQUploadDialog({ isOpen, onClose, selectedTopics, bankId }: MCQ
                     difficulty: row.difficulty,
                     bloomTaxonomyLevel: row.bloomsTaxonomy,
                     courseOutcome: row.courseOutcome,
+                    topicIds,
                     questionData: {
                         options: questionOptions,
                     },
@@ -360,7 +361,7 @@ export function MCQUploadDialog({ isOpen, onClose, selectedTopics, bankId }: MCQ
                     ) : (
                         <div className="space-y-6 py-4">
                             {/* Field Requirements */}
-                            <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/30 dark:via-indigo-950/30 dark:to-purple-950/30 p-6 space-y-5 shadow-sm">
+                            <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-linear-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950/30 dark:via-indigo-950/30 dark:to-purple-950/30 p-6 space-y-5 shadow-sm">
                                 <div className="flex items-center gap-2 pb-2 border-b border-blue-200 dark:border-blue-800">
                                     <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                     <h3 className="text-lg font-bold text-blue-900 dark:text-blue-100">
