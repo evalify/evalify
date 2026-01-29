@@ -97,22 +97,5 @@ pipeline {
         //         sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.52.2 image --exit-code 1 --severity CRITICAL,HIGH ${IMAGE_NAME}:${IMAGE_TAG}"
         //     }
         // }
-
-        
-        stage('Trigger Deploy') {
-            when {
-                anyOf {
-                    branch 'release'
-                    branch 'production'
-                }
-            }
-            steps {
-                echo "Deploying release version: ${IMAGE_TAG}"
-                // Trigger the central deployment pipeline, passing the new image tag as a parameter
-                build job: 'Deployer_Pipeline', parameters: [
-                    string(name: 'APP_IMAGE_URL', value: "${IMAGE_NAME}:${IMAGE_TAG}")
-                ]
-            }
-        }
     }
 }
