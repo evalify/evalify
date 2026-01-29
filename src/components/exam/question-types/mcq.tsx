@@ -137,7 +137,7 @@ export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQue
                                         id={`mmcq-${question.id}-${option.id}`}
                                     />
                                 </div>
-                                <div className="flex-grow min-w-0">
+                                <div className="grow min-w-0">
                                     <ContentPreview
                                         content={option.optionText}
                                         noProse
@@ -173,7 +173,7 @@ export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQue
                                         id={`mcq-${question.id}-${option.id}`}
                                     />
                                 </div>
-                                <div className="flex-grow min-w-0">
+                                <div className="grow min-w-0">
                                     <ContentPreview
                                         content={option.optionText}
                                         noProse
