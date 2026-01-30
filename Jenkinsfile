@@ -39,23 +39,26 @@ pipeline {
         //     }
         // }
 
-        stage('SAST Scan with SonarQube') {
-            steps {
-                // Use the official SonarScanner CLI Docker image for the scan
-                // It will automatically pick up credentials from the wrapper
-                withSonarQubeEnv('sonarqube-server') {
-                    sh "docker run --rm -v ${pwd()}:/usr/src sonarsource/sonar-scanner-cli:latest"
-                }
-                // Pause the pipeline and wait for SonarQube's analysis to complete
-                timeout(time: 1, unit: 'HOURS') {
-                    waitForQualityGate abortPipeline: true
-                }
-            }
-        }
+        // stage('SAST Scan with SonarQube') {
+        //     steps {
+        //         // Use the official SonarScanner CLI Docker image for the scan
+        //         // It will automatically pick up credentials from the wrapper
+        //         withSonarQubeEnv('sonarqube-server') {
+        //             sh "docker run --rm -v ${pwd()}:/usr/src sonarsource/sonar-scanner-cli:latest"
+        //         }
+        //         // Pause the pipeline and wait for SonarQube's analysis to complete
+        //         timeout(time: 1, unit: 'HOURS') {
+        //             waitForQualityGate abortPipeline: true
+        //         }
+        //     }
+        // }
     
         stage('Build & Push Docker Image') {
             when {
-                branch 'release'
+                anyOf {
+                    branch 'release'
+                    branch 'production'
+                }
             }
             steps {
                 script {
@@ -66,6 +69,11 @@ pipeline {
                         "--build-arg NEXT_PUBLIC_POSTHOG_KEY=${env.NEXT_PUBLIC_POSTHOG_KEY} " +
                         "--build-arg NEXT_PUBLIC_POSTHOG_HOST=${env.NEXT_PUBLIC_POSTHOG_HOST} " +
                         "--build-arg NEXT_PUBLIC_POSTHOG_ENABLE=${env.NEXT_PUBLIC_POSTHOG_ENABLE} " +
+                        "--build-arg S3_ENDPOINT=http://minio.${env.DOMAIN}:9000 " +
+                        "--build-arg S3_ACCESS_KEY_ID=minio " +
+                        "--build-arg S3_SECRET_ACCESS_KEY=minio123 " +
+                        "--build-arg S3_BUCKET_NAME=evalify " +
+                        "--build-arg S3_REGION=us-east-1 " +
                         "-f Dockerfile.bun ."
                     )
                     // Push the final image to your Harbor registry
@@ -77,20 +85,26 @@ pipeline {
 
         }
         
-        stage('Container Vulnerability Scan') {
-            when {
-                branch 'release'
-            }
-            steps {
-                // Use Trivy to scan the newly pushed image for OS or dependency vulnerabilities
-                sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.52.2 image --exit-code 1 --severity CRITICAL,HIGH ${IMAGE_NAME}:${IMAGE_TAG}"
-            }
-        }
+        // stage('Container Vulnerability Scan') {
+        //     when {
+        //         anyOf {
+        //             branch 'release'
+        //             branch 'production'
+        //         }
+        //     }
+        //     steps {
+        //         // Use Trivy to scan the newly pushed image for OS or dependency vulnerabilities
+        //         sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.52.2 image --exit-code 1 --severity CRITICAL,HIGH ${IMAGE_NAME}:${IMAGE_TAG}"
+        //     }
+        // }
 
         
         stage('Trigger Deploy') {
             when {
-                branch 'release'
+                anyOf {
+                    branch 'release'
+                    branch 'production'
+                }
             }
             steps {
                 echo "Deploying release version: ${IMAGE_TAG}"

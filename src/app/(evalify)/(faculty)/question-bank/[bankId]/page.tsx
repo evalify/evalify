@@ -28,16 +28,27 @@ import {
     FileQuestion,
     ArrowUpDown,
     Search,
+    Upload,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { cn } from "@/lib/utils";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { QuestionRender } from "@/components/question/question-renderer";
 import type { Question } from "@/types/questions";
 import { useQuestionNavigation } from "@/contexts/question-navigation-context";
 import { useSidebar } from "@/components/ui/sidebar";
+import { UploadQuestionsDialog } from "@/components/question-bank/upload-questions-dialog";
 
 export interface QuestionListRef {
     scrollToQuestion: (questionId: string) => void;
@@ -96,6 +107,9 @@ export default function QuestionBankPage() {
     const [editingTopicName, setEditingTopicName] = useState("");
     const [topicToDelete, setTopicToDelete] = useState<{ id: string; name: string } | null>(null);
     const [questionToDelete, setQuestionToDelete] = useState<{ id: string } | null>(null);
+    const [topicErrorDialogOpen, setTopicErrorDialogOpen] = useState(false);
+    const [topicErrorMessage, setTopicErrorMessage] = useState("");
+    const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
     // Question type filter state
     const [selectedQuestionTypes, setSelectedQuestionTypes] = useState<string[]>([]);
@@ -317,7 +331,10 @@ export default function QuestionBankPage() {
             track("topic_created", { bankId, topicId: newTopic.id });
         },
         onError: (err) => {
-            error(err.message || "Failed to create topic");
+            const message = err.message || "Failed to create topic";
+            // Always show error in alert dialog for better user visibility
+            setTopicErrorMessage(message);
+            setTopicErrorDialogOpen(true);
         },
     });
 
@@ -353,7 +370,10 @@ export default function QuestionBankPage() {
             track("topic_updated", { bankId, topicId: updatedTopic.id });
         },
         onError: (err) => {
-            error(err.message || "Failed to update topic");
+            const message = err.message || "Failed to update topic";
+            // Always show error in alert dialog for better user visibility
+            setTopicErrorMessage(message);
+            setTopicErrorDialogOpen(true);
         },
     });
 
@@ -817,24 +837,55 @@ export default function QuestionBankPage() {
                                 Semester {bank.semester}
                             </p>
                         </div>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span>
-                                    <Button
-                                        onClick={hasEditAccess ? handleCreateQuestion : undefined}
-                                        disabled={!hasEditAccess}
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        Create Question
-                                    </Button>
-                                </span>
-                            </TooltipTrigger>
-                            {!hasEditAccess && (
-                                <TooltipContent>
-                                    <p>You have read-only access for this bank</p>
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
+                        <div className="flex gap-2">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span>
+                                        <Button
+                                            variant="outline"
+                                            onClick={
+                                                hasEditAccess
+                                                    ? () => setIsUploadDialogOpen(true)
+                                                    : undefined
+                                            }
+                                            disabled={!hasEditAccess || selectedTopics.length === 0}
+                                        >
+                                            <Upload className="h-4 w-4 mr-2" />
+                                            Upload Questions
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                {!hasEditAccess ? (
+                                    <TooltipContent>
+                                        <p>You have read-only access for this bank</p>
+                                    </TooltipContent>
+                                ) : selectedTopics.length === 0 ? (
+                                    <TooltipContent>
+                                        <p>Select at least one topic to upload questions</p>
+                                    </TooltipContent>
+                                ) : null}
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span>
+                                        <Button
+                                            onClick={
+                                                hasEditAccess ? handleCreateQuestion : undefined
+                                            }
+                                            disabled={!hasEditAccess}
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Create Question
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                {!hasEditAccess && (
+                                    <TooltipContent>
+                                        <p>You have read-only access for this bank</p>
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        </div>
                     </div>
                 </div>
 
@@ -1251,6 +1302,29 @@ export default function QuestionBankPage() {
                 onOpenChange={(open) => {
                     if (!open) setQuestionToDelete(null);
                 }}
+            />
+
+            {/* Topic Error Alert Dialog */}
+            <AlertDialog open={topicErrorDialogOpen} onOpenChange={setTopicErrorDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Unable to Save Topic</AlertDialogTitle>
+                        <AlertDialogDescription>{topicErrorMessage}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setTopicErrorDialogOpen(false)}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Upload Questions Dialog */}
+            <UploadQuestionsDialog
+                isOpen={isUploadDialogOpen}
+                onClose={() => setIsUploadDialogOpen(false)}
+                selectedTopics={topics ? topics.filter((t) => selectedTopics.includes(t.id)) : []}
+                bankId={bankId}
             />
         </div>
     );

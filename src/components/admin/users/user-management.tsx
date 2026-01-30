@@ -52,6 +52,8 @@ export function UserManagement() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
+    const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
     const { track } = useAnalytics();
     const toast = useToast();
@@ -85,7 +87,18 @@ export function UserManagement() {
             toast.success("User created successfully");
         },
         onError: (err) => {
-            toast.error(err.message || "Failed to create user");
+            const message = err.message || "Failed to create user";
+            // Show alert dialog for duplicate email errors
+            if (
+                message.toLowerCase().includes("email") ||
+                message.toLowerCase().includes("already exists") ||
+                message.toLowerCase().includes("duplicate")
+            ) {
+                setErrorMessage(message);
+                setErrorDialogOpen(true);
+            } else {
+                toast.error(message);
+            }
         },
     });
     const updateUser = trpc.user.update.useMutation({
@@ -123,7 +136,6 @@ export function UserManagement() {
         } catch (error) {
             // Error is already handled by the mutation's onError callback
             // Keep modal open so user can fix the issue
-            console.error("Error creating user:", error);
         }
     };
 
@@ -149,7 +161,6 @@ export function UserManagement() {
         } catch (error) {
             // Error is already handled by the mutation's onError callback
             // Keep modal open so user can fix the issue
-            console.error("Error updating user:", error);
         }
     };
 
@@ -512,6 +523,21 @@ export function UserManagement() {
                     usersResult.refetch();
                 }}
             />
+
+            {/* Error Alert Dialog */}
+            <AlertDialog open={errorDialogOpen} onOpenChange={setErrorDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Unable to Create User</AlertDialogTitle>
+                        <AlertDialogDescription>{errorMessage}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogAction onClick={() => setErrorDialogOpen(false)}>
+                            OK
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
