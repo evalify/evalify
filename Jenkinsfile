@@ -79,6 +79,8 @@ pipeline {
                     // Push the final image to your Harbor registry
                     docker.withRegistry("https://${HARBOR_URL}", 'harbor-credentials') {
                         customImage.push()
+                        // Also push 'latest' tag so deployer pipeline can use it
+                        customImage.push('latest')
                     }
                 }
             }
