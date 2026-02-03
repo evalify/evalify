@@ -64,7 +64,7 @@ export function FillInBlanksRenderer({
     }
 
     const totalBlanks = question.blankConfig.blankCount;
-    const answeredBlanks = Object.values(answers).filter((a) => a && a.trim()).length;
+    const answeredBlanks = Object.values(answers).filter((a) => a && String(a).trim()).length;
 
     // Calculate score if showing solution
     let correctAnswers = 0;
@@ -74,7 +74,9 @@ export function FillInBlanksRenderer({
     if (showSolution && compareWithStudentAnswer) {
         for (let i = 0; i < totalBlanks; i++) {
             const blankIndex = i + 1;
-            const userAnswer = answers[blankIndex] || "";
+            const rawAnswer = answers[blankIndex];
+            const userAnswer =
+                rawAnswer !== undefined && rawAnswer !== null ? String(rawAnswer) : "";
             const weight = question.blankConfig.blankWeights?.[i] || 1;
             totalScore += weight;
 
@@ -145,7 +147,9 @@ export function FillInBlanksRenderer({
             <div className="space-y-4">
                 {Array.from({ length: question.blankConfig.blankCount }, (_, i) => {
                     const blankIndex = i + 1;
-                    const userAnswer = answers[blankIndex] || "";
+                    const rawAnswer = answers[blankIndex];
+                    const userAnswer =
+                        rawAnswer !== undefined && rawAnswer !== null ? String(rawAnswer) : "";
                     const isCorrect = checkAnswer(blankIndex, userAnswer);
                     const answerKey = i;
                     const weight = question.blankConfig.blankWeights?.[answerKey] || 1;
