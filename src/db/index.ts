@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import fs from "fs";
+import path from "path";
 import * as schema from "./schema";
 
 const pool = new Pool({
@@ -11,6 +13,17 @@ const pool = new Pool({
         ? parseInt(process.env.DB_CONNECTION_TIMEOUT)
         : 5000,
     idleTimeoutMillis: process.env.DB_IDLE_TIMEOUT ? parseInt(process.env.DB_IDLE_TIMEOUT) : 10000,
+    ssl:
+        process.env.DATABASE_ENABLE_SSL === "true"
+            ? {
+                  rejectUnauthorized: true,
+                  ca: process.env.DATABASE_CA_PATH
+                      ? fs
+                            .readFileSync(path.resolve(process.cwd(), process.env.DATABASE_CA_PATH))
+                            .toString()
+                      : undefined,
+              }
+            : false,
 });
 
 const db = drizzle({ client: pool, schema });
