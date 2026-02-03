@@ -17,7 +17,7 @@ export default function AdminLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <AuthGuard requiredRoles={[UserType.ADMIN]}>
+        <AuthGuard requiredGroups={[UserType.ADMIN]}>
             <div className="space-y-6">{children}</div>
         </AuthGuard>
     );
