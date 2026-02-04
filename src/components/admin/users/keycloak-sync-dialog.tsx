@@ -291,14 +291,14 @@ export function KeycloakSyncDialog({ isOpen, onClose, onSyncComplete }: Keycloak
                                                             variant="outline"
                                                             className="text-xs"
                                                         >
-                                                            {user.groups.includes("/admin")
+                                                            {user.groups.includes("admin")
                                                                 ? "Admin"
-                                                                : user.groups.includes("/manager")
+                                                                : user.groups.includes("manager")
                                                                   ? "Manager"
-                                                                  : user.groups.includes("/faculty")
+                                                                  : user.groups.includes("faculty")
                                                                     ? "Faculty"
                                                                     : user.groups.includes(
-                                                                            "/student"
+                                                                            "student"
                                                                         )
                                                                       ? "Student"
                                                                       : "Student"}

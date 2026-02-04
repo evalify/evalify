@@ -52,7 +52,9 @@ export function processDecodedToken(decoded: DecodedJWT | null): {
     if (decoded && typeof decoded === "object" && !Array.isArray(decoded)) {
         const decodedJWT = decoded as DecodedJWT;
         roles = decodedJWT.realm_access?.roles || [];
-        groups = (decodedJWT.groups || []).map((group: string) => group.replace(/^\//, ""));
+        groups = (decodedJWT.groups || []).flatMap((group: string) =>
+            group.split("/").filter(Boolean)
+        );
     }
     return { roles, groups };
 }
