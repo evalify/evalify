@@ -1236,31 +1236,31 @@ export default function QuestionBankPage() {
                                         {(selectedQuestionTypes.length > 0 ||
                                             sortBy ||
                                             searchQuery.trim()) && (
-                                                <>
-                                                    <div className="flex gap-2">
-                                                        {searchQuery.trim() && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={handleClearSearch}
-                                                            >
-                                                                <X className="h-4 w-4 mr-2" />
-                                                                Clear Search
-                                                            </Button>
-                                                        )}
-                                                        {selectedQuestionTypes.length > 0 && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={handleClearQuestionTypeFilters}
-                                                            >
-                                                                <X className="h-4 w-4 mr-2" />
-                                                                Clear Filters
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </>
-                                            )}
+                                            <>
+                                                <div className="flex gap-2">
+                                                    {searchQuery.trim() && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={handleClearSearch}
+                                                        >
+                                                            <X className="h-4 w-4 mr-2" />
+                                                            Clear Search
+                                                        </Button>
+                                                    )}
+                                                    {selectedQuestionTypes.length > 0 && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={handleClearQuestionTypeFilters}
+                                                        >
+                                                            <X className="h-4 w-4 mr-2" />
+                                                            Clear Filters
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                         {hasEditAccess &&
                                             selectedQuestionTypes.length === 0 &&
                                             !sortBy &&
@@ -1309,19 +1309,14 @@ export default function QuestionBankPage() {
             />
 
             {/* Topic Error Alert Dialog */}
-            <AlertDialog open={topicErrorDialogOpen} onOpenChange={setTopicErrorDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Unable to Save Topic</AlertDialogTitle>
-                        <AlertDialogDescription>{topicErrorMessage}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogAction onClick={() => setTopicErrorDialogOpen(false)}>
-                            OK
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            <ConfirmationDialog
+                title="Unable to Save Topic"
+                message={topicErrorMessage}
+                onAccept={() => setTopicErrorDialogOpen(false)}
+                confirmButtonText="OK"
+                isOpen={topicErrorDialogOpen}
+                onOpenChange={setTopicErrorDialogOpen}
+            />
 
             {/* Upload Questions Dialog */}
             <UploadQuestionsDialog
