@@ -113,7 +113,7 @@ export const userRouter = createTRPCRouter({
         .input(
             z.object({
                 name: z.string().min(1).max(255),
-                email: z.string().email(),
+                email: z.email(),
                 profileId: z.string().min(1).max(255),
                 profileImage: z.string().max(512).optional(),
                 role: z.enum(["ADMIN", "MANAGER", "FACULTY", "STUDENT"]),
@@ -195,7 +195,7 @@ export const userRouter = createTRPCRouter({
             z.object({
                 id: z.uuid(),
                 name: z.string().min(1).max(255).optional(),
-                email: z.string().email().optional(),
+                email: z.email().optional(),
                 profileId: z.string().min(1).max(255).optional(),
                 profileImage: z.string().max(512).optional(),
                 role: z.enum(["ADMIN", "MANAGER", "FACULTY", "STUDENT"]).optional(),
