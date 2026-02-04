@@ -65,6 +65,28 @@ export const departmentRouter = createTRPCRouter({
             }
         }),
 
+    listAll: adminProcedure.query(async () => {
+        try {
+            const departments = await db
+                .select({
+                    id: departmentsTable.id,
+                    name: departmentsTable.name,
+                    isActive: departmentsTable.isActive,
+                    createdAt: departmentsTable.created_at,
+                    updatedAt: departmentsTable.updated_at,
+                })
+                .from(departmentsTable)
+                .orderBy(desc(departmentsTable.created_at));
+
+            logger.info({ count: departments.length }, "All departments listed");
+
+            return departments;
+        } catch (error) {
+            logger.error({ error }, "Error listing all departments");
+            throw error;
+        }
+    }),
+
     /**
      * Get a single department by ID
      */

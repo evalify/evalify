@@ -38,6 +38,61 @@ function parsePipeSeparated(value: string | undefined): string[] {
         .filter((item) => item.length > 0);
 }
 
+// Helper function to parse and validate semester name
+// Expected format: S(number)-(dept)-(year)
+// Example: S2-AID-2024 or S2-AID-24
+function parseSemesterName(semesterName: string): {
+    isValid: boolean;
+    semesterNumber?: number;
+    departmentCode?: string;
+    year?: number;
+    errors: string[];
+} {
+    const errors: string[] = [];
+
+    // Check format using regex: S followed by digits, hyphen, department code, hyphen, year
+    const pattern = /^S(\d+)-([A-Z]+)-(\d{2}|\d{4})$/i;
+    const match = semesterName.match(pattern);
+
+    if (!match) {
+        errors.push(
+            `Invalid semester name format. Expected format: S(number)-(DEPT)-(year). Example: S2-AID-2024 or S2-AID-24`
+        );
+        return { isValid: false, errors };
+    }
+
+    const semesterNumber = parseInt(match[1], 10);
+    const departmentCode = match[2].toUpperCase();
+    let year = parseInt(match[3], 10);
+
+    // Validate semester number (1-10)
+    if (semesterNumber < 1 || semesterNumber > 10) {
+        errors.push(`Semester number must be between 1 and 10. Found: S${semesterNumber}`);
+    }
+
+    // Normalize year (24 -> 2024, 2024 -> 2024)
+    if (year < 100) {
+        // Two-digit year: assume 20xx
+        year = 2000 + year;
+    }
+
+    // Validate year is reasonable (not too far in past or future)
+    const currentYear = new Date().getFullYear();
+    if (year < currentYear - 10) {
+        errors.push(`Year ${year} is too far in the past`);
+    } else if (year > currentYear + 5) {
+        errors.push(`Year ${year} is too far in the future`);
+    }
+
+    return {
+        isValid: errors.length === 0,
+        semesterNumber,
+        departmentCode,
+        year,
+        errors,
+    };
+}
+
 export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -49,6 +104,18 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
 
     // tRPC queries for validation
     const utils = trpc.useUtils();
+
+    const bulkCreateSemesters = trpc.semester.bulkCreate.useMutation({
+        onSuccess: () => {
+            utils.semester.list.invalidate();
+            utils.semester.listAll.invalidate();
+        },
+        onError: (err) => {
+            console.error("Bulk create semesters error:", err);
+            error(err.message || "Failed to create semesters");
+        },
+    });
+
     const bulkCreateCourses = trpc.course.bulkCreate.useMutation({
         onSuccess: (data) => {
             success(`Successfully created ${data.count} courses!`);
@@ -162,10 +229,11 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
         const validatedRows: ParsedCourseRow[] = [];
 
         // Fetch all necessary data for validation (using listAll endpoints without pagination)
-        const [semesters, batches, users] = await Promise.all([
+        const [semesters, batches, users, departments] = await Promise.all([
             utils.semester.listAll.fetch(),
             utils.batch.listAll.fetch(),
             utils.user.listAll.fetch({ role: "FACULTY" }),
+            utils.department.listAll.fetch(),
         ]);
 
         const facultyUsers = users;
@@ -176,6 +244,21 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
 
         // Create faculty map using profileId
         const facultyMap = new Map(facultyUsers.map((f) => [f.profileId.toLowerCase(), f]));
+
+        // Create department map using the first 3 letters of department name (e.g., "Artificial Intelligence and Data Science" -> "AID")
+        const departmentCodeMap = new Map(
+            departments.map((d) => [d.name.substring(0, 3).toUpperCase(), d])
+        );
+
+        // Track semesters to be created (to avoid duplicate creation within same upload)
+        const semestersToCreate = new Map<
+            string,
+            {
+                name: string;
+                year: number;
+                departmentId: string;
+            }
+        >();
 
         // Track processed courses to detect duplicates within the upload
         // Key format: semesterId-courseCode-sortedBatchIds-sortedInstructorIds
@@ -228,16 +311,66 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
                 courseType = rawCourseType as "CORE" | "ELECTIVE" | "MICRO_CREDENTIAL";
             }
 
-            // Validation 3: Semester must exist
+            // Validation 3: Parse and validate semester name
             let semesterId: string | undefined;
-            const semester = semesterMap.get(semesterName.toLowerCase());
-            if (!semester) {
-                errors.push(`Semester "${semesterName}" not found in the system`);
-            } else {
-                semesterId = semester.id;
+            let semesterNumber: number | undefined;
+            let semesterDepartmentCode: string | undefined;
+            let semesterYear: number | undefined;
+            let semesterDepartmentId: string | undefined;
+            let needsToCreateSemester = false;
+
+            if (semesterName) {
+                const semesterParseResult = parseSemesterName(semesterName);
+
+                if (!semesterParseResult.isValid) {
+                    errors.push(...semesterParseResult.errors);
+                } else {
+                    semesterNumber = semesterParseResult.semesterNumber;
+                    semesterDepartmentCode = semesterParseResult.departmentCode;
+                    semesterYear = semesterParseResult.year;
+
+                    // Check if department exists
+                    const department = departmentCodeMap.get(semesterDepartmentCode!);
+                    if (!department) {
+                        errors.push(
+                            `Department "${semesterDepartmentCode}" not found. Please ensure the department exists in the system.`
+                        );
+                    } else {
+                        semesterDepartmentId = department.id;
+
+                        // Check if semester exists
+                        const semester = semesterMap.get(semesterName.toLowerCase());
+                        if (semester) {
+                            semesterId = semester.id;
+
+                            // Verify semester belongs to the correct department
+                            if (semester.departmentId !== department.id) {
+                                errors.push(
+                                    `Semester "${semesterName}" exists but belongs to a different department`
+                                );
+                            }
+                        } else {
+                            // Semester doesn't exist, mark for creation
+                            needsToCreateSemester = true;
+
+                            // Check if already marked for creation in this upload
+                            const semesterKey = `${semesterName.toLowerCase()}-${department.id}`;
+                            if (!semestersToCreate.has(semesterKey)) {
+                                semestersToCreate.set(semesterKey, {
+                                    name: semesterName,
+                                    year: semesterYear!,
+                                    departmentId: department.id,
+                                });
+                            }
+
+                            // Use a temporary ID for validation purposes
+                            semesterId = `new-${semesterKey}`;
+                        }
+                    }
+                }
             }
 
-            // Validation 5: All instructors must exist and be FACULTY
+            // Validation 4: All instructors must exist and be FACULTY
             const instructorIds: string[] = [];
             const invalidInstructors: string[] = [];
 
@@ -300,15 +433,21 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
                 semesterId,
                 instructorIds,
                 batchIds,
+                semesterNumber,
+                semesterDepartmentCode,
+                semesterYear,
+                semesterDepartmentId,
+                needsToCreateSemester,
                 isValid: errors.length === 0,
                 errors,
             });
         }
 
         // After all rows are validated, check for exact duplicates in the database
-        // Only check rows that passed basic validation and have all required IDs
+        // Only check rows that passed basic validation, have all required IDs, and are NOT creating new semesters
+        // (rows with new semesters have temporary IDs like "new-..." which aren't valid UUIDs)
         const rowsToCheckForDuplicates = validatedRows.filter(
-            (row) => row.semesterId && row.courseCode && row.isValid
+            (row) => row.semesterId && row.courseCode && row.isValid && !row.needsToCreateSemester
         );
 
         if (rowsToCheckForDuplicates.length > 0) {
@@ -349,7 +488,50 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
                 return;
             }
 
-            // Prepare data for bulk creation
+            // Step 1: Create new semesters if needed
+            const semestersToCreate = validRows
+                .filter((row) => row.needsToCreateSemester)
+                .reduce((acc, row) => {
+                    const key = `${row.semesterName.toLowerCase()}-${row.semesterDepartmentId}`;
+                    if (!acc.has(key)) {
+                        acc.set(key, {
+                            name: row.semesterName,
+                            year: row.semesterYear!,
+                            departmentId: row.semesterDepartmentId!,
+                            isActive: "ACTIVE" as const,
+                        });
+                    }
+                    return acc;
+                }, new Map<string, { name: string; year: number; departmentId: string; isActive: "ACTIVE" }>());
+
+            const createdSemesterMap = new Map<string, string>(); // Maps semester name to ID
+
+            if (semestersToCreate.size > 0) {
+                const semestersArray = Array.from(semestersToCreate.values());
+
+                // Create semesters using mutation
+                await bulkCreateSemesters.mutateAsync({
+                    semesters: semestersArray,
+                });
+
+                // Fetch the newly created semesters to get their IDs
+                const newSemesters = await utils.semester.listAll.fetch();
+                for (const semester of newSemesters) {
+                    createdSemesterMap.set(semester.name.toLowerCase(), semester.id);
+                }
+            }
+
+            // Step 2: Update semesterId for rows that needed semester creation
+            for (const row of validRows) {
+                if (row.needsToCreateSemester) {
+                    const realSemesterId = createdSemesterMap.get(row.semesterName.toLowerCase());
+                    if (realSemesterId) {
+                        row.semesterId = realSemesterId;
+                    }
+                }
+            }
+
+            // Step 3: Prepare data for bulk course creation
             const coursesToCreate = validRows.map((row) => ({
                 name: row.courseName,
                 code: row.courseCode,
@@ -362,8 +544,21 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
             }));
 
             await bulkCreateCourses.mutateAsync({ courses: coursesToCreate });
-            track("courses_bulk_created", { count: coursesToCreate.length });
-        } catch (_err) {
+
+            const semestersCreatedCount = semestersToCreate.size;
+            if (semestersCreatedCount > 0) {
+                success(
+                    `Successfully created ${semestersCreatedCount} semester${semestersCreatedCount > 1 ? "s" : ""} and ${coursesToCreate.length} course${coursesToCreate.length > 1 ? "s" : ""}!`
+                );
+            }
+
+            track("courses_bulk_created", {
+                coursesCount: coursesToCreate.length,
+                semestersCreated: semestersCreatedCount,
+            });
+        } catch (err) {
+            console.error("Error in bulk creation:", err);
+            error("Failed to create semesters and courses");
         } finally {
             setIsProcessing(false);
         }
@@ -381,13 +576,32 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
                 <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 <AlertDescription className="text-blue-900 dark:text-blue-100">
                     <div className="space-y-4">
-                        <p className="font-semibold text-base">How to Bulk Create Courses:</p>
+                        <p className="font-semibold text-base">
+                            How to Bulk Create Semesters & Courses:
+                        </p>
                         <ol className="list-decimal list-inside space-y-3 ml-1 text-[15px] leading-relaxed">
                             <li>Download the Excel template using the button below</li>
                             <li className="font-semibold text-blue-800 dark:text-blue-200">
                                 Important: Delete the example row before adding your data
                             </li>
-                            <li>Verify that the semester name exists and is spelled correctly</li>
+                            <li>
+                                Fill in the semester name in the format:{" "}
+                                <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded text-sm">
+                                    S(number)-(DEPT)-(year)
+                                </code>
+                                <br />
+                                <span className="text-sm text-gray-600 dark:text-gray-400 ml-6">
+                                    Examples: S2-AID-2024 or S2-AID-24
+                                </span>
+                            </li>
+                            <li>Semester number must be between 1 and 10</li>
+                            <li>
+                                Department code must match an existing department (first 3 letters)
+                            </li>
+                            <li>Year can be 2-digit (24) or 4-digit (2024)</li>
+                            <li>
+                                If the semester doesn&apos;t exist, it will be created automatically
+                            </li>
                             <li>Fill in all required information for each course</li>
                             <li>Save the Excel file and upload it below</li>
                         </ol>
@@ -409,9 +623,23 @@ export function CourseBulkCreateForm({ onCancel }: CourseBulkCreateFormProps) {
                                 <p className="font-semibold text-gray-900 dark:text-gray-100 mb-1.5 text-[15px]">
                                     Semester Name <span className="text-red-500">*</span>
                                 </p>
+                                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-2">
+                                    Format:{" "}
+                                    <code className="bg-blue-100 dark:bg-blue-900 px-2 py-0.5 rounded">
+                                        S(number)-(DEPT)-(year)
+                                    </code>
+                                </p>
                                 <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                                    The name of the semester (e.g., S2-AID-25). Must match an
-                                    existing semester in the system.
+                                    Examples: S2-AID-2024, S1-CSE-24, S8-ECE-2025
+                                </p>
+                                <p className="text-gray-600 dark:text-gray-400 text-xs mt-2 italic">
+                                    • Semester number: 1-10
+                                    <br />
+                                    • Department: 3-letter code (e.g., AID, CSE, ECE)
+                                    <br />
+                                    • Year: 2-digit (24) or 4-digit (2024)
+                                    <br />• If semester doesn&apos;t exist, it will be created
+                                    automatically
                                 </p>
                             </div>
 

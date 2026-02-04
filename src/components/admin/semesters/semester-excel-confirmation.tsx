@@ -20,6 +20,12 @@ export interface ParsedCourseRow {
     semesterId?: string;
     instructorIds?: string[];
     batchIds?: string[];
+    // Semester validation results
+    semesterNumber?: number;
+    semesterDepartmentCode?: string;
+    semesterYear?: number;
+    semesterDepartmentId?: string;
+    needsToCreateSemester?: boolean;
     isValid: boolean;
     errors: string[];
 }
@@ -41,10 +47,27 @@ export function SemesterExcelConfirmation({
     const invalidRows = parsedRows.filter((row) => !row.isValid);
     const hasErrors = invalidRows.length > 0;
 
+    // Calculate unique semesters to be created
+    const semestersToCreate = validRows
+        .filter((row) => row.needsToCreateSemester)
+        .reduce((acc, row) => {
+            const key = `${row.semesterName.toLowerCase()}`;
+            if (!acc.has(key)) {
+                acc.set(key, {
+                    name: row.semesterName,
+                    year: row.semesterYear,
+                    department: row.semesterDepartmentCode,
+                });
+            }
+            return acc;
+        }, new Map());
+
+    const semestersToCreateCount = semestersToCreate.size;
+
     return (
         <div className="space-y-6">
             {/* Summary Section */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card
                     className={
                         hasErrors
@@ -59,6 +82,20 @@ export function SemesterExcelConfirmation({
                                 <p className="text-2xl font-bold">{parsedRows.length}</p>
                             </div>
                             <Layers className="h-8 w-8 text-gray-400" />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-blue-200 dark:border-blue-800">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-muted-foreground">New Semesters</p>
+                                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                    {semestersToCreateCount}
+                                </p>
+                            </div>
+                            <CheckCircle2 className="h-8 w-8 text-blue-600 dark:text-blue-400" />
                         </div>
                     </CardContent>
                 </Card>
@@ -91,6 +128,30 @@ export function SemesterExcelConfirmation({
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Semesters to Create Alert */}
+            {semestersToCreateCount > 0 && !hasErrors && (
+                <Alert className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/20">
+                    <CheckCircle2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertDescription>
+                        <p className="font-semibold mb-2 text-blue-900 dark:text-blue-100">
+                            {semestersToCreateCount} new semester
+                            {semestersToCreateCount > 1 ? "s" : ""} will be created:
+                        </p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {Array.from(semestersToCreate.values()).map((sem, idx) => (
+                                <Badge
+                                    key={idx}
+                                    variant="outline"
+                                    className="bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200"
+                                >
+                                    {sem.name} ({sem.department} • {sem.year})
+                                </Badge>
+                            ))}
+                        </div>
+                    </AlertDescription>
+                </Alert>
+            )}
 
             {/* Error Alert */}
             {hasErrors && (
@@ -167,12 +228,29 @@ export function SemesterExcelConfirmation({
                                             {/* Details Grid */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                                                 <div>
-                                                    <p className="text-muted-foreground font-medium mb-1">
+                                                    <p className="text-muted-foreground font-medium mb-1 flex items-center gap-2">
                                                         Semester:
+                                                        {row.needsToCreateSemester && (
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="text-xs bg-blue-50 dark:bg-blue-950 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                                                            >
+                                                                Will be created
+                                                            </Badge>
+                                                        )}
                                                     </p>
                                                     <p className="font-mono text-xs bg-white dark:bg-gray-900 px-2 py-1 rounded">
                                                         {row.semesterName}
                                                     </p>
+                                                    {row.needsToCreateSemester &&
+                                                        row.semesterNumber &&
+                                                        row.semesterYear && (
+                                                            <p className="text-xs text-muted-foreground mt-1">
+                                                                Semester {row.semesterNumber} •{" "}
+                                                                {row.semesterDepartmentCode} • Year{" "}
+                                                                {row.semesterYear}
+                                                            </p>
+                                                        )}
                                                 </div>
 
                                                 {row.courseDescription && (
@@ -268,10 +346,14 @@ export function SemesterExcelConfirmation({
                     {isProcessing ? (
                         <>
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                            Creating Courses...
+                            Creating...
                         </>
                     ) : (
-                        `Confirm & Create ${validRows.length} Course${validRows.length !== 1 ? "s" : ""}`
+                        <>
+                            {semestersToCreateCount > 0
+                                ? `Create ${semestersToCreateCount} Semester${semestersToCreateCount > 1 ? "s" : ""} & ${validRows.length} Course${validRows.length > 1 ? "s" : ""}`
+                                : `Create ${validRows.length} Course${validRows.length > 1 ? "s" : ""}`}
+                        </>
                     )}
                 </Button>
             </div>

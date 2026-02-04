@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Calendar, Filter, Plus, Search, BookOpen, FolderPlus } from "lucide-react";
 import { DataTable } from "@/components/admin/shared/data-table";
 import { SemesterForm } from "./semester-form";
-import { SemesterBulkForm } from "./semester-bulk-form";
 import { SemesterManagersModal } from "./semester-managers-modal";
 import { CourseBulkCreateForm } from "./semester-excel-form";
 import { useAnalytics } from "@/hooks/use-analytics";
@@ -45,7 +44,6 @@ export function SemesterManagement() {
     const [yearFilter, setYearFilter] = useState<string>("ALL");
     const [currentPage, setCurrentPage] = useState(1);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isBulkCreateModalOpen, setIsBulkCreateModalOpen] = useState(false);
     const [isCourseBulkCreateModalOpen, setIsCourseBulkCreateModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedSemester, setSelectedSemester] = useState<Semester | null>(null);
@@ -185,31 +183,6 @@ export function SemesterManagement() {
         },
     });
 
-    const bulkCreateSemesters = trpc.semester.bulkCreate.useMutation({
-        onSuccess: (data) => {
-            utils.semester.list.invalidate();
-            success(`${data.count} semesters created successfully`);
-        },
-        onError: (err) => {
-            console.error("Bulk create semesters error:", err);
-
-            // Parse error message for better user feedback
-            let errorMessage = "Failed to bulk create semesters";
-
-            if (err.message.includes("already exist")) {
-                errorMessage = err.message;
-            } else if (err.message.includes("department")) {
-                errorMessage = "Invalid departments selected. Please check your selection.";
-            } else if (err.message.includes("duplicate")) {
-                errorMessage = "Duplicate semester names detected. Please adjust your settings.";
-            } else if (err.message) {
-                errorMessage = err.message;
-            }
-
-            error(errorMessage);
-        },
-    });
-
     const removeManager = trpc.semester.removeManager.useMutation({
         onSuccess: () => {
             if (_viewingSemester) {
@@ -235,23 +208,6 @@ export function SemesterManagement() {
             track("semester_created", { name: data.name, year: data.year });
         } catch (error) {
             console.error("Error creating semester:", error);
-        }
-    };
-
-    const handleBulkCreate = async (
-        semesters: Array<{
-            name: string;
-            year: number;
-            departmentId: string;
-            isActive: "ACTIVE" | "INACTIVE";
-        }>
-    ) => {
-        try {
-            await bulkCreateSemesters.mutateAsync({ semesters });
-            setIsBulkCreateModalOpen(false);
-            track("semesters_bulk_created", { count: semesters.length });
-        } catch (error) {
-            console.error("Error bulk creating semesters:", error);
         }
     };
 
@@ -421,15 +377,7 @@ export function SemesterManagement() {
                                 className="flex items-center gap-2"
                             >
                                 <FolderPlus className="h-4 w-4" />
-                                Course Bulk Create
-                            </Button>
-                            <Button
-                                onClick={() => setIsBulkCreateModalOpen(true)}
-                                variant="outline"
-                                className="flex items-center gap-2"
-                            >
-                                <FolderPlus className="h-4 w-4" />
-                                Bulk Create
+                                Bulk Create Semesters & Courses
                             </Button>
                             <Button
                                 onClick={() => setIsCreateModalOpen(true)}
@@ -604,21 +552,6 @@ export function SemesterManagement() {
                 </DialogContent>
             </Dialog>
 
-            {/* Bulk Create Modal */}
-            <Dialog open={isBulkCreateModalOpen} onOpenChange={setIsBulkCreateModalOpen}>
-                <DialogContent className="sm:max-w-3xl max-h-[90vh]">
-                    <DialogHeader>
-                        <DialogTitle>Bulk Create Semesters</DialogTitle>
-                    </DialogHeader>
-                    <ScrollArea className="max-h-[calc(90vh-100px)] pr-4">
-                        <SemesterBulkForm
-                            onSubmit={handleBulkCreate}
-                            onCancel={() => setIsBulkCreateModalOpen(false)}
-                        />
-                    </ScrollArea>
-                </DialogContent>
-            </Dialog>
-
             {/* Course Bulk Create Modal */}
             <Dialog
                 open={isCourseBulkCreateModalOpen}
@@ -626,7 +559,7 @@ export function SemesterManagement() {
             >
                 <DialogContent className="sm:max-w-4xl max-h-[90vh]">
                     <DialogHeader>
-                        <DialogTitle>Bulk Create Courses</DialogTitle>
+                        <DialogTitle>Bulk Create Semesters & Courses</DialogTitle>
                     </DialogHeader>
                     <ScrollArea className="max-h-[calc(90vh-100px)] pr-4">
                         <CourseBulkCreateForm
