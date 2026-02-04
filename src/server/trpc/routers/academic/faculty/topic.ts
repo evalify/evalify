@@ -119,22 +119,7 @@ export const topicRouter = createTRPCRouter({
                     throw new Error("You do not have write access to this bank");
                 }
 
-                // Check if a topic with the same name already exists in this bank
-                const [existingTopic] = await db
-                    .select({ id: topicsTable.id, name: topicsTable.name })
-                    .from(topicsTable)
-                    .where(
-                        and(eq(topicsTable.bankId, input.bankId), eq(topicsTable.name, input.name))
-                    )
-                    .limit(1);
-
-                if (existingTopic) {
-                    throw new Error(
-                        `A topic with the name "${input.name}" already exists in this bank. Please use a different name.`
-                    );
-                }
-
-                // Create topic
+                // Create topic - DB constraint will prevent duplicates
                 const [topic] = await db
                     .insert(topicsTable)
                     .values({
@@ -156,6 +141,19 @@ export const topicRouter = createTRPCRouter({
                 return topic;
             } catch (error) {
                 logger.error({ error, input }, "Error creating topic");
+
+                // Handle unique constraint violation
+                if (
+                    error &&
+                    typeof error === "object" &&
+                    "code" in error &&
+                    error.code === "23505" // PostgreSQL unique violation error code
+                ) {
+                    throw new Error(
+                        `A topic with the name "${input.name}" already exists in this bank. Please use a different name.`
+                    );
+                }
+
                 if (error instanceof Error) {
                     throw error;
                 }
@@ -219,22 +217,7 @@ export const topicRouter = createTRPCRouter({
                     throw new Error("You do not have write access to this bank");
                 }
 
-                // Check if another topic with the same name already exists in this bank
-                const [existingTopic] = await db
-                    .select({ id: topicsTable.id, name: topicsTable.name })
-                    .from(topicsTable)
-                    .where(
-                        and(eq(topicsTable.bankId, topic.bankId), eq(topicsTable.name, input.name))
-                    )
-                    .limit(1);
-
-                if (existingTopic && existingTopic.id !== input.topicId) {
-                    throw new Error(
-                        `A topic with the name "${input.name}" already exists in this bank. Please use a different name.`
-                    );
-                }
-
-                // Update topic
+                // Update topic - DB constraint will prevent duplicates
                 const [updatedTopic] = await db
                     .update(topicsTable)
                     .set({ name: input.name })
@@ -246,6 +229,19 @@ export const topicRouter = createTRPCRouter({
                 return updatedTopic;
             } catch (error) {
                 logger.error({ error, topicId: input.topicId }, "Error updating topic");
+
+                // Handle unique constraint violation
+                if (
+                    error &&
+                    typeof error === "object" &&
+                    "code" in error &&
+                    error.code === "23505" // PostgreSQL unique violation error code
+                ) {
+                    throw new Error(
+                        `A topic with the name "${input.name}" already exists in this bank. Please use a different name.`
+                    );
+                }
+
                 if (error instanceof Error) {
                     throw error;
                 }
