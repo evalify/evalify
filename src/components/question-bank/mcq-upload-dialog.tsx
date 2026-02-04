@@ -286,7 +286,6 @@ export function MCQUploadDialog({ isOpen, onClose, selectedTopics, bankId }: MCQ
                     difficulty: row.difficulty,
                     bloomTaxonomyLevel: row.bloomsTaxonomy,
                     courseOutcome: row.courseOutcome,
-                    topicIds,
                     questionData: {
                         options: questionOptions,
                     },
