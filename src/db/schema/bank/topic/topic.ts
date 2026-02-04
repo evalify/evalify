@@ -1,4 +1,4 @@
-import { index, pgTable, varchar, uuid } from "drizzle-orm/pg-core";
+import { index, pgTable, varchar, uuid, unique } from "drizzle-orm/pg-core";
 import { timestamps } from "../../utils";
 import { banksTable } from "../bank";
 
@@ -18,5 +18,6 @@ export const topicsTable = pgTable(
     (table) => [
         index("idx_topics_name").on(table.name),
         index("idx_topics_bank_id").on(table.bankId),
+        unique("topics_bank_id_name_key").on(table.bankId, table.name),
     ]
 );

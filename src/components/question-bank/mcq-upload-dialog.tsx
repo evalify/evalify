@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import * as XLSX from "xlsx";
+import { logger } from "@/lib/logger";
 import {
     Dialog,
     DialogContent,
@@ -246,13 +247,13 @@ export function MCQUploadDialog({ isOpen, onClose, selectedTopics, bankId }: MCQ
             setParsedRows(parsed);
         } catch (err) {
             error("Failed to parse Excel file. Please check the file format.");
-            console.error(err);
+            logger.error("Failed to parse MCQ Excel file", { error: err });
         } finally {
             setIsProcessing(false);
         }
     };
 
-    const createQuestionsMutation = trpc.question.createForBank.useMutation();
+    const bulkCreateMutation = trpc.question.bulkCreateForBank.useMutation();
 
     const handleConfirmUpload = async () => {
         if (!parsedRows || parsedRows.some((row) => !row.isValid)) return;
@@ -262,24 +263,22 @@ export function MCQUploadDialog({ isOpen, onClose, selectedTopics, bankId }: MCQ
 
             const topicIds = selectedTopics.map((t) => t.id);
 
-            // Create questions one by one
-            for (const row of parsedRows) {
+            // Build a single payload array from all parsed rows
+            const questions = parsedRows.map((row) => {
                 const options = [row.option1, row.option2, row.option3, row.option4].filter(
                     (opt): opt is string => Boolean(opt)
                 );
 
                 const correctOptionIndex = row.correctAnswerIndex;
 
-                // Generate options with IDs first
+                // Generate options with IDs
                 const questionOptions = options.map((text, index) => ({
                     id: crypto.randomUUID(),
                     optionText: text,
                     orderIndex: index,
                 }));
 
-                await createQuestionsMutation.mutateAsync({
-                    bankId,
-                    type: "MCQ",
+                return {
                     question: row.question,
                     explanation: row.explanation,
                     marks: row.marks,
@@ -287,7 +286,6 @@ export function MCQUploadDialog({ isOpen, onClose, selectedTopics, bankId }: MCQ
                     difficulty: row.difficulty,
                     bloomTaxonomyLevel: row.bloomsTaxonomy,
                     courseOutcome: row.courseOutcome,
-                    topicIds,
                     questionData: {
                         options: questionOptions,
                     },
@@ -297,8 +295,15 @@ export function MCQUploadDialog({ isOpen, onClose, selectedTopics, bankId }: MCQ
                             isCorrect: index === correctOptionIndex,
                         })),
                     },
-                });
-            }
+                };
+            });
+
+            // Call the bulk mutation once instead of per-row
+            await bulkCreateMutation.mutateAsync({
+                bankId,
+                topicIds,
+                questions,
+            });
 
             success(`Successfully imported ${parsedRows.length} question(s)!`);
 
@@ -318,7 +323,7 @@ export function MCQUploadDialog({ isOpen, onClose, selectedTopics, bankId }: MCQ
             router.refresh();
         } catch (err) {
             error("Failed to import questions. Please try again.");
-            console.error(err);
+            logger.error("Failed to import MCQ questions", { error: err });
         } finally {
             setIsProcessing(false);
         }
