@@ -1860,4 +1860,147 @@ export const questionRouter = createTRPCRouter({
                 throw new Error("Failed to add questions to quiz. Please try again.");
             }
         }),
+
+    /**
+     * Bulk create MCQ questions for a bank (transactional)
+     * All questions are inserted in a single transaction - all or nothing
+     */
+    bulkCreateForBank: managerOrFacultyProcedure
+        .input(
+            z.object({
+                bankId: z.uuid(),
+                topicIds: z.array(z.uuid()).optional(),
+                questions: z.array(
+                    z.object({
+                        question: z.string().min(1),
+                        marks: z.number().positive(),
+                        negativeMarks: z.number().min(0).default(0),
+                        difficulty: difficultyEnum.nullish(),
+                        courseOutcome: courseOutcomeEnum.nullish(),
+                        bloomTaxonomyLevel: bloomTaxonomyEnum.nullish(),
+                        explanation: z.string().nullish(),
+                        questionData: mcqDataSchema,
+                        solution: mcqSolutionSchema,
+                    })
+                ),
+            })
+        )
+        .mutation(async ({ input, ctx }) => {
+            try {
+                const userId = ctx.session.user.id;
+
+                if (input.questions.length === 0) {
+                    throw new Error("No questions provided for creation");
+                }
+
+                // Verify bank exists and user has write access
+                const [bank] = await db
+                    .select({ createdById: banksTable.createdById })
+                    .from(banksTable)
+                    .where(eq(banksTable.id, input.bankId))
+                    .limit(1);
+
+                if (!bank) {
+                    throw new Error("Bank not found");
+                }
+
+                const [accessRecord] = await db
+                    .select({ accessLevel: bankUsersTable.accessLevel })
+                    .from(bankUsersTable)
+                    .where(
+                        and(
+                            eq(bankUsersTable.bankId, input.bankId),
+                            eq(bankUsersTable.userId, userId)
+                        )
+                    )
+                    .limit(1);
+
+                const hasWriteAccess =
+                    bank.createdById === userId || accessRecord?.accessLevel === "WRITE";
+
+                if (!hasWriteAccess) {
+                    throw new Error("You do not have permission to add questions to this bank");
+                }
+
+                const createdQuestionIds: string[] = [];
+
+                // Use a transaction to ensure all-or-nothing behavior
+                await db.transaction(async (tx) => {
+                    for (const questionInput of input.questions) {
+                        // Prepare versioned data
+                        const questionData = versionMCQData(questionInput.questionData);
+                        const solution = versionMCQSolution(questionInput.solution);
+
+                        // Insert question
+                        const [question] = await tx
+                            .insert(questionsTable)
+                            .values({
+                                type: "MCQ",
+                                question: questionInput.question,
+                                marks: questionInput.marks,
+                                negativeMarks: questionInput.negativeMarks,
+                                difficulty: questionInput.difficulty,
+                                courseOutcome: questionInput.courseOutcome,
+                                bloomTaxonomyLevel: questionInput.bloomTaxonomyLevel,
+                                explanation: questionInput.explanation || null,
+                                questionData,
+                                solution,
+                                createdById: userId,
+                            })
+                            .returning();
+
+                        if (!question) {
+                            throw new Error("Failed to create question");
+                        }
+
+                        createdQuestionIds.push(question.id);
+
+                        // Link question to bank
+                        await tx.insert(bankQuestionsTable).values({
+                            bankId: input.bankId,
+                            questionId: question.id,
+                            orderIndex: null,
+                        });
+
+                        // Link question to topics if provided
+                        if (input.topicIds && input.topicIds.length > 0) {
+                            await tx.insert(topicQuestionsTable).values(
+                                input.topicIds.map((topicId) => ({
+                                    questionId: question.id,
+                                    topicId,
+                                }))
+                            );
+                        }
+                    }
+                });
+
+                logger.info(
+                    {
+                        count: createdQuestionIds.length,
+                        bankId: input.bankId,
+                        userId,
+                    },
+                    "MCQ questions bulk created for bank"
+                );
+
+                return {
+                    success: true,
+                    count: createdQuestionIds.length,
+                    questionIds: createdQuestionIds,
+                };
+            } catch (error: unknown) {
+                logger.error({ error, input }, "Error bulk creating questions for bank");
+
+                if (
+                    error &&
+                    typeof error === "object" &&
+                    "message" in error &&
+                    typeof error.message === "string"
+                ) {
+                    throw new Error(error.message);
+                }
+
+                throw new Error("Failed to bulk create questions. Transaction rolled back.");
+            }
+        }),
 });
