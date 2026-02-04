@@ -132,7 +132,7 @@ class KeycloakAdminService {
                                 .map((role) => role.name)
                                 .filter(Boolean) as string[],
                             groups: groups
-                                .map((group) => group.path || group.name)
+                                .flatMap((group) => (group.path || group.name || "").split("/"))
                                 .filter(Boolean) as string[],
                         } as KeycloakUser;
                     } catch (error) {
@@ -188,7 +188,9 @@ class KeycloakAdminService {
             return {
                 ...user,
                 realmRoles: realmRoles.map((role) => role.name).filter(Boolean) as string[],
-                groups: groups.map((group) => group.path || group.name).filter(Boolean) as string[],
+                groups: groups
+                    .flatMap((group) => (group.path || group.name || "").split("/"))
+                    .filter(Boolean) as string[],
             } as KeycloakUser;
         } catch (error) {
             logger.error({ error, userId }, "Failed to fetch user from Keycloak");
