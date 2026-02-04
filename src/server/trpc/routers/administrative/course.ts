@@ -1236,6 +1236,17 @@ export const courseRouter = createTRPCRouter({
                                 isActive: courseData.isActive,
                                 image: null,
                             })
+                            .onConflictDoUpdate({
+                                target: coursesTable.code,
+                                set: {
+                                    name: courseData.name,
+                                    description: courseData.description || null,
+                                    type: courseData.type,
+                                    semesterId: courseData.semesterId,
+                                    isActive: courseData.isActive,
+                                    updated_at: new Date(),
+                                },
+                            })
                             .returning();
 
                         if (!course) {
