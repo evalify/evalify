@@ -1236,31 +1236,31 @@ export default function QuestionBankPage() {
                                         {(selectedQuestionTypes.length > 0 ||
                                             sortBy ||
                                             searchQuery.trim()) && (
-                                                <>
-                                                    <div className="flex gap-2">
-                                                        {searchQuery.trim() && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={handleClearSearch}
-                                                            >
-                                                                <X className="h-4 w-4 mr-2" />
-                                                                Clear Search
-                                                            </Button>
-                                                        )}
-                                                        {selectedQuestionTypes.length > 0 && (
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={handleClearQuestionTypeFilters}
-                                                            >
-                                                                <X className="h-4 w-4 mr-2" />
-                                                                Clear Filters
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </>
-                                            )}
+                                            <>
+                                                <div className="flex gap-2">
+                                                    {searchQuery.trim() && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={handleClearSearch}
+                                                        >
+                                                            <X className="h-4 w-4 mr-2" />
+                                                            Clear Search
+                                                        </Button>
+                                                    )}
+                                                    {selectedQuestionTypes.length > 0 && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={handleClearQuestionTypeFilters}
+                                                        >
+                                                            <X className="h-4 w-4 mr-2" />
+                                                            Clear Filters
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                         {hasEditAccess &&
                                             selectedQuestionTypes.length === 0 &&
                                             !sortBy &&
