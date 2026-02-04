@@ -511,10 +511,10 @@ export const userRouter = createTRPCRouter({
                 const mapKeycloakRole = (
                     realmRoles: string[]
                 ): "ADMIN" | "FACULTY" | "STUDENT" | "MANAGER" => {
-                    if (realmRoles.includes("/admin")) return "ADMIN";
-                    if (realmRoles.includes("/manager")) return "MANAGER";
-                    if (realmRoles.includes("/faculty")) return "FACULTY";
-                    if (realmRoles.includes("/student")) return "STUDENT";
+                    if (realmRoles.includes("admin")) return "ADMIN";
+                    if (realmRoles.includes("manager")) return "MANAGER";
+                    if (realmRoles.includes("faculty")) return "FACULTY";
+                    if (realmRoles.includes("student")) return "STUDENT";
                     return "STUDENT"; // Default role
                 };
 
