@@ -69,9 +69,19 @@ function transformStudentQuestion(raw: Record<string, unknown>): Record<string, 
         case "FILL_THE_BLANK": {
             const config = (unwrapped as { config?: Record<string, unknown> })?.config;
             if (config) {
+                const acceptableAnswers = config.acceptableAnswers as
+                    | Record<string, { type?: string }>
+                    | undefined;
+                const blankTypes: Record<number, string> = {};
+                if (acceptableAnswers) {
+                    for (const [idx, entry] of Object.entries(acceptableAnswers)) {
+                        blankTypes[Number(idx)] = entry.type || "TEXT";
+                    }
+                }
                 base.blankConfig = {
                     blankCount: config.blankCount,
                     blankWeights: config.blankWeights,
+                    blankTypes,
                     evaluationType: config.evaluationType,
                 };
             }
