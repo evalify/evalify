@@ -9,14 +9,12 @@ import { ContentPreview } from "@/components/rich-text-editor/content-preview";
 import { QuestionHeader } from "./question-header";
 import type { MCQStudentAnswer, MMCQStudentAnswer } from "../lib/types";
 
-/** Option structure for MCQ/MMCQ questions */
 interface MCQOption {
     id: string;
     optionText: string;
     orderIndex?: number;
 }
 
-/** Extended question data that may have nested structure */
 interface ExtendedMCQData {
     options?: MCQOption[];
     data?: {
@@ -30,48 +28,43 @@ interface MCQQuestionProps {
     isMMCQ?: boolean;
 }
 
-export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQuestionProps) {
-    // Extract options from questionData - handle various nested structures
+function extractOptions(question: QuizQuestion): MCQOption[] {
     const mcqData = question.questionData as ExtendedMCQData | undefined;
 
-    // Try multiple possible locations for options
-    let rawOptions: MCQOption[] = [];
-
     if (mcqData?.options && Array.isArray(mcqData.options)) {
-        rawOptions = mcqData.options;
-    } else if (mcqData?.data?.options && Array.isArray(mcqData.data.options)) {
-        // Handle nested { data: { options: [] } } structure
-        rawOptions = mcqData.data.options;
-    } else if ((question as QuizQuestion & { options?: MCQOption[] }).options) {
-        // Options might be directly on question
-        rawOptions = (question as QuizQuestion & { options: MCQOption[] }).options;
+        return mcqData.options;
+    }
+    if (mcqData?.data?.options && Array.isArray(mcqData.data.options)) {
+        return mcqData.data.options;
     }
 
-    // Sort options by orderIndex if available
-    const options = [...rawOptions].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+    const withOptions = question as QuizQuestion & { options?: MCQOption[] };
+    if (withOptions.options && Array.isArray(withOptions.options)) {
+        return withOptions.options;
+    }
 
-    // Handle current answer - properly typed based on question type
+    return [];
+}
+
+export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQuestionProps) {
+    const options = [...extractOptions(question)].sort(
+        (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+    );
+
     const currentAnswer = isMMCQ
         ? ((question.response as MMCQStudentAnswer | undefined)?.studentAnswer ?? [])
         : ((question.response as MCQStudentAnswer | undefined)?.studentAnswer ?? "");
 
     const handleSingleSelect = (value: string) => {
-        const answer: MCQStudentAnswer = { studentAnswer: value };
-        onAnswerChange(answer);
+        onAnswerChange({ studentAnswer: value } as MCQStudentAnswer);
     };
 
     const handleMultiSelect = (optionId: string, checked: boolean) => {
         const currentSelected = Array.isArray(currentAnswer) ? currentAnswer : [];
-        let newSelected: string[];
-
-        if (checked) {
-            newSelected = [...currentSelected, optionId];
-        } else {
-            newSelected = currentSelected.filter((id) => id !== optionId);
-        }
-
-        const answer: MMCQStudentAnswer = { studentAnswer: newSelected };
-        onAnswerChange(answer);
+        const newSelected = checked
+            ? [...currentSelected, optionId]
+            : currentSelected.filter((id) => id !== optionId);
+        onAnswerChange({ studentAnswer: newSelected } as MMCQStudentAnswer);
     };
 
     const isSelected = (optionId: string): boolean => {
@@ -81,7 +74,6 @@ export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQue
         return currentAnswer === optionId;
     };
 
-    // Debug: if no options found, show helpful message
     if (options.length === 0) {
         return (
             <div className="space-y-6">
@@ -91,12 +83,6 @@ export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQue
                 </div>
                 <div className="p-4 border rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200">
                     <p className="text-sm font-medium">No options available for this question.</p>
-                    <details className="mt-2">
-                        <summary className="text-xs cursor-pointer">Debug Info</summary>
-                        <pre className="mt-2 text-xs overflow-auto p-2 bg-background rounded border">
-                            {JSON.stringify({ questionData: question.questionData }, null, 2)}
-                        </pre>
-                    </details>
                 </div>
             </div>
         );
@@ -104,21 +90,16 @@ export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQue
 
     return (
         <div className="space-y-6">
-            {/* Question metadata header */}
             <QuestionHeader question={question} />
 
-            {/* Question content */}
             <div className="prose prose-sm max-w-none dark:prose-invert">
                 <ContentPreview content={(question.question as string) || ""} />
             </div>
 
-            {/* Options */}
             {isMMCQ ? (
-                // MMCQ: Multiple selection with checkboxes
                 <div className="space-y-3">
                     {options.map((option) => {
                         const selected = isSelected(option.id);
-
                         return (
                             <Label
                                 key={option.id}
@@ -149,7 +130,6 @@ export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQue
                     })}
                 </div>
             ) : (
-                // MCQ: Single selection with RadioGroup
                 <RadioGroup
                     value={typeof currentAnswer === "string" ? currentAnswer : ""}
                     onValueChange={handleSingleSelect}
@@ -157,7 +137,6 @@ export function MCQQuestion({ question, onAnswerChange, isMMCQ = false }: MCQQue
                 >
                     {options.map((option) => {
                         const selected = isSelected(option.id);
-
                         return (
                             <Label
                                 key={option.id}

@@ -18,7 +18,131 @@ import {
 import { getClientIp, isClientInLabSubnets } from "@/lib/ip-utils";
 import { TRPCError } from "@trpc/server";
 import { parseIntervalToMs } from "./utils";
-import { QuestionType, QuizQuestion } from "@/types/questions";
+import { QuestionType } from "@/types/questions";
+
+type MatchOptionRaw = {
+    id: string;
+    isLeft: boolean;
+    text: string;
+    orderIndex: number;
+};
+
+type CodingConfigRaw = {
+    language?: string;
+    templateCode?: string;
+    boilerplateCode?: string;
+    timeLimitMs?: number;
+    memoryLimitMb?: number;
+};
+
+type TestCaseRaw = {
+    id: string;
+    input: string;
+    visibility: string;
+    marksWeightage?: number;
+    orderIndex: number;
+};
+
+function unwrapVersionedData(data: unknown): unknown {
+    if (data && typeof data === "object" && "version" in data && "data" in data) {
+        return (data as { data: unknown }).data;
+    }
+    return data;
+}
+
+function transformStudentQuestion(raw: Record<string, unknown>): Record<string, unknown> {
+    const unwrapped = unwrapVersionedData(raw.questionData) as Record<string, unknown> | null;
+    const type = raw.type as string;
+
+    const base: Record<string, unknown> = { ...raw };
+    delete base.questionData;
+
+    switch (type) {
+        case "MCQ":
+        case "MMCQ": {
+            base.questionData = unwrapped;
+            break;
+        }
+        case "TRUE_FALSE": {
+            break;
+        }
+        case "FILL_THE_BLANK": {
+            const config = (unwrapped as { config?: Record<string, unknown> })?.config;
+            if (config) {
+                base.blankConfig = {
+                    blankCount: config.blankCount,
+                    blankWeights: config.blankWeights,
+                    evaluationType: config.evaluationType,
+                };
+            }
+            break;
+        }
+        case "DESCRIPTIVE": {
+            const config = (unwrapped as { config?: Record<string, unknown> })?.config;
+            if (config) {
+                base.descriptiveConfig = {
+                    minWords: config.minWords,
+                    maxWords: config.maxWords,
+                };
+            }
+            break;
+        }
+        case "MATCHING": {
+            const options = (unwrapped as { options?: MatchOptionRaw[] })?.options;
+            if (options) {
+                base.options = options.map((opt) => ({
+                    id: opt.id,
+                    isLeft: opt.isLeft,
+                    text: opt.text,
+                    orderIndex: opt.orderIndex,
+                }));
+            }
+            break;
+        }
+        case "CODING": {
+            const config = (unwrapped as { config?: CodingConfigRaw })?.config;
+            const testCases = (unwrapped as { testCases?: TestCaseRaw[] })?.testCases;
+            if (config) {
+                base.codingConfig = {
+                    language: config.language,
+                    templateCode: config.templateCode,
+                    boilerplateCode: config.boilerplateCode,
+                    timeLimitMs: config.timeLimitMs,
+                    memoryLimitMb: config.memoryLimitMb,
+                };
+            }
+            if (testCases) {
+                base.testCases = testCases
+                    .filter((tc) => tc.visibility === "VISIBLE")
+                    .map((tc) => ({
+                        id: tc.id,
+                        input: tc.input,
+                        visibility: tc.visibility,
+                        marksWeightage: tc.marksWeightage,
+                        orderIndex: tc.orderIndex,
+                    }));
+            }
+            break;
+        }
+        case "FILE_UPLOAD": {
+            const attachedFiles = (unwrapped as { attachedFiles?: string[] })?.attachedFiles;
+            const config = (unwrapped as { config?: Record<string, unknown> })?.config;
+            if (config) {
+                base.fileUploadConfig = {
+                    allowedFileTypes: config.allowedFileTypes,
+                    maxFileSizeInMB: config.maxFileSizeInMB,
+                    maxFiles: config.maxFiles,
+                };
+            }
+            if (attachedFiles) {
+                base.attachedFiles = attachedFiles;
+            }
+            break;
+        }
+    }
+
+    return base;
+}
 
 /**
  * Simple exam router exposing a `get` endpoint to fetch questions.
@@ -125,10 +249,12 @@ export const examRouter = createTRPCRouter({
                     )
                     .where(eq(quizQuestionsTable.quizId, input.quizId));
 
-                const questions = questionsData.map((q) => ({
-                    ...q,
-                    type: q.type as QuestionType,
-                })) as QuizQuestion[];
+                const questions = questionsData.map((q) =>
+                    transformStudentQuestion({
+                        ...q,
+                        type: q.type as QuestionType,
+                    })
+                );
 
                 return { questions };
             } catch (error) {

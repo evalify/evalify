@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import { QuizQuestion } from "../context/quiz-context";
 import { ContentPreview } from "@/components/rich-text-editor/content-preview";
 import { QuestionHeader } from "./question-header";
@@ -21,34 +21,29 @@ import {
     FileArchive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { FileUploadStudentAnswer } from "../lib/types";
-import type { FileUploadConfig } from "@/types/questions";
+import type { FileUploadStudentAnswer, StudentFileUploadConfig } from "../lib/types";
 
 interface FileUploadQuestionProps {
     question: QuizQuestion;
     onAnswerChange: (answer: FileUploadStudentAnswer) => void;
 }
 
-// Helper to get file icon based on file type
-function getFileIcon(fileName: string) {
-    const ext = fileName.split(".").pop()?.toLowerCase();
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "svg", "webp", "bmp"];
+const DOCUMENT_EXTENSIONS = ["pdf", "doc", "docx", "txt", "rtf", "odt"];
+const CODE_EXTENSIONS = ["js", "ts", "py", "java", "cpp", "c", "html", "css", "json"];
+const ARCHIVE_EXTENSIONS = ["zip", "rar", "7z", "tar", "gz"];
 
-    if (["jpg", "jpeg", "png", "gif", "svg", "webp", "bmp"].includes(ext || "")) {
-        return <ImageIcon className="h-5 w-5 text-blue-500" />;
-    }
-    if (["pdf", "doc", "docx", "txt", "rtf", "odt"].includes(ext || "")) {
-        return <FileText className="h-5 w-5 text-red-500" />;
-    }
-    if (["js", "ts", "py", "java", "cpp", "c", "html", "css", "json"].includes(ext || "")) {
-        return <FileCode className="h-5 w-5 text-green-500" />;
-    }
-    if (["zip", "rar", "7z", "tar", "gz"].includes(ext || "")) {
+function getFileIcon(fileName: string) {
+    const ext = fileName.split(".").pop()?.toLowerCase() || "";
+
+    if (IMAGE_EXTENSIONS.includes(ext)) return <ImageIcon className="h-5 w-5 text-blue-500" />;
+    if (DOCUMENT_EXTENSIONS.includes(ext)) return <FileText className="h-5 w-5 text-red-500" />;
+    if (CODE_EXTENSIONS.includes(ext)) return <FileCode className="h-5 w-5 text-green-500" />;
+    if (ARCHIVE_EXTENSIONS.includes(ext))
         return <FileArchive className="h-5 w-5 text-yellow-500" />;
-    }
     return <File className="h-5 w-5 text-muted-foreground" />;
 }
 
-// Format file size
 function formatFileSize(bytes: number): string {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -58,13 +53,11 @@ function formatFileSize(bytes: number): string {
 }
 
 export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuestionProps) {
-    const fileUploadConfig: FileUploadConfig | undefined = question.fileUploadConfig;
+    const fileUploadConfig = question.fileUploadConfig as StudentFileUploadConfig | undefined;
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Get saved answer
     const savedAnswer = question.response as FileUploadStudentAnswer | undefined;
 
-    // Local state
     const [uploadedFile, setUploadedFile] = useState<{
         fileUrl: string;
         fileName: string;
@@ -75,39 +68,27 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
     const [error, setError] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
 
-    // Config defaults
     const maxFileSizeMB = fileUploadConfig?.maxFileSizeInMB || 10;
     const maxFileSizeBytes = maxFileSizeMB * 1024 * 1024;
 
-    const allowedTypes = React.useMemo(
+    const allowedTypes = useMemo(
         () => fileUploadConfig?.allowedFileTypes || [],
         [fileUploadConfig?.allowedFileTypes]
     );
 
-    // Validate file
     const validateFile = useCallback(
         (file: File): string | null => {
-            // Check file size
             if (file.size > maxFileSizeBytes) {
                 return `File size exceeds ${maxFileSizeMB}MB limit`;
             }
 
-            // Check file type if restrictions exist
             if (allowedTypes.length > 0) {
                 const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
                 const mimeType = file.type;
 
                 const isAllowed = allowedTypes.some((type) => {
-                    // Check extension match
-                    if (type.startsWith(".")) {
-                        return ext === type.toLowerCase();
-                    }
-                    // Check MIME type match (e.g., "image/*")
-                    if (type.includes("*")) {
-                        const baseType = type.split("/")[0];
-                        return mimeType.startsWith(baseType);
-                    }
-                    // Exact MIME match
+                    if (type.startsWith(".")) return ext === type.toLowerCase();
+                    if (type.includes("*")) return mimeType.startsWith(type.split("/")[0]);
                     return mimeType === type;
                 });
 
@@ -121,12 +102,10 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
         [allowedTypes, maxFileSizeBytes, maxFileSizeMB]
     );
 
-    // Handle file upload
     const handleFileUpload = useCallback(
         async (file: File) => {
             setError(null);
 
-            // Validate
             const validationError = validateFile(file);
             if (validationError) {
                 setError(validationError);
@@ -137,8 +116,6 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
             setUploadProgress(0);
 
             try {
-                // Simulate upload progress (replace with actual upload logic)
-                // In a real implementation, you would upload to your storage service
                 const progressInterval = setInterval(() => {
                     setUploadProgress((prev) => {
                         if (prev >= 90) {
@@ -149,11 +126,8 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
                     });
                 }, 100);
 
-                // TODO: Replace with actual file upload API call
-                // For now, we'll create a local object URL as placeholder
+                // TODO: Replace with actual file upload API call to MinIO
                 const fileUrl = URL.createObjectURL(file);
-
-                // Simulate network delay
                 await new Promise((resolve) => setTimeout(resolve, 1000));
 
                 clearInterval(progressInterval);
@@ -166,13 +140,9 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
                 };
 
                 setUploadedFile(fileData);
-
-                // Save to answer
-                const answer: FileUploadStudentAnswer = { studentAnswer: fileData };
-                onAnswerChange(answer);
-            } catch (err) {
+                onAnswerChange({ studentAnswer: fileData });
+            } catch {
                 setError("Failed to upload file. Please try again.");
-                console.error("Upload error:", err);
             } finally {
                 setIsUploading(false);
             }
@@ -180,22 +150,15 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
         [validateFile, onAnswerChange]
     );
 
-    // Handle file input change
     const handleInputChange = useCallback(
         (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
-            if (file) {
-                handleFileUpload(file);
-            }
-            // Reset input
-            if (inputRef.current) {
-                inputRef.current.value = "";
-            }
+            if (file) handleFileUpload(file);
+            if (inputRef.current) inputRef.current.value = "";
         },
         [handleFileUpload]
     );
 
-    // Handle drag events
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(true);
@@ -210,38 +173,28 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
         (e: React.DragEvent) => {
             e.preventDefault();
             setIsDragging(false);
-
             const file = e.dataTransfer.files?.[0];
-            if (file) {
-                handleFileUpload(file);
-            }
+            if (file) handleFileUpload(file);
         },
         [handleFileUpload]
     );
 
-    // Remove uploaded file
     const handleRemoveFile = useCallback(() => {
         setUploadedFile(null);
         setError(null);
-
-        // Clear the answer
-        const answer: FileUploadStudentAnswer = {
+        onAnswerChange({
             studentAnswer: { fileUrl: "", fileName: "", fileSize: 0 },
-        };
-        onAnswerChange(answer);
+        });
     }, [onAnswerChange]);
 
     return (
         <div className="space-y-6">
-            {/* Question metadata header */}
             <QuestionHeader question={question} />
 
-            {/* Question content */}
             <div className="prose prose-sm max-w-none dark:prose-invert">
                 <ContentPreview content={(question.question as string) || ""} />
             </div>
 
-            {/* File requirements */}
             <div className="flex flex-wrap gap-2">
                 <Badge variant="outline" className="text-xs">
                     Max size: {maxFileSizeMB}MB
@@ -253,18 +206,16 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
                 )}
             </div>
 
-            {/* Upload area */}
             <div className="space-y-4">
                 <Label>Upload your file</Label>
 
                 {!uploadedFile && !isUploading && (
                     <div
                         className={cn(
-                            "border-2 border-dashed rounded-lg p-8 transition-colors",
+                            "border-2 border-dashed rounded-lg p-8 transition-colors cursor-pointer",
                             isDragging
                                 ? "border-primary bg-primary/5"
-                                : "border-input hover:border-primary/50",
-                            "cursor-pointer"
+                                : "border-input hover:border-primary/50"
                         )}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
@@ -299,7 +250,6 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
                     </div>
                 )}
 
-                {/* Upload progress */}
                 {isUploading && (
                     <div className="border rounded-lg p-4 space-y-3">
                         <div className="flex items-center gap-3">
@@ -311,7 +261,6 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
                     </div>
                 )}
 
-                {/* Uploaded file display */}
                 {uploadedFile && !isUploading && (
                     <div className="border rounded-lg p-4">
                         <div className="flex items-center gap-3">
@@ -337,7 +286,6 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
                     </div>
                 )}
 
-                {/* Error display */}
                 {error && (
                     <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
                         <AlertCircle className="h-4 w-4 shrink-0" />
@@ -346,7 +294,6 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
                 )}
             </div>
 
-            {/* Attached reference files (if any) */}
             {question.attachedFiles && question.attachedFiles.length > 0 && (
                 <div className="space-y-2">
                     <Label className="text-sm text-muted-foreground">Reference Files</Label>
