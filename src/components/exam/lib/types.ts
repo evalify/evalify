@@ -16,11 +16,13 @@ import {
     MMCQData,
     MatchOptions,
     ProgrammingLanguage,
+    FillInBlanksAcceptedType,
 } from "@/types/questions";
 
 export interface StudentFillInBlanksConfig {
     blankCount: number;
     blankWeights: Record<number, number>;
+    blankTypes: Record<number, FillInBlanksAcceptedType>;
     evaluationType: string;
 }
 
@@ -97,7 +99,7 @@ export interface FillInBlanksStudentAnswer {
 }
 
 export interface MatchingStudentAnswer {
-    studentAnswer: Record<string, string>; // { leftId: rightId }
+    studentAnswer: Record<string, string[]>; // { leftId: [rightId, ...] }
 }
 
 export interface CodingStudentAnswer {

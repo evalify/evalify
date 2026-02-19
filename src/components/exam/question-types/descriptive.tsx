@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { QuizQuestion } from "../context/quiz-context";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ContentPreview } from "@/components/rich-text-editor/content-preview";
+import { TiptapEditor } from "@/components/rich-text-editor/editor";
 import { QuestionHeader } from "./question-header";
 import type { DescriptiveStudentAnswer } from "../lib/types";
 import type { StudentDescriptiveConfig } from "../lib/types";
@@ -16,8 +15,9 @@ interface DescriptiveQuestionProps {
     onAnswerChange: (answer: DescriptiveStudentAnswer) => void;
 }
 
-function countWords(text: string): number {
-    return text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+function countWords(html: string): number {
+    const text = html.replace(/<[^>]*>/g, " ").trim();
+    return text === "" ? 0 : text.split(/\s+/).length;
 }
 
 export function DescriptiveQuestion({ question, onAnswerChange }: DescriptiveQuestionProps) {
@@ -47,11 +47,10 @@ export function DescriptiveQuestion({ question, onAnswerChange }: DescriptiveQue
         };
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = e.target.value;
-        setLocalValue(newValue);
-        debouncedSaveRef.current(newValue);
-    };
+    const handleUpdate = useCallback((html: string) => {
+        setLocalValue(html);
+        debouncedSaveRef.current(html);
+    }, []);
 
     const wordCount = useMemo(() => countWords(localValue), [localValue]);
 
@@ -82,13 +81,11 @@ export function DescriptiveQuestion({ question, onAnswerChange }: DescriptiveQue
             )}
 
             <div className="space-y-2">
-                <Label htmlFor={`desc-${question.id}`}>Your Answer</Label>
-                <Textarea
-                    id={`desc-${question.id}`}
-                    placeholder="Type your answer here..."
-                    value={localValue}
-                    onChange={handleChange}
-                    className="min-h-40"
+                <TiptapEditor
+                    key={question.id}
+                    initialContent={savedAnswer}
+                    onUpdate={handleUpdate}
+                    height="200px"
                 />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span
