@@ -159,10 +159,14 @@ export interface QuizSection {
  */
 export interface QuizInfo {
     id: string;
-    name: string;
-    startTime: string | Date | null;
-    endTime: string | Date | null;
-    duration: string | null;
+    name?: string;
+    startTime?: string | Date | null;
+    endTime?: string | Date | null;
+    duration?: string | null;
+    // Student-specific timing (when they started and when their time expires)
+    studentStartTime?: string | Date | null;
+    studentEndTime?: string | Date | null;
+    studentDuration?: string | null;
 }
 
 /**

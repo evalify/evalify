@@ -64,18 +64,12 @@ export default function QuizTimer({ endTime, startTime, durationMs, onExpire }: 
 
     return (
         <Card className="w-full">
-            <CardContent>
-                <div className="text-center">
-                    <div className="text-2xl font-mono font-semibold">
-                        {mounted && remainingMs !== null
-                            ? formatMs(Math.max(0, remainingMs))
-                            : "--:--"}
-                    </div>
-                    {mounted && computeEnd ? (
-                        <div className="text-xs text-muted-foreground mt-1">
-                            Ends at {computeEnd.toLocaleTimeString()}
-                        </div>
-                    ) : null}
+            <CardContent className="flex flex-col items-center justify-center py-4">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                    Time Remaining
+                </div>
+                <div className="text-3xl font-mono font-bold tabular-nums">
+                    {mounted && remainingMs !== null ? formatMs(Math.max(0, remainingMs)) : "--:--"}
                 </div>
             </CardContent>
         </Card>

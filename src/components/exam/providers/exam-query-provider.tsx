@@ -15,7 +15,7 @@
 import React, { createContext, useContext, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createExamCollections, type ExamCollections } from "../lib/collections";
-import { QuestionItem, StudentAnswer } from "../lib/types";
+import { QuestionItem, StudentAnswer, QuizInfo } from "../lib/types";
 
 /**
  * Exam collections context type
@@ -52,6 +52,10 @@ interface ExamQueryProviderProps {
      * Function to save answer to the server
      */
     saveAnswer?: (responsePatch: Record<string, StudentAnswer>) => Promise<void>;
+    /**
+     * Quiz information including timing
+     */
+    quizInfo?: QuizInfo | null;
     /**
      * Child components
      */
@@ -96,6 +100,7 @@ export function ExamQueryProvider({
     fetchResponses,
     saveAnswer,
     questionIds,
+    quizInfo,
     children,
 }: ExamQueryProviderProps) {
     const queryClient = useQueryClient();
@@ -109,8 +114,18 @@ export function ExamQueryProvider({
             fetchResponses,
             saveAnswer,
             questionIds,
+            quizInfo,
         });
-    }, [queryClient, quizId, studentId, fetchQuestions, fetchResponses, saveAnswer, questionIds]);
+    }, [
+        queryClient,
+        quizId,
+        studentId,
+        fetchQuestions,
+        fetchResponses,
+        saveAnswer,
+        questionIds,
+        quizInfo,
+    ]);
 
     const contextValue = useMemo(
         () => ({
