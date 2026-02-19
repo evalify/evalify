@@ -36,21 +36,9 @@ const ExamCollectionsContext = createContext<ExamCollectionsContext | undefined>
 interface ExamQueryProviderProps {
     quizId: string;
     studentId: string;
-    /**
-     * Function to fetch questions from the server
-     */
     fetchQuestions: () => Promise<QuestionItem[]>;
-    /**
-     * Function to fetch initial responses from the server
-     */
     fetchResponses: () => Promise<Record<string, StudentAnswer>>;
-    /**
-     * Array of all question IDs in the quiz
-     */
     questionIds: string[];
-    /**
-     * Function to save answer to the server
-     */
     saveAnswer?: (responsePatch: Record<string, StudentAnswer>) => Promise<void>;
     /**
      * Quiz information including timing
@@ -105,7 +93,6 @@ export function ExamQueryProvider({
 }: ExamQueryProviderProps) {
     const queryClient = useQueryClient();
 
-    // Create collections (memoized to prevent recreation)
     const collections = useMemo(() => {
         if (!queryClient) return null;
 

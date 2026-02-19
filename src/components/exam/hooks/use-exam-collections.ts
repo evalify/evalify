@@ -275,7 +275,9 @@ export function useExamStats(
             const response = responsesMap.get(questionId);
             const state = statesMap.get(questionId);
 
-            if (response?.response && Object.keys(response.response).length > 0) {
+            const hasAnswer = isResponseAnswered(response?.response);
+
+            if (hasAnswer) {
                 answered++;
             }
 
@@ -283,10 +285,7 @@ export function useExamStats(
                 markedForReview++;
             }
 
-            if (
-                state?.visited &&
-                !(response?.response && Object.keys(response.response).length > 0)
-            ) {
+            if (state?.visited && !hasAnswer) {
                 visited++;
             }
         });

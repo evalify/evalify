@@ -20,13 +20,6 @@ export {
     createExamCollections,
 } from "./lib/collections";
 
-// Persistence Handlers
-export {
-    responsePersistenceHandlers,
-    statePersistenceHandlers,
-    createDebouncedHandler,
-} from "./lib/persistence";
-
 // Query Keys
 export { examQueryKeys } from "./lib/query-keys";
 
@@ -37,6 +30,4 @@ export type {
     QuestionState,
     QuizSection,
     QuizInfo,
-    PersistenceContext,
-    PersistenceResult,
 } from "./lib/types";

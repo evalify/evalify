@@ -16,6 +16,7 @@
 import { createCollection, type Collection } from "@tanstack/db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import type { QueryClient } from "@tanstack/query-core";
+import { logger } from "@/lib/logger";
 import { examQueryKeys } from "../query-keys";
 import type {
     QuestionItem,
@@ -148,30 +149,20 @@ export function createResponsesCollection(
                     }
                 }
 
-                console.log("[Response Update]", { quizId, responsePatch });
+                logger.debug(
+                    { quizId, questionIds: Object.keys(responsePatch) },
+                    "Response update"
+                );
 
                 try {
                     await saveAnswerFn(responsePatch);
-
-                    // Manually persist changes to the synced store since we are skipping refetch
-                    collection.utils.writeBatch(() => {
-                        for (const mutation of transaction.mutations) {
-                            if (mutation.modified) {
-                                collection.utils.writeUpsert(mutation.modified);
-                            }
-                        }
-                    });
-
-                    // Return refetch: false to prevent overwriting optimistic update with
-                    // potentially stale server data. The local state is already correct.
                     return { refetch: false };
                 } catch (error) {
-                    console.error("[Response Update] Error saving to server:", error);
-                    throw error; // Re-throw to trigger rollback
+                    logger.error({ error, quizId }, "Failed to save response update");
+                    throw error;
                 }
             },
 
-            // Handle new response creation
             onInsert: async ({ transaction }) => {
                 if (!saveAnswerFn) {
                     console.warn(
@@ -180,7 +171,6 @@ export function createResponsesCollection(
                     return;
                 }
 
-                // Build response patch: { [questionId]: response }
                 const responsePatch: Record<string, StudentAnswer> = {};
                 for (const mutation of transaction.mutations) {
                     const resp = mutation.modified;
@@ -189,26 +179,17 @@ export function createResponsesCollection(
                     }
                 }
 
-                console.log("[Response Insert]", { quizId, responsePatch });
+                logger.debug(
+                    { quizId, questionIds: Object.keys(responsePatch) },
+                    "Response insert"
+                );
 
                 try {
                     await saveAnswerFn(responsePatch);
-
-                    // Manually persist changes to the synced store since we are skipping refetch
-                    collection.utils.writeBatch(() => {
-                        for (const mutation of transaction.mutations) {
-                            if (mutation.modified) {
-                                collection.utils.writeUpsert(mutation.modified);
-                            }
-                        }
-                    });
-
-                    // Return refetch: false to prevent overwriting optimistic update with
-                    // potentially stale server data. The local state is already correct.
                     return { refetch: false };
                 } catch (error) {
-                    console.error("[Response Insert] Error saving to server:", error);
-                    throw error; // Re-throw to trigger rollback
+                    logger.error({ error, quizId }, "Failed to save response insert");
+                    throw error;
                 }
             },
         })
@@ -317,7 +298,7 @@ export function createQuizMetadataCollection(
     return createCollection(
         queryCollectionOptions<QuizMetadata, string>({
             id: `metadata-${quizId}-${studentId}`,
-            queryKey: examQueryKeys.questions.byQuiz(quizId), // Reuse questions key or create new one? Better to use a specific one if possible, but for now we can derive from quiz info
+            queryKey: examQueryKeys.metadata.byQuiz(quizId),
             queryClient,
             getKey: (item) => item.quizId,
             queryFn: async () => {

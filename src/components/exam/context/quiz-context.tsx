@@ -96,7 +96,6 @@ function QuizContextInner({
         toggleMarkForReview: toggleMarkForReviewDb,
     } = useQuestionState(collections.state);
 
-    // Auto-submit integration
     const submitMutation = trpc.exam.submitQuiz.useMutation();
     const submitQuiz = useCallback(async () => {
         await submitMutation.mutateAsync({ quizId });
@@ -173,10 +172,12 @@ function QuizContextInner({
         });
 
         return sortedQuestions.map((q) => {
-            // Remove solution and explanation from questions to prevent cheating
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { solution, explanation, ...rest } = q as QuizQuestion & {
-                solution?: QuizQuestion["solution"];
+            const {
+                solution: _solution,
+                explanation: _explanation,
+                ...rest
+            } = q as QuizQuestion & {
+                solution?: unknown;
                 explanation?: string;
             };
             return rest;
