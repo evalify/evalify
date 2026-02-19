@@ -14,25 +14,43 @@ import {
     BloomsLevel,
     MCQData,
     MMCQData,
-    FillInBlanksConfig,
     MatchOptions,
-    DescriptiveConfig,
-    CodingConfig,
-    TestCase,
-    FileUploadConfig,
     ProgrammingLanguage,
-    MCQSolution,
-    MMCQSolution,
-    TrueFalseSolution,
-    FillTheBlankSolution,
-    MatchingSolution,
-    DescriptiveSolution,
-    CodingSolution,
 } from "@/types/questions";
 
-/**
- * Question item stored in the collection
- */
+export interface StudentFillInBlanksConfig {
+    blankCount: number;
+    blankWeights: Record<number, number>;
+    evaluationType: string;
+}
+
+export interface StudentDescriptiveConfig {
+    minWords?: number;
+    maxWords?: number;
+}
+
+export interface StudentCodingConfig {
+    language: ProgrammingLanguage;
+    templateCode?: string;
+    boilerplateCode?: string;
+    timeLimitMs?: number;
+    memoryLimitMb?: number;
+}
+
+export interface StudentTestCase {
+    id: string;
+    input: string;
+    visibility: string;
+    marksWeightage?: number;
+    orderIndex: number;
+}
+
+export interface StudentFileUploadConfig {
+    allowedFileTypes?: string[];
+    maxFileSizeInMB?: number;
+    maxFiles?: number;
+}
+
 export interface QuestionItem {
     id: string;
     type: QuestionType;
@@ -43,33 +61,16 @@ export interface QuestionItem {
     difficulty?: Difficulty | null;
     courseOutcome?: CourseOutcome | null;
     bloomTaxonomyLevel?: BloomsLevel | null;
-    question?: string; // HTML content
+    question?: string;
 
-    // Question-type specific data (mutually exclusive based on 'type')
     questionData?: MCQData | MMCQData;
-    blankConfig?: FillInBlanksConfig;
+    blankConfig?: StudentFillInBlanksConfig;
     options?: MatchOptions[];
-    descriptiveConfig?: DescriptiveConfig;
-    codingConfig?: CodingConfig;
-    testCases?: TestCase[];
+    descriptiveConfig?: StudentDescriptiveConfig;
+    codingConfig?: StudentCodingConfig;
+    testCases?: StudentTestCase[];
     attachedFiles?: string[];
-    fileUploadConfig?: FileUploadConfig;
-    trueFalseAnswer?: boolean;
-
-    // Solution and explanation
-    solution?:
-        | MCQSolution
-        | MMCQSolution
-        | TrueFalseSolution
-        | FillTheBlankSolution
-        | MatchingSolution
-        | DescriptiveSolution
-        | CodingSolution;
-    explanation?: string;
-
-    createdById?: string | null;
-    created_at?: Date | null;
-    updated_at?: Date | null;
+    fileUploadConfig?: StudentFileUploadConfig;
 }
 
 /**

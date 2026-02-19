@@ -14,33 +14,30 @@ interface TrueFalseQuestionProps {
     onAnswerChange: (answer: TrueFalseStudentAnswer) => void;
 }
 
+const OPTIONS = ["True", "False"] as const;
+
 export function TrueFalseQuestion({ question, onAnswerChange }: TrueFalseQuestionProps) {
     const currentAnswer =
         (question.response as TrueFalseStudentAnswer | undefined)?.studentAnswer || "";
-    const options = ["True", "False"];
 
     const handleValueChange = (value: string) => {
-        const answer: TrueFalseStudentAnswer = { studentAnswer: value };
-        onAnswerChange(answer);
+        onAnswerChange({ studentAnswer: value });
     };
 
     return (
         <div className="space-y-6">
-            {/* Question metadata header */}
             <QuestionHeader question={question} />
 
-            {/* Question content */}
             <div className="prose prose-sm max-w-none dark:prose-invert">
                 <ContentPreview content={(question.question as string) || ""} />
             </div>
 
-            {/* Options - RadioGroup wraps all items */}
             <RadioGroup
                 value={currentAnswer}
                 onValueChange={handleValueChange}
                 className="grid grid-cols-2 gap-4"
             >
-                {options.map((option) => (
+                {OPTIONS.map((option) => (
                     <Label
                         key={option}
                         htmlFor={`tf-option-${question.id}-${option}`}
