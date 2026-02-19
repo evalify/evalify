@@ -180,9 +180,16 @@ export function isResponseAnswered(response?: StudentAnswer | null): boolean {
         const keys = Object.keys(val);
         if (keys.length === 0) return false;
 
-        // Check if values are non-empty
-        // For matching/FIB, values are strings, at least one blank filled counts as attempted? Yes.
-        return Object.values(val).every((v) => typeof v === "string" && v.trim() !== "");
+        // Values can be strings (FIB) or string arrays (Matching)
+        return Object.values(val).every((v) => {
+            if (typeof v === "string") return v.trim() !== "";
+            if (Array.isArray(v))
+                return (
+                    v.length > 0 &&
+                    v.every((item) => typeof item === "string" && item.trim() !== "")
+                );
+            return false;
+        });
     }
 
     return true;
