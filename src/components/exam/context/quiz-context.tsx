@@ -5,7 +5,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { ExamQueryProvider, useExamCollectionsContext } from "../providers/exam-query-provider";
 import { useQuestionResponses, useQuestionState } from "../hooks/use-exam-collections";
 import { useAutoSubmit } from "../hooks/use-auto-submit";
-import { QuestionItem, StudentAnswer } from "../lib/types";
+import { QuestionItem, StudentAnswer, QuizInfo as BaseQuizInfo } from "../lib/types";
 import { isResponseAnswered } from "../utils";
 
 export interface QuizSection {
@@ -20,12 +20,7 @@ export type QuizQuestion = QuestionItem & {
     _markedForReview?: boolean;
 };
 
-export interface QuizInfo {
-    id: string;
-    name?: string;
-    endTime?: string | Date | null;
-    startTime?: string | Date | null;
-    duration?: string | null;
+export interface QuizInfo extends BaseQuizInfo {
     sections?: QuizSection[];
     parts?: QuizSection[];
     currentSection?: string | null;
@@ -405,6 +400,7 @@ export function QuizProvider({
             fetchResponses={fetchResponses}
             saveAnswer={saveAnswerToServer}
             questionIds={questionIds}
+            quizInfo={quizInfo}
         >
             <QuizContextInner
                 quizId={quizId}

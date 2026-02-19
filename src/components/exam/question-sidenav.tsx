@@ -111,9 +111,11 @@ export default function QuestionSidenav() {
                 {/* Timer Section */}
                 <div className="shrink-0">
                     <QuizTimer
-                        endTime={ctx.quizInfo?.endTime}
-                        startTime={ctx.quizInfo?.startTime}
-                        durationMs={getDurationMs(ctx.quizInfo?.duration)}
+                        endTime={ctx.quizInfo?.studentEndTime ?? ctx.quizInfo?.endTime}
+                        startTime={ctx.quizInfo?.studentStartTime ?? ctx.quizInfo?.startTime}
+                        durationMs={getDurationMs(
+                            ctx.quizInfo?.studentDuration ?? ctx.quizInfo?.duration
+                        )}
                     />
                 </div>
 

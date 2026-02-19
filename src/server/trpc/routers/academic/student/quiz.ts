@@ -8,6 +8,7 @@ import {
     quizBatchesTable,
     labQuizzesTable,
 } from "@/db/schema/quiz/quiz";
+import { quizResponseTable } from "@/db/schema/quiz/quiz-response";
 import { coursesTable } from "@/db/schema/course/course";
 import { courseStudentsTable } from "@/db/schema/course/course-student";
 import { usersTable } from "@/db/schema/user/user";
@@ -550,7 +551,7 @@ export const studentQuizRouter = createTRPCRouter({
                     });
                 }
 
-                // Get course information
+                // Get course information - only courses the student is enrolled in
                 const courseInfo = await db
                     .select({
                         id: coursesTable.id,
@@ -559,7 +560,16 @@ export const studentQuizRouter = createTRPCRouter({
                     })
                     .from(coursesTable)
                     .innerJoin(courseQuizzesTable, eq(coursesTable.id, courseQuizzesTable.courseId))
-                    .where(eq(courseQuizzesTable.quizId, quiz.id));
+                    .innerJoin(
+                        courseStudentsTable,
+                        eq(coursesTable.id, courseStudentsTable.courseId)
+                    )
+                    .where(
+                        and(
+                            eq(courseQuizzesTable.quizId, quiz.id),
+                            eq(courseStudentsTable.studentId, userId)
+                        )
+                    );
 
                 // Get instructor information
                 let instructorInfo = null;
@@ -609,6 +619,23 @@ export const studentQuizRouter = createTRPCRouter({
                     "IP verification check"
                 );
 
+                // Fetch student's quiz response to get their personal start/end times
+                const studentQuizResponse = await db
+                    .select({
+                        startTime: quizResponseTable.startTime,
+                        endTime: quizResponseTable.endTime,
+                        duration: quizResponseTable.duration,
+                        submissionStatus: quizResponseTable.submissionStatus,
+                    })
+                    .from(quizResponseTable)
+                    .where(
+                        and(
+                            eq(quizResponseTable.quizId, quiz.id),
+                            eq(quizResponseTable.studentId, userId)
+                        )
+                    )
+                    .limit(1);
+
                 // Determine student-specific status using helper
                 const studentStatus = await getStudentQuizStatus(
                     quiz.id,
@@ -632,6 +659,13 @@ export const studentQuizRouter = createTRPCRouter({
                     courses: courseInfo,
                     instructor: instructorInfo,
                     labs: labInfo,
+                    // Include student's personal timing from their quiz response
+                    studentStartTime:
+                        studentQuizResponse.length > 0 ? studentQuizResponse[0].startTime : null,
+                    studentEndTime:
+                        studentQuizResponse.length > 0 ? studentQuizResponse[0].endTime : null,
+                    studentDuration:
+                        studentQuizResponse.length > 0 ? studentQuizResponse[0].duration : null,
                 };
             } catch (error) {
                 if (error instanceof TRPCError) {

@@ -322,8 +322,9 @@ export function createQuizMetadataCollection(
             getKey: (item) => item.quizId,
             queryFn: async () => {
                 // Initialize from provided quiz info
-                // In a real app, you might want to fetch fresh status here
-                const endTime = quizInfo?.endTime ? new Date(quizInfo.endTime).getTime() : null;
+                // Use student-specific end time if available, otherwise fall back to quiz end time
+                const endTimeValue = quizInfo?.studentEndTime ?? quizInfo?.endTime;
+                const endTime = endTimeValue ? new Date(endTimeValue).getTime() : null;
 
                 return [
                     {
