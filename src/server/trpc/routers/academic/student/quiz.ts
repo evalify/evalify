@@ -9,6 +9,7 @@ import {
     labQuizzesTable,
 } from "@/db/schema/quiz/quiz";
 import { coursesTable } from "@/db/schema/course/course";
+import { courseStudentsTable } from "@/db/schema/course/course-student";
 import { usersTable } from "@/db/schema/user/user";
 import { batchStudentsTable } from "@/db/schema/batch/batch-student";
 import { labsTable } from "@/db/schema/lab/lab";
@@ -44,6 +45,14 @@ export const studentQuizRouter = createTRPCRouter({
                     .select({ batchId: batchStudentsTable.batchId })
                     .from(batchStudentsTable)
                     .where(eq(batchStudentsTable.studentId, userId));
+
+                // Get student's enrolled course IDs
+                const studentCourses = await db
+                    .select({ courseId: courseStudentsTable.courseId })
+                    .from(courseStudentsTable)
+                    .where(eq(courseStudentsTable.studentId, userId));
+
+                const studentCourseIds = new Set(studentCourses.map((c) => c.courseId));
 
                 // Get all quizzes from all courses
                 const quizzes = await db
@@ -133,6 +142,11 @@ export const studentQuizRouter = createTRPCRouter({
                 >();
 
                 for (const quiz of accessibleQuizzes) {
+                    // Only include courses that the student is actually enrolled in
+                    if (!studentCourseIds.has(quiz.courseId)) {
+                        continue;
+                    }
+
                     if (!quizMap.has(quiz.id)) {
                         quizMap.set(quiz.id, {
                             ...quiz,
@@ -149,7 +163,7 @@ export const studentQuizRouter = createTRPCRouter({
                             courseCode: quiz.courseCode,
                         });
                     } else {
-                        // Add additional course to existing quiz
+                        // Add additional course to existing quiz (only if student is enrolled)
                         const existing = quizMap.get(quiz.id);
                         if (existing) {
                             existing.courses.push({
