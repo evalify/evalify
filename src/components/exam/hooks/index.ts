@@ -1,7 +1,2 @@
-/**
- * Exam hooks module exports
- *
- * @module features/exam/hooks
- */
-
 export * from "./use-exam-collections";
+export * from "./use-auto-submit";

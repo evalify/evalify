@@ -7,7 +7,28 @@ import { QuestionFactory } from "./question-types/question-factory";
 import { Button } from "@/components/ui/button";
 import { Flag, CheckCircle } from "lucide-react";
 import type { StudentAnswer } from "./lib/types";
+import { QuestionType } from "@/types/questions";
 import { DBInspector } from "./debug/db-inspector";
+
+function getEmptyAnswer(type: QuestionType): StudentAnswer {
+    switch (type) {
+        case QuestionType.MCQ:
+        case QuestionType.TRUE_FALSE:
+        case QuestionType.DESCRIPTIVE:
+            return { studentAnswer: "" };
+        case QuestionType.MMCQ:
+            return { studentAnswer: [] };
+        case QuestionType.FILL_THE_BLANK:
+        case QuestionType.MATCHING:
+            return { studentAnswer: {} };
+        case QuestionType.CODING:
+            return { studentAnswer: { code: "", language: "PYTHON" as never } };
+        case QuestionType.FILE_UPLOAD:
+            return { studentAnswer: { fileUrl: "", fileName: "", fileSize: 0 } };
+        default:
+            return { studentAnswer: "" };
+    }
+}
 
 export default function QuizPageClient() {
     const {
@@ -48,8 +69,7 @@ export default function QuizPageClient() {
 
     const handleClearQuestion = () => {
         if (activeQuestion?.id && currentQuestion?.response) {
-            // Create an empty answer based on the question type
-            const emptyAnswer: StudentAnswer = { studentAnswer: "" } as StudentAnswer;
+            const emptyAnswer = getEmptyAnswer(activeQuestion.type);
             saveAnswer({ [activeQuestion.id]: emptyAnswer });
         }
     };

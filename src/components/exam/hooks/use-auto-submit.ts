@@ -1,87 +1,86 @@
-/**
- * Hook for handling auto-submission logic
- *
- * This hook uses TanStack DB to reactively monitor the quiz end time
- * and automatically triggers submission when the time expires.
- *
- * @module features/exam/hooks
- */
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useLiveQuery } from "@tanstack/react-db";
 import type { Collection } from "@tanstack/db";
 import type { QuizMetadata } from "../lib/types";
-import { useRouter } from "next/navigation";
 
-/**
- * Hook to handle auto-submission
- *
- * @param metadataCollection - The quiz metadata collection
- * @param submitQuizFn - Function to submit the quiz to server
- */
+const CHECK_INTERVAL_MS = 1_000;
+const WARNING_THRESHOLD_MS = 2 * 60 * 1_000;
+
 export function useAutoSubmit(
     metadataCollection: Collection<QuizMetadata, string, never, never, QuizMetadata>,
     submitQuizFn: () => Promise<void>
 ) {
-    const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isWarning, setIsWarning] = useState(false);
+    const submittingRef = useRef(false);
 
-    // Reactively get metadata
     const { data: metadataList = [] } = useLiveQuery((q) =>
         q.from({ meta: metadataCollection }).select(({ meta }) => meta)
     );
 
     const metadata = metadataList[0];
 
-    // Check for expiry every second
+    const handleAutoSubmit = useCallback(async () => {
+        if (submittingRef.current) return;
+        submittingRef.current = true;
+        setIsSubmitting(true);
+
+        try {
+            metadataCollection.update(metadata!.quizId, (draft) => {
+                draft.submissionStatus = "AUTO_SUBMITTED";
+            });
+            await submitQuizFn();
+        } catch {
+            submittingRef.current = false;
+            setIsSubmitting(false);
+        }
+    }, [metadata, metadataCollection, submitQuizFn]);
+
     useEffect(() => {
-        if (!metadata || !metadata.endTime || metadata.submissionStatus !== "NOT_SUBMITTED") {
+        if (!metadata?.endTime || metadata.submissionStatus !== "NOT_SUBMITTED") {
             return;
         }
 
-        const checkExpiry = async () => {
+        const endTime = metadata.endTime;
+
+        const checkExpiry = () => {
+            if (submittingRef.current) return;
+
             const now = Date.now();
-            const endTime = metadata.endTime!; // We checked it exists above
+            const remaining = endTime - now;
 
-            // If time expired
-            if (now >= endTime) {
-                // Prevent double submission
-                if (isSubmitting) return;
+            if (remaining <= 0) {
+                handleAutoSubmit();
+                return;
+            }
 
-                console.log("[AutoSubmit] Time expired, submitting quiz...");
-                setIsSubmitting(true);
-
-                try {
-                    // 1. Update local status first (optimistic)
-                    metadataCollection.update(metadata.quizId, (draft) => {
-                        draft.submissionStatus = "AUTO_SUBMITTED";
-                    });
-
-                    // 2. Trigger server submission
-                    await submitQuizFn();
-
-                    // 3. Redirect
-                    router.push(`/quiz/${metadata.quizId}/submitted`);
-                } catch (error) {
-                    console.error("[AutoSubmit] Error submitting quiz:", error);
-                    setIsSubmitting(false);
-                    // Rollback local status if needed, but usually we want to keep trying
-                }
+            if (remaining <= WARNING_THRESHOLD_MS && !isWarning) {
+                setIsWarning(true);
             }
         };
 
-        // Check immediately
         checkExpiry();
-
-        // Check every second
-        const interval = setInterval(checkExpiry, 1000);
+        const interval = setInterval(checkExpiry, CHECK_INTERVAL_MS);
         return () => clearInterval(interval);
-    }, [metadata, metadataCollection, submitQuizFn, router, isSubmitting]);
+    }, [metadata, handleAutoSubmit, isWarning]);
+
+    const [remainingMs, setRemainingMs] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!metadata?.endTime) return;
+        const endTime = metadata.endTime;
+        const update = () => setRemainingMs(Math.max(0, endTime - Date.now()));
+        update();
+        const id = setInterval(update, CHECK_INTERVAL_MS);
+        return () => clearInterval(id);
+    }, [metadata?.endTime]);
 
     return {
         isAutoSubmitting: isSubmitting,
+        isWarning,
         submissionStatus: metadata?.submissionStatus ?? "NOT_SUBMITTED",
+        remainingMs: metadata?.endTime ? remainingMs : null,
     };
 }

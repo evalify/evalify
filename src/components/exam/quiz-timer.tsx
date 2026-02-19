@@ -2,15 +2,16 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 type Props = {
-    /** quiz end time as ISO string or Date */
     endTime?: string | Date | null;
-    /** optional start time and duration (ms) fallback */
     startTime?: string | Date | null;
     durationMs?: number | null;
     onExpire?: () => void;
 };
+
+const WARNING_THRESHOLD_MS = 2 * 60 * 1_000;
 
 function formatMs(ms: number) {
     if (!Number.isFinite(ms) || ms <= 0) return "00:00";
@@ -38,29 +39,29 @@ export default function QuizTimer({ endTime, startTime, durationMs, onExpire }: 
         return null;
     }, [endTime, startTime, durationMs]);
 
-    const [mounted, setMounted] = useState(false);
-    const [now, setNow] = useState<Date | null>(null);
+    const [remainingMs, setRemainingMs] = useState<number | null>(null);
     const hasFiredRef = useRef(false);
 
     useEffect(() => {
-        // mark mounted and initialize "now" only on client to avoid SSR/client mismatch
-        queueMicrotask(() => {
-            setMounted(true);
-            setNow(new Date());
-        });
-        const t = setInterval(() => setNow(new Date()), 1000);
-        return () => clearInterval(t);
-    }, []);
+        if (!computeEnd) return;
 
-    const remainingMs = computeEnd && now ? computeEnd.getTime() - now.getTime() : null;
+        const endMs = computeEnd.getTime();
+        const update = () => {
+            const ms = endMs - Date.now();
+            setRemainingMs(Math.max(0, ms));
 
-    useEffect(() => {
-        if (!mounted || remainingMs === null || !onExpire) return;
-        if (remainingMs <= 0 && !hasFiredRef.current) {
-            hasFiredRef.current = true;
-            onExpire();
-        }
-    }, [mounted, remainingMs, onExpire]);
+            if (ms <= 0 && !hasFiredRef.current) {
+                hasFiredRef.current = true;
+                onExpire?.();
+            }
+        };
+        update();
+        const id = setInterval(update, 1000);
+        return () => clearInterval(id);
+    }, [computeEnd, onExpire]);
+
+    const isWarning =
+        remainingMs !== null && remainingMs > 0 && remainingMs <= WARNING_THRESHOLD_MS;
 
     return (
         <Card className="w-full">
@@ -68,7 +69,12 @@ export default function QuizTimer({ endTime, startTime, durationMs, onExpire }: 
                 <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                     Time Remaining
                 </div>
-                <div className="text-3xl font-mono font-bold tabular-nums">
+                <div
+                    className={cn(
+                        "text-3xl font-mono font-bold tabular-nums",
+                        isWarning && "text-destructive animate-pulse"
+                    )}
+                >
                     {mounted && remainingMs !== null ? formatMs(Math.max(0, remainingMs)) : "--:--"}
                 </div>
             </CardContent>
