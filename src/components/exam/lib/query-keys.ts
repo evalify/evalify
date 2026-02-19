@@ -70,6 +70,14 @@ export const examQueryKeys = {
         visited: (quizId: string) => [...examQueryKeys.state.byQuiz(quizId), "visited"] as const,
         marked: (quizId: string) => [...examQueryKeys.state.byQuiz(quizId), "marked"] as const,
     },
+
+    /**
+     * Quiz metadata queries (timing, auto-submit status)
+     */
+    metadata: {
+        all: () => [...examQueryKeys.all, "metadata"] as const,
+        byQuiz: (quizId: string) => [...examQueryKeys.metadata.all(), quizId] as const,
+    },
 } as const;
 
 /**

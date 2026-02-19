@@ -149,9 +149,6 @@ function transformStudentQuestion(raw: Record<string, unknown>): Record<string, 
  * Input: optional `quizId` to fetch only questions belonging to a quiz.
  */
 export const examRouter = createTRPCRouter({
-    /**
-     * Get current quiz response for the student (if exists)
-     */
     getResponse: studentProcedure
         .input(z.object({ quizId: z.uuid() }))
         .query(async ({ input, ctx }) => {
