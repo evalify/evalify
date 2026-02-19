@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ bank
             .where(eq(topicsTable.bankId, bankId));
 
         return NextResponse.json({ topics: bankTopics });
-    } catch (error) {
+    } catch (_error) {
         return NextResponse.json({ error: "Failed to fetch topics" }, { status: 500 });
     }
 }
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ban
         const [newTopic] = await db.insert(topicsTable).values({ name, bankId }).returning();
 
         return NextResponse.json({ topic: newTopic }, { status: 201 });
-    } catch (error) {
+    } catch (_error) {
         return NextResponse.json({ error: "Failed to create topic" }, { status: 500 });
     }
 }
