@@ -9,8 +9,8 @@ import { Check, X, Shuffle } from "lucide-react";
 interface MatchingRendererProps {
     question: MatchTheFollowingQuestion;
     showSolution?: boolean;
-    matches?: Record<string, string>;
-    onMatchChange?: (leftId: string, rightId: string) => void;
+    matches?: Record<string, string[]>;
+    onMatchChange?: (leftId: string, rightIds: string[]) => void;
     isReadOnly?: boolean;
     compareWithStudentAnswer?: boolean;
 }
@@ -41,7 +41,7 @@ export function MatchingRenderer({
         // If not comparing with student answer, don't check selection
         if (!compareWithStudentAnswer) return null;
 
-        const isSelected = matches[leftId] === rightId;
+        const isSelected = matches[leftId]?.includes(rightId) ?? false;
 
         if (isCorrect && isSelected) return "correct";
         if (!isCorrect && isSelected) return "incorrect";
@@ -49,10 +49,18 @@ export function MatchingRenderer({
     };
 
     const totalMatches = leftOptions.length;
-    const completedMatches = Object.keys(matches).filter((k) => matches[k]).length;
+    const completedMatches = Object.keys(matches).filter(
+        (k) => matches[k] && matches[k].length > 0
+    ).length;
     const correctMatches = leftOptions.filter((left) => {
-        const selectedRight = matches[left.id];
-        return selectedRight && left.matchPairIds?.includes(selectedRight);
+        const selectedRightIds = matches[left.id] || [];
+        const correctRightIds = left.matchPairIds || [];
+        if (selectedRightIds.length === 0) return false;
+        // Correct if the sets match exactly
+        return (
+            selectedRightIds.length === correctRightIds.length &&
+            selectedRightIds.every((id) => correctRightIds.includes(id))
+        );
     }).length;
 
     return (
@@ -89,9 +97,18 @@ export function MatchingRenderer({
                     </div>
                     <div className="space-y-3">
                         {leftOptions.map((leftOption, index) => {
-                            const selectedRightId = matches[leftOption.id];
-                            const status = selectedRightId
-                                ? getMatchStatus(leftOption.id, selectedRightId)
+                            const selectedRightIds = matches[leftOption.id] || [];
+                            const hasMatch = selectedRightIds.length > 0;
+                            // Aggregate status: show correct only if ALL matches are correct
+                            const statuses = selectedRightIds.map((rid) =>
+                                getMatchStatus(leftOption.id, rid)
+                            );
+                            const status = hasMatch
+                                ? statuses.every((s) => s === "correct")
+                                    ? "correct"
+                                    : statuses.some((s) => s === "incorrect")
+                                      ? "incorrect"
+                                      : null
                                 : null;
 
                             return (
@@ -99,7 +116,7 @@ export function MatchingRenderer({
                                     key={leftOption.id}
                                     className={cn(
                                         "transition-all duration-200",
-                                        selectedRightId && "border-primary/50",
+                                        hasMatch && "border-primary/50",
                                         status === "correct" &&
                                             "border-green-500/50 bg-green-50/50 dark:bg-green-950/20",
                                         status === "incorrect" &&
@@ -145,7 +162,9 @@ export function MatchingRenderer({
                     </div>
                     <div className="space-y-3">
                         {rightOptions.map((rightOption, index) => {
-                            const isMatched = Object.values(matches).includes(rightOption.id);
+                            const isMatched = Object.values(matches).some((ids) =>
+                                ids.includes(rightOption.id)
+                            );
 
                             return (
                                 <Card
@@ -186,24 +205,28 @@ export function MatchingRenderer({
                     <div className="grid grid-cols-1 gap-3">
                         {leftOptions.map((leftOption, index) => {
                             const correctRightIds = leftOption.matchPairIds || [];
-                            const correctMatches = rightOptions.filter((r) =>
+                            const correctMatchItems = rightOptions.filter((r) =>
                                 correctRightIds.includes(r.id)
                             );
-                            const selectedRightId = matches[leftOption.id];
-                            const selectedMatch = rightOptions.find(
-                                (r) => r.id === selectedRightId
+                            const selectedRightIds = matches[leftOption.id] || [];
+                            const selectedMatchItems = rightOptions.filter((r) =>
+                                selectedRightIds.includes(r.id)
                             );
-                            const isCorrect =
-                                selectedRightId && correctRightIds.includes(selectedRightId);
+                            const isFullyCorrect =
+                                selectedRightIds.length === correctRightIds.length &&
+                                selectedRightIds.every((id) => correctRightIds.includes(id));
+                            const isPartiallyCorrect =
+                                !isFullyCorrect &&
+                                selectedRightIds.some((id) => correctRightIds.includes(id));
 
                             return (
                                 <Card
                                     key={leftOption.id}
                                     className={cn(
                                         "border-l-4",
-                                        isCorrect
+                                        isFullyCorrect
                                             ? "border-l-green-500 bg-green-50/30 dark:bg-green-950/20"
-                                            : selectedRightId
+                                            : selectedRightIds.length > 0
                                               ? "border-l-red-500 bg-red-50/30 dark:bg-red-950/20"
                                               : "border-l-blue-500 bg-blue-50/30 dark:bg-blue-950/20"
                                     )}
@@ -223,62 +246,84 @@ export function MatchingRenderer({
                                                 </div>
                                             </div>
 
-                                            {/* User's Answer */}
-                                            {selectedMatch && (
+                                            {/* User's Answers */}
+                                            {selectedMatchItems.length > 0 && (
                                                 <div
                                                     className={cn(
-                                                        "flex items-start gap-2 p-3 rounded-lg border",
-                                                        isCorrect
+                                                        "flex flex-col gap-2 p-3 rounded-lg border",
+                                                        isFullyCorrect
                                                             ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800"
                                                             : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
                                                     )}
                                                 >
-                                                    {isCorrect ? (
-                                                        <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-                                                    ) : (
-                                                        <X className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
-                                                    )}
-                                                    <div className="flex-1 space-y-1">
-                                                        <div
+                                                    <div className="flex items-center gap-2">
+                                                        {isFullyCorrect ? (
+                                                            <Check className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                                                        ) : (
+                                                            <X className="h-4 w-4 text-red-600 dark:text-red-400 shrink-0" />
+                                                        )}
+                                                        <span
                                                             className={cn(
                                                                 "text-xs font-medium",
-                                                                isCorrect
+                                                                isFullyCorrect
                                                                     ? "text-green-900 dark:text-green-200"
                                                                     : "text-red-900 dark:text-red-200"
                                                             )}
                                                         >
-                                                            Your answer:{" "}
-                                                            {rightOptions.indexOf(selectedMatch) +
-                                                                1}
-                                                        </div>
-                                                        <div
-                                                            className={cn(
-                                                                "text-xs p-2 rounded bg-background/50",
-                                                                isCorrect
-                                                                    ? "text-green-700 dark:text-green-300"
-                                                                    : "text-red-700 dark:text-red-300"
-                                                            )}
-                                                        >
-                                                            <ContentPreview
-                                                                content={selectedMatch.text}
-                                                                noProse
-                                                            />
-                                                        </div>
+                                                            Your answer
+                                                            {selectedMatchItems.length > 1
+                                                                ? "s"
+                                                                : ""}
+                                                            :{" "}
+                                                            {selectedMatchItems
+                                                                .map(
+                                                                    (r) =>
+                                                                        rightOptions.indexOf(r) + 1
+                                                                )
+                                                                .join(", ")}
+                                                        </span>
                                                     </div>
+                                                    {selectedMatchItems.map((sm) => {
+                                                        const isCorrectItem =
+                                                            correctRightIds.includes(sm.id);
+                                                        return (
+                                                            <div
+                                                                key={sm.id}
+                                                                className={cn(
+                                                                    "text-xs p-2 rounded bg-background/50 flex items-start gap-2",
+                                                                    isCorrectItem
+                                                                        ? "text-green-700 dark:text-green-300"
+                                                                        : "text-red-700 dark:text-red-300"
+                                                                )}
+                                                            >
+                                                                {isCorrectItem ? (
+                                                                    <Check className="h-3 w-3 mt-0.5 shrink-0" />
+                                                                ) : (
+                                                                    <X className="h-3 w-3 mt-0.5 shrink-0" />
+                                                                )}
+                                                                <ContentPreview
+                                                                    content={sm.text}
+                                                                    noProse
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
 
-                                            {/* Correct Answer */}
-                                            {(!isCorrect || !selectedMatch) && (
+                                            {/* Correct Answer (shown when not fully correct or no answer) */}
+                                            {(!isFullyCorrect ||
+                                                selectedMatchItems.length === 0) && (
                                                 <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
                                                     <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                                                     <div className="flex-1 space-y-2">
                                                         <div className="text-xs font-medium text-green-900 dark:text-green-200">
                                                             Correct answer
-                                                            {correctMatches.length > 1
+                                                            {correctMatchItems.length > 1
                                                                 ? "s"
-                                                                : ""}:{" "}
-                                                            {correctMatches
+                                                                : ""}
+                                                            :{" "}
+                                                            {correctMatchItems
                                                                 .map(
                                                                     (r) =>
                                                                         rightOptions.indexOf(r) + 1
@@ -286,7 +331,7 @@ export function MatchingRenderer({
                                                                 .join(", ")}
                                                         </div>
                                                         <div className="space-y-2">
-                                                            {correctMatches.map(
+                                                            {correctMatchItems.map(
                                                                 (correctMatch, idx) => (
                                                                     <div
                                                                         key={idx}

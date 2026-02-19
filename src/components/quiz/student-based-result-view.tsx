@@ -302,7 +302,7 @@ export function StudentResultView({ quizId, studentId }: StudentResultViewProps)
                 case "FILL_THE_BLANK":
                     return { blankAnswers: response as Record<number, string> };
                 case "MATCHING":
-                    return { matches: response as Record<string, string> };
+                    return { matches: response as Record<string, string[]> };
                 case "DESCRIPTIVE":
                     return { descriptiveAnswer: response as string };
                 default:

@@ -66,7 +66,7 @@ interface StudentAnswerProps {
     selectedOptionIds?: string[];
     selectedAnswer?: boolean;
     blankAnswers?: Record<number, string>;
-    matches?: Record<string, string>;
+    matches?: Record<string, string[]>;
     descriptiveAnswer?: string;
 }
 
@@ -99,7 +99,7 @@ function getStudentAnswerProps(
         case "FILL_THE_BLANK":
             return { blankAnswers: answer as Record<number, string> };
         case "MATCHING":
-            return { matches: answer as Record<string, string> };
+            return { matches: answer as Record<string, string[]> };
         case "DESCRIPTIVE":
             return { descriptiveAnswer: answer as string };
         default:
