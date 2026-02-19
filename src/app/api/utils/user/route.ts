@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { usersTable } from "@/db/schema";
 import { logger } from "@/lib/logger";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
     try {
         const users = await db.select().from(usersTable);
 

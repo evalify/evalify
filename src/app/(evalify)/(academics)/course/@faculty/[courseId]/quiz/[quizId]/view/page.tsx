@@ -97,10 +97,10 @@ export default function QuizQuestionsPage() {
     });
 
     // Calculate total marks from all questions in all sections
-    const totalMarks = useMemo(() => {
+    const _totalMarks = useMemo(() => {
         if (!sections) return 0;
         const total = 0;
-        sections.forEach((section) => {
+        sections.forEach((_section) => {
             // We'll need to fetch questions for each section to calculate marks
             // This will be handled by the SectionItem component
         });

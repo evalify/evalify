@@ -133,7 +133,7 @@ export function UserManagement() {
             await createUser.mutateAsync(data);
             setIsCreateModalOpen(false);
             track("user_created", { email: data.email, role: data.role });
-        } catch (error) {
+        } catch (_error) {
             // Error is already handled by the mutation's onError callback
             // Keep modal open so user can fix the issue
         }
@@ -158,7 +158,7 @@ export function UserManagement() {
             setIsEditModalOpen(false);
             setSelectedUser(null);
             track("user_updated", { id: selectedUser.id });
-        } catch (error) {
+        } catch (_error) {
             // Error is already handled by the mutation's onError callback
             // Keep modal open so user can fix the issue
         }
