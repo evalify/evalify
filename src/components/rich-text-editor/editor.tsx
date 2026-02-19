@@ -12,6 +12,7 @@ import { ImagePlaceholder } from "@/components/rich-text-editor/toolbars/image-p
 import { LaTeX, LatexNodeExtension } from "@/components/rich-text-editor/toolbars/latex-extension";
 import { EditorErrorBoundary } from "@/components/rich-text-editor/editor-error-boundary";
 import { useImageDeletion } from "@/components/rich-text-editor/hooks/use-image-deletion";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useEffect, forwardRef, useImperativeHandle } from "react";
 import DOMPurify from "isomorphic-dompurify";
@@ -152,14 +153,16 @@ export const TiptapEditor = forwardRef<TiptapEditorRef, EditorProps>(
         }, [editor, initialContent]);
         return (
             <EditorErrorBoundary>
-                <div className={cn("border rounded-md", className)}>
-                    {editor && (
-                        <ToolbarProvider editor={editor}>
-                            {!readOnly && <EditorToolbar />}
-                            <EditorContent editor={editor} className="overflow-auto" />
-                        </ToolbarProvider>
-                    )}
-                </div>
+                <TooltipProvider delayDuration={0}>
+                    <div className={cn("border rounded-md", className)}>
+                        {editor && (
+                            <ToolbarProvider editor={editor}>
+                                {!readOnly && <EditorToolbar />}
+                                <EditorContent editor={editor} className="overflow-auto" />
+                            </ToolbarProvider>
+                        )}
+                    </div>
+                </TooltipProvider>
             </EditorErrorBoundary>
         );
     }

@@ -66,8 +66,8 @@ export interface QuestionRenderProps {
     onBlankAnswerChange?: (blankIndex: number, value: string) => void;
 
     // Matching props
-    matches?: Record<string, string>;
-    onMatchChange?: (leftId: string, rightId: string) => void;
+    matches?: Record<string, string[]>;
+    onMatchChange?: (leftId: string, rightIds: string[]) => void;
 
     // Descriptive props
     descriptiveAnswer?: string;

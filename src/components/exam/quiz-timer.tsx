@@ -75,7 +75,7 @@ export default function QuizTimer({ endTime, startTime, durationMs, onExpire }: 
                         isWarning && "text-destructive animate-pulse"
                     )}
                 >
-                    {mounted && remainingMs !== null ? formatMs(Math.max(0, remainingMs)) : "--:--"}
+                    {remainingMs !== null ? formatMs(Math.max(0, remainingMs)) : "--:--"}
                 </div>
             </CardContent>
         </Card>
