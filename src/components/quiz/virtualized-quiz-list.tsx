@@ -185,136 +185,221 @@ function QuizCard({ quiz }: { quiz: VirtualizedQuiz }) {
             style={{ backgroundColor: statusConfig.bgColor, borderColor: statusConfig.borderColor }}
         >
             <div className="flex flex-col md:flex-row">
-                {/* Left Sidebar - Status Indicator */}
-                <div className={cn("w-full md:w-2 shrink-0", statusConfig.badgeColor)} />
-
-                {/* Main Content */}
-                <div className="flex-1 p-4 md:p-5">
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                        {/* Quiz Info */}
-                        <div className="flex-1 space-y-1.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <Badge
-                                    variant="outline"
-                                    className={cn("gap-1 text-xs", statusConfig.color)}
-                                >
-                                    <StatusIcon className="size-3" />
-                                    {statusConfig.label}
-                                </Badge>
-                                {quiz.courses && quiz.courses.length > 0 ? (
-                                    <>
-                                        {quiz.courses.slice(0, 2).map((course, idx) => (
-                                            <div
-                                                key={course.id || idx}
-                                                className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium"
-                                            >
-                                                <GraduationCap className="size-3.5" />
-                                                {course.code || "N/A"}
-                                            </div>
-                                        ))}
-                                        {quiz.courses.length > 2 && (
-                                            <Badge variant="secondary" className="text-xs">
-                                                +{quiz.courses.length - 2} more
-                                            </Badge>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                                        <GraduationCap className="size-3.5" />
-                                        {quiz.courseCode}
-                                    </div>
+                {/* Main Content - Two Column Layout */}
+                <div className="flex-1 p-4 md:p-6">
+                    <div className="grid md:grid-cols-[1fr_auto] gap-6">
+                        {/* Left Column - Quiz Details */}
+                        <div className="space-y-4">
+                            {/* Header */}
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <Badge
+                                        variant="outline"
+                                        className={cn("gap-1.5 text-sm py-1", statusConfig.color)}
+                                    >
+                                        <StatusIcon className="size-4" />
+                                        {statusConfig.label}
+                                    </Badge>
+                                    {quiz.courses && quiz.courses.length > 0 ? (
+                                        <>
+                                            {quiz.courses.slice(0, 2).map((course, idx) => (
+                                                <div
+                                                    key={course.id || idx}
+                                                    className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium"
+                                                >
+                                                    <GraduationCap className="size-4" />
+                                                    {course.name || "N/A"}
+                                                    {course.code && (
+                                                        <span className="text-xs opacity-70">
+                                                            ({course.code})
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {quiz.courses.length > 2 && (
+                                                <Badge variant="secondary" className="text-sm">
+                                                    +{quiz.courses.length - 2} more
+                                                </Badge>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
+                                            <GraduationCap className="size-4" />
+                                            <span>{quiz.courseName}</span>
+                                            {quiz.courseCode && (
+                                                <span className="text-xs opacity-70">
+                                                    ({quiz.courseCode})
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <h3 className="text-xl font-semibold line-clamp-2">{quiz.name}</h3>
+                                {quiz.description && (
+                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                        {quiz.description}
+                                    </p>
                                 )}
                             </div>
-                            <h3 className="text-base font-semibold line-clamp-1">{quiz.name}</h3>
-                        </div>
 
-                        {/* Instructor Avatar */}
-                        {quiz.instructorName && (
-                            <Avatar className="size-9 border shrink-0">
-                                <AvatarImage src={quiz.instructorImage || undefined} />
-                                <AvatarFallback className="text-xs font-semibold">
-                                    {quiz.instructorName
-                                        .split(" ")
-                                        .map((n) => n[0])
-                                        .join("")
-                                        .toUpperCase()}
-                                </AvatarFallback>
-                            </Avatar>
-                        )}
-                    </div>
+                            {/* Schedule Info */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Calendar className="size-4" />
+                                        <span className="text-xs font-medium">Start Time</span>
+                                    </div>
+                                    <p className="text-sm font-semibold">
+                                        {format(startTime, "MMM d, yyyy")}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {format(startTime, "h:mm a")}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Timer className="size-4" />
+                                        <span className="text-xs font-medium">Duration</span>
+                                    </div>
+                                    <p className="text-sm font-semibold">
+                                        {formatDuration(durationMinutes)}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Ends at {format(endTime, "h:mm a")}
+                                    </p>
+                                </div>
+                            </div>
 
-                    {/* Time Info Row */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-3">
-                        <div className="flex items-center gap-1.5">
-                            <Calendar className="size-3.5" />
-                            <span>{format(startTime, "MMM d, h:mm a")}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <Timer className="size-3.5" />
-                            <span>{formatDuration(durationMinutes)}</span>
-                        </div>
-                    </div>
-
-                    {/* Status Message */}
-                    {isUpcoming && (
-                        <div className="mb-3 flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
-                            <AlertCircle className="size-3.5 shrink-0" />
-                            <span>
-                                Starts {formatDistanceToNow(startTime, { addSuffix: true })}
-                            </span>
-                        </div>
-                    )}
-                    {isActive && (
-                        <div className="mb-3 flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                            <Zap className="size-3.5 shrink-0" />
-                            <span>Ends {formatDistanceToNow(endTime, { addSuffix: true })}</span>
-                        </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                        {canAccessInstructions &&
-                            quiz.status !== "completed" &&
-                            quiz.status !== "missed" && (
-                                <Button
-                                    onClick={handleViewInstructions}
-                                    className="gap-2 text-xs h-8"
-                                    size="sm"
-                                    variant={isActive ? "default" : "outline"}
-                                >
-                                    <Play className="size-3.5" />
-                                    {isActive ? "Start Quiz" : "View Instructions"}
-                                </Button>
+                            {/* Status Message */}
+                            {isUpcoming && (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                                    <AlertCircle className="size-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                                    <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                                        Starts {formatDistanceToNow(startTime, { addSuffix: true })}
+                                    </span>
+                                </div>
+                            )}
+                            {isActive && (
+                                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                                    <Zap className="size-4 text-green-600 dark:text-green-400 shrink-0" />
+                                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                                        Ends {formatDistanceToNow(endTime, { addSuffix: true })}
+                                    </span>
+                                </div>
                             )}
 
-                        {canViewResults && (
-                            <Button
-                                onClick={handleViewResults}
-                                variant="secondary"
-                                className="gap-2 text-xs h-8"
-                                size="sm"
-                            >
-                                <Award className="size-3.5" />
-                                View Results
-                            </Button>
-                        )}
+                            {/* Action Buttons */}
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                {canAccessInstructions &&
+                                    quiz.status !== "completed" &&
+                                    quiz.status !== "missed" && (
+                                        <Button
+                                            onClick={handleViewInstructions}
+                                            className="gap-2"
+                                            size="default"
+                                            variant={isActive ? "default" : "outline"}
+                                        >
+                                            <Play className="size-4" />
+                                            {isActive ? "Start Quiz" : "View Instructions"}
+                                        </Button>
+                                    )}
 
-                        {!canAccessInstructions &&
-                            quiz.status !== "completed" &&
-                            quiz.status !== "missed" && (
-                                <Button
-                                    disabled
-                                    variant="outline"
-                                    className="gap-2 text-xs h-8"
-                                    size="sm"
-                                >
-                                    <Clock className="size-3.5" />
-                                    Available{" "}
-                                    {formatDistanceToNow(fiveMinutesBeforeStart, {
-                                        addSuffix: true,
-                                    })}
-                                </Button>
+                                {canViewResults && (
+                                    <Button
+                                        onClick={handleViewResults}
+                                        variant="secondary"
+                                        className="gap-2"
+                                        size="default"
+                                    >
+                                        <Award className="size-4" />
+                                        View Results
+                                    </Button>
+                                )}
+
+                                {!canAccessInstructions &&
+                                    quiz.status !== "completed" &&
+                                    quiz.status !== "missed" && (
+                                        <Button
+                                            disabled
+                                            variant="outline"
+                                            className="gap-2"
+                                            size="default"
+                                        >
+                                            <Clock className="size-4" />
+                                            Available{" "}
+                                            {formatDistanceToNow(fiveMinutesBeforeStart, {
+                                                addSuffix: true,
+                                            })}
+                                        </Button>
+                                    )}
+                            </div>
+                        </div>
+
+                        {/* Right Column - Instructor Info & Additional Details */}
+                        <div className="md:w-64 space-y-4 md:border-l md:pl-6">
+                            {/* Instructor Card */}
+                            {quiz.instructorName && (
+                                <div className="space-y-3">
+                                    <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                        Instructor
+                                    </div>
+                                    <div className="flex items-start gap-3">
+                                        <Avatar className="size-12 border-2 shrink-0">
+                                            <AvatarImage src={quiz.instructorImage || undefined} />
+                                            <AvatarFallback className="text-sm font-semibold">
+                                                {quiz.instructorName
+                                                    .split(" ")
+                                                    .map((n) => n[0])
+                                                    .join("")
+                                                    .toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-sm line-clamp-2">
+                                                {quiz.instructorName}
+                                            </p>
+                                            {quiz.instructorEmail && (
+                                                <p className="text-xs text-muted-foreground line-clamp-1">
+                                                    {quiz.instructorEmail}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             )}
+
+                            {/* Additional Info */}
+                            <div className="space-y-3 pt-3 border-t">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">Published</span>
+                                        <Badge
+                                            variant={quiz.publishQuiz ? "default" : "secondary"}
+                                            className="text-xs"
+                                        >
+                                            {quiz.publishQuiz ? "Yes" : "No"}
+                                        </Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-muted-foreground">
+                                            Results Published
+                                        </span>
+                                        <Badge
+                                            variant={quiz.publishResult ? "default" : "secondary"}
+                                            className="text-xs"
+                                        >
+                                            {quiz.publishResult ? "Yes" : "No"}
+                                        </Badge>
+                                    </div>
+                                    <div className="flex items-center justify-between text-xs pt-2">
+                                        <span className="text-muted-foreground">Created</span>
+                                        <span className="text-xs font-medium">
+                                            {format(new Date(quiz.createdAt), "MMM d, yyyy")}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
