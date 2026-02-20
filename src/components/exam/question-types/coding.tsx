@@ -15,13 +15,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Code, FileCode, Clock, HardDrive } from "lucide-react";
-import type { CodingStudentAnswer } from "../lib/types";
-import type {
-    CodingConfig,
-    ProgrammingLanguage,
-    TestCase,
-    TestCaseVisibility,
-} from "@/types/questions";
+import type { CodingStudentAnswer, StudentCodingConfig, StudentTestCase } from "../lib/types";
+import type { ProgrammingLanguage } from "@/types/questions";
 import { debounce } from "lodash-es";
 
 interface CodingQuestionProps {
@@ -41,13 +36,12 @@ const LANGUAGE_CONFIG: Record<ProgrammingLanguage, { name: string; extension: st
 };
 
 export function CodingQuestion({ question, onAnswerChange }: CodingQuestionProps) {
-    const codingConfig: CodingConfig | undefined = question.codingConfig;
-    const testCases: TestCase[] = question.testCases || [];
+    const codingConfig: StudentCodingConfig | undefined = question.codingConfig;
+    const testCases: StudentTestCase[] = question.testCases || [];
 
     // Filter to only show visible test cases to students
-    const visibleTestCases = testCases.filter(
-        (tc) => tc.visibility === ("VISIBLE" as TestCaseVisibility)
-    );
+    // (server already filters to VISIBLE only, but this is a safety check)
+    const visibleTestCases = testCases.filter((tc) => tc.visibility === "VISIBLE");
 
     // Get saved answer
     const savedAnswer = question.response as CodingStudentAnswer | undefined;
@@ -242,14 +236,6 @@ export function CodingQuestion({ question, onAnswerChange }: CodingQuestionProps
                                             </Label>
                                             <pre className="mt-1 p-2 bg-muted rounded text-sm font-mono overflow-x-auto whitespace-pre-wrap">
                                                 {testCase.input || "(empty)"}
-                                            </pre>
-                                        </div>
-                                        <div>
-                                            <Label className="text-xs text-muted-foreground">
-                                                Expected Output
-                                            </Label>
-                                            <pre className="mt-1 p-2 bg-muted rounded text-sm font-mono overflow-x-auto whitespace-pre-wrap">
-                                                {testCase.expectedOutput || "(empty)"}
                                             </pre>
                                         </div>
                                     </div>
