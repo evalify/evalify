@@ -18,30 +18,80 @@ import {
 import { getClientIp, isClientInLabSubnets } from "@/lib/ip-utils";
 import { TRPCError } from "@trpc/server";
 import { parseIntervalToMs } from "./utils";
-import { QuestionType } from "@/types/questions";
+import {
+    QuestionType,
+    Difficulty,
+    CourseOutcome,
+    BloomsLevel,
+    ProgrammingLanguage,
+    FillInBlanksAcceptedType,
+} from "@/types/questions";
+import type {
+    QuestionItem,
+    StudentFillInBlanksConfig,
+    StudentDescriptiveConfig,
+    StudentCodingConfig,
+    StudentTestCase,
+    StudentFileUploadConfig,
+} from "@/components/exam/lib/types";
+import type { MCQData, MMCQData, MatchOptions } from "@/types/questions";
 
-type MatchOptionRaw = {
+/**
+ * Raw row shape returned by the Drizzle query for student questions.
+ */
+interface StudentQuestionRow {
+    quizQuestionId: string;
+    orderIndex: number;
+    sectionId: string | null;
+    bankQuestionId: string | null;
+    id: string;
+    type: QuestionType;
+    marks: number;
+    negativeMarks: number | null;
+    difficulty: string | null;
+    courseOutcome: string | null;
+    bloomTaxonomyLevel: string | null;
+    question: string;
+    questionData: unknown;
+}
+
+// Raw shapes inside versioned questionData JSONB
+interface MatchOptionRaw {
     id: string;
     isLeft: boolean;
     text: string;
     orderIndex: number;
-};
+}
 
-type CodingConfigRaw = {
+interface CodingConfigRaw {
     language?: string;
     templateCode?: string;
     boilerplateCode?: string;
     timeLimitMs?: number;
     memoryLimitMb?: number;
-};
+}
 
-type TestCaseRaw = {
+interface TestCaseRaw {
     id: string;
     input: string;
+    expectedOutput?: string;
     visibility: string;
     marksWeightage?: number;
     orderIndex: number;
-};
+}
+
+interface FillInBlankConfigRaw {
+    blankCount: number;
+    blankWeights: Record<number, number>;
+    evaluationType: string;
+    acceptableAnswers?: Record<string, { type?: string }>;
+}
+
+interface FileUploadConfigRaw {
+    allowedFileTypes?: string[];
+    maxFileSizeInMB?: number;
+    maxFiles?: number;
+}
 
 function unwrapVersionedData(data: unknown): unknown {
     if (data && typeof data === "object" && "version" in data && "data" in data) {
@@ -50,102 +100,133 @@ function unwrapVersionedData(data: unknown): unknown {
     return data;
 }
 
-function transformStudentQuestion(raw: Record<string, unknown>): Record<string, unknown> {
-    const unwrapped = unwrapVersionedData(raw.questionData) as Record<string, unknown> | null;
-    const type = raw.type as string;
+/**
+ * Transform a raw DB row into a properly typed QuestionItem for the student exam view.
+ * Strips solution data and sensitive fields (e.g. expectedOutput from test cases).
+ */
+function transformStudentQuestion(raw: StudentQuestionRow): QuestionItem {
+    const unwrapped = unwrapVersionedData(raw.questionData);
+    const type = raw.type;
 
-    const base: Record<string, unknown> = { ...raw };
-    delete base.questionData;
+    const base: QuestionItem = {
+        id: raw.id,
+        type: raw.type,
+        sectionId: raw.sectionId,
+        orderIndex: raw.orderIndex,
+        marks: raw.marks,
+        negativeMarks: raw.negativeMarks,
+        difficulty: raw.difficulty as Difficulty | null,
+        courseOutcome: raw.courseOutcome as CourseOutcome | null,
+        bloomTaxonomyLevel: raw.bloomTaxonomyLevel as BloomsLevel | null,
+        question: raw.question,
+    };
 
     switch (type) {
-        case "MCQ":
-        case "MMCQ": {
-            base.questionData = unwrapped;
+        case QuestionType.MCQ:
+        case QuestionType.MMCQ: {
+            base.questionData = unwrapped as MCQData | MMCQData | undefined;
             break;
         }
-        case "TRUE_FALSE": {
+        case QuestionType.TRUE_FALSE: {
+            // No extra data needed for student view
             break;
         }
-        case "FILL_THE_BLANK": {
-            const config = (unwrapped as { config?: Record<string, unknown> })?.config;
+        case QuestionType.FILL_THE_BLANK: {
+            const data = unwrapped as { config?: FillInBlankConfigRaw } | null;
+            const config = data?.config;
             if (config) {
-                const acceptableAnswers = config.acceptableAnswers as
-                    | Record<string, { type?: string }>
-                    | undefined;
-                const blankTypes: Record<number, string> = {};
-                if (acceptableAnswers) {
-                    for (const [idx, entry] of Object.entries(acceptableAnswers)) {
-                        blankTypes[Number(idx)] = entry.type || "TEXT";
+                const blankTypes: Record<number, FillInBlanksAcceptedType> = {};
+                if (config.acceptableAnswers) {
+                    for (const [idx, entry] of Object.entries(config.acceptableAnswers)) {
+                        blankTypes[Number(idx)] = (entry.type ||
+                            "TEXT") as FillInBlanksAcceptedType;
                     }
                 }
-                base.blankConfig = {
+                const blankConfig: StudentFillInBlanksConfig = {
                     blankCount: config.blankCount,
                     blankWeights: config.blankWeights,
                     blankTypes,
                     evaluationType: config.evaluationType,
                 };
+                base.blankConfig = blankConfig;
             }
             break;
         }
-        case "DESCRIPTIVE": {
-            const config = (unwrapped as { config?: Record<string, unknown> })?.config;
+        case QuestionType.DESCRIPTIVE: {
+            const data = unwrapped as { config?: { minWords?: number; maxWords?: number } } | null;
+            const config = data?.config;
             if (config) {
-                base.descriptiveConfig = {
+                const descriptiveConfig: StudentDescriptiveConfig = {
                     minWords: config.minWords,
                     maxWords: config.maxWords,
                 };
+                base.descriptiveConfig = descriptiveConfig;
             }
             break;
         }
-        case "MATCHING": {
-            const options = (unwrapped as { options?: MatchOptionRaw[] })?.options;
+        case QuestionType.MATCHING: {
+            const data = unwrapped as { options?: MatchOptionRaw[] } | null;
+            const options = data?.options;
             if (options) {
-                base.options = options.map((opt) => ({
-                    id: opt.id,
-                    isLeft: opt.isLeft,
-                    text: opt.text,
-                    orderIndex: opt.orderIndex,
-                }));
+                base.options = options.map(
+                    (opt): MatchOptions => ({
+                        id: opt.id,
+                        isLeft: opt.isLeft,
+                        text: opt.text,
+                        orderIndex: opt.orderIndex,
+                    })
+                );
             }
             break;
         }
-        case "CODING": {
-            const config = (unwrapped as { config?: CodingConfigRaw })?.config;
-            const testCases = (unwrapped as { testCases?: TestCaseRaw[] })?.testCases;
+        case QuestionType.CODING: {
+            const data = unwrapped as {
+                config?: CodingConfigRaw;
+                testCases?: TestCaseRaw[];
+            } | null;
+            const config = data?.config;
+            const testCases = data?.testCases;
             if (config) {
-                base.codingConfig = {
-                    language: config.language,
+                const codingConfig: StudentCodingConfig = {
+                    language: (config.language || "PYTHON") as ProgrammingLanguage,
                     templateCode: config.templateCode,
                     boilerplateCode: config.boilerplateCode,
                     timeLimitMs: config.timeLimitMs,
                     memoryLimitMb: config.memoryLimitMb,
                 };
+                base.codingConfig = codingConfig;
             }
             if (testCases) {
                 base.testCases = testCases
                     .filter((tc) => tc.visibility === "VISIBLE")
-                    .map((tc) => ({
-                        id: tc.id,
-                        input: tc.input,
-                        visibility: tc.visibility,
-                        marksWeightage: tc.marksWeightage,
-                        orderIndex: tc.orderIndex,
-                    }));
+                    .map(
+                        (tc): StudentTestCase => ({
+                            id: tc.id,
+                            input: tc.input,
+                            visibility: tc.visibility,
+                            marksWeightage: tc.marksWeightage,
+                            orderIndex: tc.orderIndex,
+                        })
+                    );
             }
             break;
         }
-        case "FILE_UPLOAD": {
-            const attachedFiles = (unwrapped as { attachedFiles?: string[] })?.attachedFiles;
-            const config = (unwrapped as { config?: Record<string, unknown> })?.config;
+        case QuestionType.FILE_UPLOAD: {
+            const data = unwrapped as {
+                attachedFiles?: string[];
+                config?: FileUploadConfigRaw;
+            } | null;
+            const config = data?.config;
             if (config) {
-                base.fileUploadConfig = {
+                const fileUploadConfig: StudentFileUploadConfig = {
                     allowedFileTypes: config.allowedFileTypes,
                     maxFileSizeInMB: config.maxFileSizeInMB,
                     maxFiles: config.maxFiles,
                 };
+                base.fileUploadConfig = fileUploadConfig;
             }
-            if (attachedFiles) {
-                base.attachedFiles = attachedFiles;
+            if (data?.attachedFiles) {
+                base.attachedFiles = data.attachedFiles;
             }
             break;
         }
@@ -256,7 +337,7 @@ export const examRouter = createTRPCRouter({
                     )
                     .where(eq(quizQuestionsTable.quizId, input.quizId));
 
-                const questions = questionsData.map((q) =>
+                const questions: QuestionItem[] = questionsData.map((q) =>
                     transformStudentQuestion({
                         ...q,
                         type: q.type as QuestionType,

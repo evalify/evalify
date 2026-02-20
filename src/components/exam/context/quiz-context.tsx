@@ -77,7 +77,7 @@ function QuizContextInner({
     sections,
 }: {
     quizId: string;
-    quizQuestions: QuizQuestion[];
+    quizQuestions: QuestionItem[];
     quizInfo?: QuizInfo | null;
     profile?: Profile | null;
     children: React.ReactNode;
@@ -356,7 +356,7 @@ export function QuizProvider({
     sections,
 }: {
     quizId: string;
-    quizQuestions?: QuizQuestion[];
+    quizQuestions?: QuestionItem[];
     quizInfo?: QuizInfo | null;
     profile?: Profile | null;
     children: React.ReactNode;
@@ -365,18 +365,12 @@ export function QuizProvider({
     const trpcUtils = trpc.useUtils();
     const { mutateAsync: saveAnswerMutate } = trpc.exam.saveAnswer.useMutation();
 
-    const fetchQuestions = useCallback(async () => {
-        // We already have questions passed as props, but the collection expects a fetcher.
-        // We can return the props questions if we want, or fetch again.
-        // Ideally we use the props to initialize, but for now let's fetch to be safe and consistent.
-        // Actually, we can just return the props if they are fresh.
-        // But createExamCollections expects a promise.
+    const fetchQuestions = useCallback(async (): Promise<QuestionItem[]> => {
         if (quizQuestions) {
-            // Cast to QuestionItem[]
-            return quizQuestions as unknown as QuestionItem[];
+            return quizQuestions;
         }
         const { questions } = await trpcUtils.client.exam.getStudentQuestions.query({ quizId });
-        return questions as unknown as QuestionItem[];
+        return questions;
     }, [quizId, quizQuestions, trpcUtils]);
 
     const fetchResponses = useCallback(async () => {
