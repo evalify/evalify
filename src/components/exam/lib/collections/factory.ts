@@ -156,6 +156,14 @@ export function createResponsesCollection(
 
                 try {
                     await saveAnswerFn(responsePatch);
+                    // Persist to synced data store so optimistic mutation removal doesn't revert
+                    collection.utils.writeBatch(() => {
+                        for (const mutation of transaction.mutations) {
+                            if (mutation.modified) {
+                                collection.utils.writeUpsert(mutation.modified);
+                            }
+                        }
+                    });
                     return { refetch: false };
                 } catch (error) {
                     logger.error({ error, quizId }, "Failed to save response update");
@@ -186,6 +194,14 @@ export function createResponsesCollection(
 
                 try {
                     await saveAnswerFn(responsePatch);
+                    // Persist to synced data store so optimistic mutation removal doesn't revert
+                    collection.utils.writeBatch(() => {
+                        for (const mutation of transaction.mutations) {
+                            if (mutation.modified) {
+                                collection.utils.writeUpsert(mutation.modified);
+                            }
+                        }
+                    });
                     return { refetch: false };
                 } catch (error) {
                     logger.error({ error, quizId }, "Failed to save response insert");
