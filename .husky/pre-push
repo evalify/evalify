@@ -2,10 +2,10 @@
 set -e
 
 echo "🔍 Running type check..."
-pnpm type-check
+bun run type-check
 
 echo "🔍 Running linter..."
-pnpm lint
+bun run lint
 
 echo "🏗️  Building project..."
-pnpm build
+bun run build

@@ -21,6 +21,7 @@ export function TrueFalseQuestion({ question, onAnswerChange }: TrueFalseQuestio
         (question.response as TrueFalseStudentAnswer | undefined)?.studentAnswer || "";
 
     const handleValueChange = (value: string) => {
+        if (value !== "True" && value !== "False") return;
         onAnswerChange({ studentAnswer: value });
     };
 

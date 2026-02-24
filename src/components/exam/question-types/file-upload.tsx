@@ -55,6 +55,7 @@ function formatFileSize(bytes: number): string {
 export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuestionProps) {
     const fileUploadConfig = question.fileUploadConfig as StudentFileUploadConfig | undefined;
     const inputRef = useRef<HTMLInputElement>(null);
+    const objectUrlRef = useRef<string | null>(null);
 
     const savedAnswer = question.response as FileUploadStudentAnswer | undefined;
 
@@ -128,6 +129,11 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
 
                 // TODO: Replace with actual file upload API call to MinIO
                 const fileUrl = URL.createObjectURL(file);
+                if (objectUrlRef.current) {
+                    URL.revokeObjectURL(objectUrlRef.current);
+                }
+                objectUrlRef.current = fileUrl;
+
                 await new Promise((resolve) => setTimeout(resolve, 1000));
 
                 clearInterval(progressInterval);
@@ -180,12 +186,24 @@ export function FileUploadQuestion({ question, onAnswerChange }: FileUploadQuest
     );
 
     const handleRemoveFile = useCallback(() => {
+        if (objectUrlRef.current) {
+            URL.revokeObjectURL(objectUrlRef.current);
+            objectUrlRef.current = null;
+        }
         setUploadedFile(null);
         setError(null);
         onAnswerChange({
             studentAnswer: { fileUrl: "", fileName: "", fileSize: 0 },
         });
     }, [onAnswerChange]);
+
+    React.useEffect(() => {
+        return () => {
+            if (objectUrlRef.current) {
+                URL.revokeObjectURL(objectUrlRef.current);
+            }
+        };
+    }, []);
 
     return (
         <div className="space-y-6">

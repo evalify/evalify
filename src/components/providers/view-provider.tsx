@@ -15,7 +15,7 @@ const ViewContext = createContext<ViewContextType | undefined>(undefined);
 
 export function ViewProvider({ children }: { children: React.ReactNode }) {
     const [view, setView] = useState<ViewType>("list");
-    const { setTheme, theme } = useTheme();
+    const { setTheme } = useTheme();
 
     const { data: userData } = trpc.user.getMyProfile.useQuery();
 
@@ -24,16 +24,15 @@ export function ViewProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         if (userData && !initialized.current) {
             initialized.current = true;
-            queueMicrotask(() => {
-                if (userData.view && userData.view !== view) {
-                    setView(userData.view as ViewType);
-                }
-                if (userData.theme && userData.theme !== theme) {
-                    setTheme(userData.theme);
-                }
-            });
+            if (userData.view && ["list", "grid"].includes(userData.view)) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setView(userData.view as ViewType);
+            }
+            if (userData.theme) {
+                setTheme(userData.theme);
+            }
         }
-    }, [userData, theme, view, setTheme]);
+    }, [userData, setView, setTheme]);
 
     return <ViewContext.Provider value={{ view, setView }}>{children}</ViewContext.Provider>;
 }

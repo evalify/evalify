@@ -8,6 +8,7 @@ import { FillInBlanksAcceptedType } from "@/types/questions";
 import { debounce } from "lodash-es";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import DOMPurify from "isomorphic-dompurify";
 import { cn } from "@/lib/utils";
 import { Hash, Type, CaseLower, CaseUpper, Info } from "lucide-react";
 
@@ -256,16 +257,19 @@ export function FillInBlankQuestion({ question, onAnswerChange }: FillInBlankQue
     }, []);
 
     // Split the question HTML on blank markers (___) to interleave inline inputs
-    const questionSegments = useMemo(() => {
-        const html = (question.question as string) || "";
-        return html.split(BLANK_REGEX);
+    const sanitizedQuestionHtml = useMemo(() => {
+        const raw = (question.question as string) || "";
+        return DOMPurify.sanitize(raw);
     }, [question.question]);
 
+    const questionSegments = useMemo(() => {
+        return sanitizedQuestionHtml.split(BLANK_REGEX);
+    }, [sanitizedQuestionHtml]);
+
     const detectedBlanks = useMemo(() => {
-        const html = (question.question as string) || "";
-        const matches = html.match(BLANK_REGEX);
+        const matches = sanitizedQuestionHtml.match(BLANK_REGEX);
         return matches ? matches.length : 0;
-    }, [question.question]);
+    }, [sanitizedQuestionHtml]);
 
     const hasInlineBlanks = detectedBlanks > 0;
 
@@ -301,7 +305,7 @@ export function FillInBlankQuestion({ question, onAnswerChange }: FillInBlankQue
                         <div className="prose prose-sm max-w-none dark:prose-invert">
                             <span
                                 dangerouslySetInnerHTML={{
-                                    __html: (question.question as string) || "",
+                                    __html: sanitizedQuestionHtml,
                                 }}
                             />
                         </div>

@@ -19,7 +19,6 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -348,7 +347,10 @@ export function AppSidebar() {
                         <SidebarMenuItem>
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <div className="group relative w-full overflow-hidden cursor-pointer">
+                                    <button
+                                        type="button"
+                                        className="group w-full overflow-hidden cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-1 rounded-lg"
+                                    >
                                         <div className="flex items-center p-2 rounded-lg hover:bg-sidebar-accent/50 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-3">
                                             <Avatar className="h-8 w-8 shrink-0 rounded-lg ring-2 ring-primary/20 transition-all duration-200 hover:ring-primary/40 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
                                                 <AvatarImage
@@ -372,7 +374,7 @@ export function AppSidebar() {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                     side="top"

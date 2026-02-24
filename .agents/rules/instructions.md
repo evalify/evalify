@@ -16,11 +16,11 @@ trigger: always_on
 
 ## Instructions
 
-- Use `bun` as package manager.
-- Use the logger in `src/lib/logger.ts` for logging.
-- Use the database instance in `src/db/index.ts` for database operations.
-- Do not create `.md` files for every change. Only create documentation files for significant features or modules.
-- Follow the existing code style and conventions used in the project.
+- Prefer `bun` as the package manager.
+- Log via the logger in `src/lib/logger.ts`.
+- Access the database through the instance exported by `src/db/index.ts`.
+- Only create `.md` documentation for significant features or modules.
+- Adhere to the project's existing code style and conventions.
 - Ensure to use the best practices for security, performance, and maintainability while writing code.
 - Ensure to use the best practices in file and folder naming conventions.
 - Try to use Server components wherever possible unless interactivity is required.
