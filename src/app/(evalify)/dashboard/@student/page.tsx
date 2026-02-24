@@ -203,7 +203,7 @@ export default function StudentDashboard() {
     }
 
     return (
-        <div className="p-6 space-y-6 bg-gray-50 dark:bg-black min-h-screen">
+        <div className="p-6 space-y-6 min-h-screen">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -321,7 +321,7 @@ export default function StudentDashboard() {
                 {/* Left Column - Quizzes (2/3 width) */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Live & Upcoming Quizzes */}
-                    <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+                    <Card className=" border border-gray-200 dark:border-gray-800">
                         <CardHeader className="pb-3">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="flex items-center gap-2">
@@ -560,7 +560,7 @@ export default function StudentDashboard() {
                     </Card>
 
                     {/* Quiz Performance Summary */}
-                    <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+                    <Card className=" border border-gray-200 dark:border-gray-800">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <FileText className="h-5 w-5" />
@@ -621,7 +621,7 @@ export default function StudentDashboard() {
                 {/* Right Column - Student Info (1/3 width) */}
                 <div className="space-y-6">
                     {/* Active Courses */}
-                    <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+                    <Card className=" border border-gray-200 dark:border-gray-800">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <BookOpen className="h-5 w-5" />
@@ -688,7 +688,7 @@ export default function StudentDashboard() {
                     </Card>
 
                     {/* Active Semesters */}
-                    <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+                    <Card className=" border border-gray-200 dark:border-gray-800">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <Calendar className="h-5 w-5" />
@@ -726,7 +726,7 @@ export default function StudentDashboard() {
                     </Card>
 
                     {/* Student Batch */}
-                    <Card className="bg-white dark:bg-black border border-gray-200 dark:border-gray-800">
+                    <Card className=" border border-gray-200 dark:border-gray-800">
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
                                 <GraduationCap className="h-5 w-5" />
