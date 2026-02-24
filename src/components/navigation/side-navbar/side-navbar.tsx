@@ -15,6 +15,14 @@ import {
     SidebarTrigger,
     useSidebar,
 } from "@/components/ui/sidebar";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
     BookOpen,
@@ -40,7 +48,6 @@ import { useSession, signOut, signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 import AuthGuard from "@/components/auth/auth-guard";
 import { UserType } from "@/lib/auth/utils";
 
@@ -120,28 +127,31 @@ function capitalizeWord(word: string) {
     return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
-function ThemeToggle({ mounted }: { mounted: boolean }) {
+function ThemeDropdownItem({ mounted }: { mounted: boolean }) {
     const { setTheme, resolvedTheme } = useTheme();
     const isDark = mounted ? resolvedTheme === "dark" : false;
 
     return (
-        <SidebarMenuItem>
-            <SidebarMenuButton
-                onClick={() => setTheme(isDark ? "light" : "dark")}
-                tooltip={mounted ? `Switch to ${isDark ? "light" : "dark"} mode` : "Toggle theme"}
-                disabled={!mounted}
-                className="group/item transition-all duration-200 hover:bg-sidebar-accent/80"
-            >
+        <DropdownMenuItem
+            onClick={(e) => {
+                e.preventDefault();
+                setTheme(isDark ? "light" : "dark");
+            }}
+            className="cursor-pointer w-full flex items-center justify-between"
+            disabled={!mounted}
+        >
+            <div className="flex items-center">
                 {mounted && isDark ? (
-                    <Sun className="h-4 w-4 text-yellow-500 group-hover/item:text-sidebar-accent-foreground transition-colors" />
+                    <Sun className="mr-4 h-4 w-4 text-yellow-500" />
                 ) : (
-                    <Moon className="h-4 w-4 text-indigo-500 group-hover/item:text-sidebar-accent-foreground transition-colors" />
+                    <Moon className="mr-4 h-4 w-4 text-indigo-500" />
                 )}
-                <span className="font-medium">
-                    {mounted ? (isDark ? "Light Mode" : "Dark Mode") : "Theme"}
-                </span>
-            </SidebarMenuButton>
-        </SidebarMenuItem>
+                <span>Theme</span>
+            </div>
+            <span className="text-xs text-muted-foreground">
+                {mounted ? (isDark ? "Light" : "Dark") : "Theme"}
+            </span>
+        </DropdownMenuItem>
     );
 }
 
@@ -330,101 +340,67 @@ export function AppSidebar() {
                     </SidebarGroup>
                     <SidebarSeparator className="bg-linear-to-r from-transparent via-sidebar-border to-transparent mx-2" />
                 </AuthGuard>
-
-                <SidebarGroup className="px-2 py-4">
-                    <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 px-2 group-data-[collapsible=icon]:sr-only">
-                        System
-                    </SidebarGroupLabel>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton
-                                    asChild
-                                    tooltip="Settings"
-                                    isActive={pathname === "/settings"}
-                                    className="group/item transition-all duration-200 hover:bg-sidebar-accent/80"
-                                >
-                                    <Link href="/settings" className="flex items-center">
-                                        <Settings
-                                            className={`h-4 w-4 transition-colors ${
-                                                pathname === "/settings"
-                                                    ? "text-sidebar-accent-foreground"
-                                                    : "text-slate-500 group-hover/item:text-sidebar-accent-foreground"
-                                            }`}
-                                        />
-                                        <span className="font-medium">Settings</span>
-                                    </Link>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                            <ThemeToggle mounted={mounted} />
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
             </SidebarContent>
 
             <SidebarFooter className="border-t border-sidebar-border bg-linear-to-r from-sidebar via-sidebar/80 to-sidebar backdrop-blur-sm p-2 overflow-hidden">
                 <SidebarMenu className="overflow-hidden">
                     {mounted && session?.user ? (
                         <SidebarMenuItem>
-                            <div className="group relative w-full overflow-hidden">
-                                <div className="flex items-center p-2 rounded-lg hover:bg-sidebar-accent/50 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-3">
-                                    <Avatar className="h-8 w-8 shrink-0 rounded-lg ring-2 ring-primary/20 transition-all duration-200 hover:ring-primary/40 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
-                                        <AvatarImage
-                                            src={session.user.image || ""}
-                                            alt={session.user.name || ""}
-                                            className="object-cover"
-                                        />
-                                        <AvatarFallback className="rounded-lg bg-linear-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold group-data-[collapsible=icon]:text-xs">
-                                            {session.user.name?.slice(0, 2).toUpperCase() || "U"}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="ml-3 flex items-center justify-between flex-1 min-w-0 group-data-[collapsible=icon]:hidden overflow-hidden">
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                            <div className="font-semibold text-sm truncate">
-                                                {capitalizeWord(session.user.name || "")}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground truncate">
-                                                {session.user.email}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <div className="group relative w-full overflow-hidden cursor-pointer">
+                                        <div className="flex items-center p-2 rounded-lg hover:bg-sidebar-accent/50 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-3">
+                                            <Avatar className="h-8 w-8 shrink-0 rounded-lg ring-2 ring-primary/20 transition-all duration-200 hover:ring-primary/40 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
+                                                <AvatarImage
+                                                    src={session.user.image || ""}
+                                                    alt={session.user.name || ""}
+                                                    className="object-cover"
+                                                />
+                                                <AvatarFallback className="rounded-lg bg-linear-to-br from-primary to-primary/80 text-primary-foreground text-sm font-semibold group-data-[collapsible=icon]:text-xs">
+                                                    {session.user.name?.slice(0, 2).toUpperCase() ||
+                                                        "U"}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="ml-3 flex items-center justify-between flex-1 min-w-0 group-data-[collapsible=icon]:hidden overflow-hidden">
+                                                <div className="flex-1 min-w-0 overflow-hidden">
+                                                    <div className="font-semibold text-sm truncate">
+                                                        {capitalizeWord(session.user.name || "")}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground truncate">
+                                                        {session.user.email}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <ConfirmationDialog
-                                            title="Logout Confirmation"
-                                            message="Are you sure you want to logout?"
-                                            onAccept={() => signOut({ callbackUrl: "/" })}
-                                            confirmButtonText="Yes, Logout"
+                                    </div>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    side="top"
+                                    className="w-60 mb-2"
+                                    align="end"
+                                    sideOffset={8}
+                                >
+                                    <DropdownMenuItem asChild>
+                                        <Link
+                                            href="/settings"
+                                            className="cursor-pointer w-full flex items-center"
                                         >
-                                            <button
-                                                className="shrink-0 p-1.5 rounded-md text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/50 transition-all duration-200 hover:scale-105"
-                                                title="Sign out"
-                                            >
-                                                <LogOut className="h-4 w-4" />
-                                            </button>
-                                        </ConfirmationDialog>
-                                    </div>
-                                </div>
-                                {/* Tooltip for collapsed state */}
-                                <div className="absolute left-full ml-2 px-3 py-2 bg-popover text-popover-foreground rounded-md shadow-lg border opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity duration-200 whitespace-nowrap z-50 group-data-[collapsible=expanded]:hidden">
-                                    <div className="font-semibold text-sm">
-                                        {capitalizeWord(session.user.name || "")}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                        {session.user.email}
-                                    </div>
-                                    <div className="mt-2 pt-2 border-t">
-                                        <ConfirmationDialog
-                                            title="Logout Confirmation"
-                                            message="Are you sure you want to logout?"
-                                            onAccept={() => signOut({ callbackUrl: "/" })}
-                                            confirmButtonText="Yes, Logout"
-                                        >
-                                            <button className="flex items-center gap-2 text-red-500 hover:text-red-600 text-xs">
-                                                <LogOut className="h-3 w-3" />
-                                                Sign out
-                                            </button>
-                                        </ConfirmationDialog>
-                                    </div>
-                                </div>
-                            </div>
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            <span>Settings</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+
+                                    <ThemeDropdownItem mounted={mounted} />
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={() => signOut({ callbackUrl: "/" })}
+                                        className="cursor-pointer text-red-600 focus:text-red-700 dark:text-red-500 dark:focus:text-red-400"
+                                    >
+                                        <LogOut className="mr-2 h-4 w-4" />
+                                        <span>Log out</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </SidebarMenuItem>
                     ) : mounted ? (
                         <SidebarMenuItem>
