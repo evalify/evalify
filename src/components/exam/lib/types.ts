@@ -170,6 +170,8 @@ export interface QuizInfo {
     studentStartTime?: string | Date | null;
     studentEndTime?: string | Date | null;
     studentDuration?: string | null;
+    // Submission status from server (to detect server-side auto-submit)
+    studentSubmissionStatus?: string | null;
 }
 
 /**

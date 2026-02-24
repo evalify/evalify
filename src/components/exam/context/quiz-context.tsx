@@ -1,7 +1,15 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import { ExamQueryProvider, useExamCollectionsContext } from "../providers/exam-query-provider";
 import { useQuestionResponses, useQuestionState } from "../hooks/use-exam-collections";
 import { useAutoSubmit } from "../hooks/use-auto-submit";
@@ -97,11 +105,16 @@ function QuizContextInner({
     } = useQuestionState(collections.state);
 
     const submitMutation = trpc.exam.submitQuiz.useMutation();
-    const submitQuiz = useCallback(async () => {
-        await submitMutation.mutateAsync({ quizId });
-    }, [quizId, submitMutation]);
+    const submitMutationRef = useRef(submitMutation);
+    useEffect(() => {
+        submitMutationRef.current = submitMutation;
+    }, [submitMutation]);
 
-    const { isAutoSubmitting } = useAutoSubmit(collections.metadata, submitQuiz);
+    const submitQuiz = useCallback(async () => {
+        await submitMutationRef.current.mutateAsync({ quizId });
+    }, [quizId]);
+
+    const { isAutoSubmitting, submissionStatus } = useAutoSubmit(collections.metadata, submitQuiz);
 
     const [selectedSection, setSelectedSection] = useState<string | null>(null);
     const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
@@ -319,7 +332,10 @@ function QuizContextInner({
             getQuestionStats,
             getSectionStats,
             isAutoSubmitting,
-            isSubmitted: submitMutation.isSuccess,
+            isSubmitted:
+                submitMutation.isSuccess ||
+                submissionStatus === "SUBMITTED" ||
+                submissionStatus === "AUTO_SUBMITTED",
         }),
         [
             quizId,
@@ -341,6 +357,7 @@ function QuizContextInner({
             getSectionStats,
             isAutoSubmitting,
             submitMutation.isSuccess,
+            submissionStatus,
         ]
     );
 

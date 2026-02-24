@@ -323,12 +323,19 @@ export function createQuizMetadataCollection(
                 const endTimeValue = quizInfo?.studentEndTime ?? quizInfo?.endTime;
                 const endTime = endTimeValue ? new Date(endTimeValue).getTime() : null;
 
+                // Use the actual submission status from server if available
+                const serverStatus = quizInfo?.studentSubmissionStatus;
+                const submissionStatus: "NOT_SUBMITTED" | "SUBMITTED" | "AUTO_SUBMITTED" =
+                    serverStatus === "SUBMITTED" || serverStatus === "AUTO_SUBMITTED"
+                        ? serverStatus
+                        : "NOT_SUBMITTED";
+
                 return [
                     {
                         quizId,
                         endTime,
-                        autoSubmitEnabled: true, // Default to true or fetch from config
-                        submissionStatus: "NOT_SUBMITTED",
+                        autoSubmitEnabled: true,
+                        submissionStatus,
                         lastChecked: Date.now(),
                     },
                 ];

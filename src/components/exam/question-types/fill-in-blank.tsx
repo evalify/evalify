@@ -196,9 +196,10 @@ function InlineBlankInput({
                         placeholder={`blank ${blankIndex + 1}`}
                         value={value}
                         onChange={handleChange}
+                        style={{ width: `max(7rem, ${value.length + 2}ch)` }}
                         className={cn(
                             // Underline-style: no surrounding border, just a bottom line
-                            "inline-block w-28 text-sm bg-transparent text-center",
+                            "inline-block text-sm bg-transparent text-center",
                             "border-0 border-b-2 rounded-none px-1 py-0",
                             "text-foreground placeholder:text-muted-foreground/40",
                             "focus:outline-none focus:border-primary transition-colors",
@@ -327,8 +328,11 @@ export function FillInBlankQuestion({ question, onAnswerChange }: FillInBlankQue
                                                 );
                                                 handleBlankChange(i, transformed);
                                             }}
+                                            style={{
+                                                width: `max(7rem, ${(localAnswers[key]?.length || 0) + 2}ch)`,
+                                            }}
                                             className={cn(
-                                                "flex-1 max-w-sm px-0 py-1 text-sm bg-transparent",
+                                                "flex-1 px-0 py-1 text-sm bg-transparent",
                                                 "border-0 border-b-2 rounded-none",
                                                 "text-foreground placeholder:text-muted-foreground/40",
                                                 "focus:outline-none focus:border-primary transition-colors",
