@@ -10,8 +10,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { useView } from "@/components/providers/view-provider";
 import { ImageUploadCropModal } from "@/components/settings/image-upload-crop-modal";
 import { ConfirmationDialog } from "@/components/ui/custom-alert-dialog";
 import {
@@ -25,8 +32,6 @@ import {
     Trash2,
     Loader2,
     Edit2,
-    Check,
-    X,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc/client";
 import { useToast } from "@/hooks/use-toast";
@@ -44,13 +49,54 @@ export default function SettingsPage() {
     const { theme, setTheme } = useTheme();
     const { success, error } = useToast();
     const { track } = useAnalytics();
+    const { view, setView } = useView();
     const [activeTab, setActiveTab] = useState("account");
-    const [fontSize, setFontSize] = useState([16]);
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [isEditingPhone, setIsEditingPhone] = useState(false);
+
+    // Form States
+    const [isEditingPersonal, setIsEditingPersonal] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState("");
+    const [personalEmail, setPersonalEmail] = useState("");
+    const [dob, setDob] = useState("");
+    const [gender, setGender] = useState("");
+    const [city, setCity] = useState("");
+    const [stateLocation, setStateLocation] = useState("");
+
+    const INDIAN_STATES = [
+        "Andhra Pradesh",
+        "Arunachal Pradesh",
+        "Assam",
+        "Bihar",
+        "Chhattisgarh",
+        "Goa",
+        "Gujarat",
+        "Haryana",
+        "Himachal Pradesh",
+        "Jharkhand",
+        "Karnataka",
+        "Kerala",
+        "Madhya Pradesh",
+        "Maharashtra",
+        "Manipur",
+        "Meghalaya",
+        "Mizoram",
+        "Nagaland",
+        "Odisha",
+        "Punjab",
+        "Rajasthan",
+        "Sikkim",
+        "Tamil Nadu",
+        "Telangana",
+        "Tripura",
+        "Uttar Pradesh",
+        "Uttarakhand",
+        "West Bengal",
+        "Delhi",
+        "Chandigarh",
+        "Other",
+    ];
 
     // Fetch user profile data
     const { data: userData, refetch: refetchUserData } = trpc.user.getMyProfile.useQuery();
@@ -67,22 +113,44 @@ export default function SettingsPage() {
 
     const profileImageUrl = profileImageData?.imageUrl || session?.user?.image || null;
 
-    // Initialize phone number when userData is loaded
+    // Initialize states when userData is loaded
     useEffect(() => {
-        if (userData?.phoneNumber) {
-            setPhoneNumber(userData.phoneNumber);
+        if (userData) {
+            setPhoneNumber(userData.phoneNumber || "");
+            setPersonalEmail(userData.personalEmail || "");
+            // Format YYYY-MM-DD for date input
+            const dateStr = userData.dob ? new Date(userData.dob).toISOString().split("T")[0] : "";
+            setDob(dateStr);
+            setGender(userData.gender || "");
+            setCity(userData.city || "");
+            setStateLocation(userData.state || "");
         }
     }, [userData]);
 
-    const handleThemeChange = (newTheme: string) => {
+    const trpcContext = trpc.useUtils();
+
+    const handleThemeChange = async (newTheme: string) => {
         setTheme(newTheme);
         track("theme_changed", { theme: newTheme });
+        try {
+            await updateProfileMutation.mutateAsync({
+                theme: newTheme as "light" | "dark" | "system",
+            });
+            await trpcContext.user.getMyProfile.invalidate();
+        } catch (e) {
+            console.error("Failed to sync theme", e);
+        }
     };
 
-    const applyFontSize = (size: number[]) => {
-        setFontSize(size);
-        document.documentElement.style.setProperty("--base-font-size", `${size[0]}px`);
-        track("font_size_changed", { fontSize: size[0] });
+    const handleViewChange = async (newView: "list" | "grid") => {
+        setView(newView);
+        track("view_changed", { view: newView });
+        try {
+            await updateProfileMutation.mutateAsync({ view: newView });
+            await trpcContext.user.getMyProfile.invalidate();
+        } catch (e) {
+            console.error("Failed to sync view", e);
+        }
     };
 
     const handleImageCropped = async (croppedImage: Blob) => {
@@ -139,26 +207,38 @@ export default function SettingsPage() {
         }
     };
 
-    const handleUpdatePhoneNumber = async () => {
+    const handleSavePersonalInfo = async () => {
         try {
             await updateProfileMutation.mutateAsync({
                 phoneNumber: phoneNumber || undefined,
+                personalEmail: personalEmail,
+                dob: dob,
+                gender: gender,
+                city: city,
+                state: stateLocation,
             });
             await refetchUserData();
-            setIsEditingPhone(false);
-            success("Phone number updated successfully");
-            track("phone_number_updated");
+            setIsEditingPersonal(false);
+            success("Personal information updated successfully");
+            track("personal_information_updated");
         } catch (err) {
-            console.error("Error updating phone number:", err);
-            error("Failed to update phone number", {
+            console.error("Error updating personal information:", err);
+            error("Failed to update personal information", {
                 description: "Please try again later.",
             });
         }
     };
 
-    const handleCancelPhoneEdit = () => {
-        setPhoneNumber(userData?.phoneNumber || "");
-        setIsEditingPhone(false);
+    const handleCancelPersonalEdit = () => {
+        if (userData) {
+            setPhoneNumber(userData.phoneNumber || "");
+            setPersonalEmail(userData.personalEmail || "");
+            setDob(userData.dob ? new Date(userData.dob).toISOString().split("T")[0] : "");
+            setGender(userData.gender || "");
+            setCity(userData.city || "");
+            setStateLocation(userData.state || "");
+        }
+        setIsEditingPersonal(false);
     };
 
     return (
@@ -280,22 +360,56 @@ export default function SettingsPage() {
                             {/* Account Tab */}
                             <TabsContent value="account" className="space-y-6">
                                 <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-700">
-                                    <CardHeader className="pb-4">
-                                        <CardTitle className="flex items-center gap-2">
-                                            <User className="h-5 w-5 text-primary" />
-                                            Personal Information
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Update your personal details and preferences
-                                        </CardDescription>
+                                    <CardHeader className="pb-4 flex justify-between">
+                                        <div>
+                                            <CardTitle className="flex items-center gap-2">
+                                                <User className="h-5 w-5 text-primary" />
+                                                Personal Information
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Update your personal details and preferences
+                                            </CardDescription>
+                                        </div>
+                                        <div className="flex items-center justify-end pb-4 border-b border-slate-100 dark:border-slate-800">
+                                            {!isEditingPersonal ? (
+                                                <Button
+                                                    onClick={() => setIsEditingPersonal(true)}
+                                                    variant="outline"
+                                                    size="sm"
+                                                >
+                                                    <Edit2 className="h-4 w-4 mr-2" />
+                                                    Edit Details
+                                                </Button>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        onClick={handleSavePersonalInfo}
+                                                        disabled={updateProfileMutation.isPending}
+                                                        size="sm"
+                                                    >
+                                                        {updateProfileMutation.isPending && (
+                                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                                        )}
+                                                        Save
+                                                    </Button>
+                                                    <Button
+                                                        onClick={handleCancelPersonalEdit}
+                                                        variant="outline"
+                                                        size="sm"
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <CardContent className="space-y-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-1">
                                             <div className="space-y-2">
                                                 <Label htmlFor="name">Full Name</Label>
                                                 <Input
                                                     id="name"
-                                                    disabled={true}
+                                                    disabled
                                                     placeholder="Enter your full name"
                                                     defaultValue={capitalizeWord(
                                                         userData?.name || session?.user?.name || ""
@@ -304,11 +418,21 @@ export default function SettingsPage() {
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="email">Email Address</Label>
+                                                <Label htmlFor="profileId">Profile ID</Label>
                                                 <Input
-                                                    disabled={true}
+                                                    id="profileId"
+                                                    disabled
+                                                    placeholder="Profile ID"
+                                                    defaultValue={userData?.profileId || ""}
+                                                    className="bg-white dark:bg-slate-900"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="email">College Email</Label>
+                                                <Input
                                                     id="email"
                                                     type="email"
+                                                    disabled
                                                     placeholder="Enter your email"
                                                     defaultValue={
                                                         userData?.email ||
@@ -319,87 +443,97 @@ export default function SettingsPage() {
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="profileId">Profile ID</Label>
+                                                <Label htmlFor="personalEmail">
+                                                    Personal Email
+                                                </Label>
                                                 <Input
-                                                    disabled={true}
-                                                    id="profileId"
-                                                    placeholder="Profile ID"
-                                                    defaultValue={userData?.profileId || ""}
+                                                    id="personalEmail"
+                                                    type="email"
+                                                    disabled={!isEditingPersonal}
+                                                    placeholder="Personal email address"
+                                                    value={personalEmail}
+                                                    onChange={(e) =>
+                                                        setPersonalEmail(e.target.value)
+                                                    }
                                                     className="bg-white dark:bg-slate-900"
                                                 />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label htmlFor="phone">Phone Number</Label>
-                                                <div className="flex gap-2">
-                                                    <Input
-                                                        disabled={!isEditingPhone}
-                                                        id="phone"
-                                                        type="tel"
-                                                        placeholder="Enter phone number"
-                                                        value={phoneNumber || ""}
-                                                        onChange={(e) => {
-                                                            const value = e.target.value;
-                                                            // Only allow numbers (0-9)
-                                                            const numericValue = value.replace(
-                                                                /\D/g,
-                                                                ""
-                                                            );
-                                                            setPhoneNumber(numericValue);
-                                                        }}
-                                                        className="bg-white dark:bg-slate-900"
-                                                    />
-                                                    {!isEditingPhone ? (
-                                                        <Button
-                                                            variant="outline"
-                                                            size="icon"
-                                                            onClick={() => setIsEditingPhone(true)}
-                                                        >
-                                                            <Edit2 className="h-4 w-4" />
-                                                        </Button>
-                                                    ) : (
-                                                        <>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="icon"
-                                                                onClick={handleUpdatePhoneNumber}
-                                                                disabled={
-                                                                    updateProfileMutation.isPending
-                                                                }
-                                                            >
-                                                                {updateProfileMutation.isPending ? (
-                                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                                ) : (
-                                                                    <Check className="h-4 w-4" />
-                                                                )}
-                                                            </Button>
-                                                            <Button
-                                                                variant="outline"
-                                                                size="icon"
-                                                                onClick={handleCancelPhoneEdit}
-                                                                disabled={
-                                                                    updateProfileMutation.isPending
-                                                                }
-                                                            >
-                                                                <X className="h-4 w-4" />
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                </div>
+                                                <Input
+                                                    id="phone"
+                                                    type="tel"
+                                                    disabled={!isEditingPersonal}
+                                                    placeholder="Enter phone number"
+                                                    value={phoneNumber}
+                                                    onChange={(e) =>
+                                                        setPhoneNumber(
+                                                            e.target.value.replace(/\D/g, "")
+                                                        )
+                                                    }
+                                                    className="bg-white dark:bg-slate-900"
+                                                />
                                             </div>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-semibold mt-6 mb-3">
-                                                User Roles
-                                            </h3>
-                                            {session?.user.roles && (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {session.user.roles.map((role, index) => (
-                                                        <Badge key={index} variant="secondary">
-                                                            {role}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            <div className="space-y-2">
+                                                <Label htmlFor="dob">Date of Birth</Label>
+                                                <Input
+                                                    id="dob"
+                                                    type="date"
+                                                    disabled={!isEditingPersonal}
+                                                    value={dob}
+                                                    onChange={(e) => setDob(e.target.value)}
+                                                    className="bg-white dark:bg-slate-900"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="gender">Gender</Label>
+                                                <Select
+                                                    disabled={!isEditingPersonal}
+                                                    value={gender}
+                                                    onValueChange={setGender}
+                                                >
+                                                    <SelectTrigger className="bg-white dark:bg-slate-900">
+                                                        <SelectValue placeholder="Select gender" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="MALE">Male</SelectItem>
+                                                        <SelectItem value="FEMALE">
+                                                            Female
+                                                        </SelectItem>
+                                                        <SelectItem value="OTHER">Other</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="stateLocation">State</Label>
+                                                <Select
+                                                    disabled={!isEditingPersonal}
+                                                    value={stateLocation}
+                                                    onValueChange={setStateLocation}
+                                                >
+                                                    <SelectTrigger className="bg-white dark:bg-slate-900">
+                                                        <SelectValue placeholder="Select a state" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {INDIAN_STATES.map((st) => (
+                                                            <SelectItem key={st} value={st}>
+                                                                {st}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="city">City</Label>
+                                                <Input
+                                                    id="city"
+                                                    disabled={!isEditingPersonal}
+                                                    placeholder="Enter city"
+                                                    value={city}
+                                                    onChange={(e) => setCity(e.target.value)}
+                                                    className="bg-white dark:bg-slate-900"
+                                                />
+                                            </div>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -453,18 +587,29 @@ export default function SettingsPage() {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <Label>Font Size: {fontSize[0]}px</Label>
-                                            <Slider
-                                                value={fontSize}
-                                                onValueChange={applyFontSize}
-                                                max={24}
-                                                min={12}
-                                                step={1}
-                                                className="w-full"
-                                            />
-                                            <div className="flex justify-between text-xs text-slate-500">
-                                                <span>Small (12px)</span>
-                                                <span>Large (24px)</span>
+                                            <Label>Default View Layout</Label>
+                                            <div className="grid grid-cols-2 gap-3 max-w-sm">
+                                                {["list", "grid"].map((viewOption) => (
+                                                    <div
+                                                        key={viewOption}
+                                                        className={`relative cursor-pointer rounded-lg border-2 p-3 ${
+                                                            view === viewOption
+                                                                ? "border-primary bg-primary/5"
+                                                                : "border-slate-200 dark:border-slate-700"
+                                                        }`}
+                                                        onClick={() =>
+                                                            handleViewChange(
+                                                                viewOption as "list" | "grid"
+                                                            )
+                                                        }
+                                                    >
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <span className="capitalize text-sm font-medium">
+                                                                {viewOption} View
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </CardContent>
