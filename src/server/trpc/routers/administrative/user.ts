@@ -354,12 +354,20 @@ export const userRouter = createTRPCRouter({
         .input(
             z.object({
                 phoneNumber: z.string().max(20).optional(),
+                personalEmail: z.email().optional().or(z.literal("")),
+                dob: z.string().optional().or(z.literal("")),
+                gender: z.string().optional().or(z.literal("")),
+                city: z.string().optional().or(z.literal("")),
+                state: z.string().optional().or(z.literal("")),
+                theme: z.enum(["light", "dark", "system"]).optional(),
+                view: z.enum(["list", "grid"]).optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
             try {
-                const updateData: Partial<typeof usersTable.$inferInsert> = {};
-                if (input.phoneNumber !== undefined) updateData.phoneNumber = input.phoneNumber;
+                const updateData: Partial<typeof usersTable.$inferInsert> = { ...input };
+                if (updateData.dob === "") updateData.dob = null as never;
+                if (updateData.personalEmail === "") updateData.personalEmail = null as never;
 
                 const [updated] = await db
                     .update(usersTable)

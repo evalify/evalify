@@ -355,12 +355,25 @@ export const userRouter = createTRPCRouter({
                 name: z.string().min(1).optional(),
                 email: z.email().optional(),
                 phoneNumber: z.string().max(20).optional(),
+                personalEmail: z.email().optional().or(z.literal("")),
+                dob: z.string().optional().or(z.literal("")),
+                gender: z.string().optional().or(z.literal("")),
+                city: z.string().optional().or(z.literal("")),
+                state: z.string().optional().or(z.literal("")),
+                theme: z.enum(["light", "dark", "system"]).optional(),
+                view: z.enum(["list", "grid"]).optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
+            const dataToUpdate = { ...input };
+            // Convert empty strings to null for optional database fields if needed,
+            // but Drizzle can usually handle empty strings for varchar. For date, empty string might cause issues.
+            if (dataToUpdate.dob === "") dataToUpdate.dob = null as never;
+            if (dataToUpdate.personalEmail === "") dataToUpdate.personalEmail = null as never;
+
             const updated = await db
                 .update(usersTable)
-                .set(input)
+                .set(dataToUpdate)
                 .where(eq(usersTable.id, ctx.session.user.id))
                 .returning();
 
