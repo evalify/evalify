@@ -1,6 +1,7 @@
 "use client";
 
 import { trpc } from "@/lib/trpc/client";
+import { logger } from "@/lib/logger";
 import React, {
     createContext,
     useCallback,
@@ -140,7 +141,7 @@ function QuizContextInner({
     // No-op setQuestions for backward compatibility if needed, or remove it from context type if possible.
     // For now, we'll keep it but it won't do much since state is driven by DB.
     const setQuestions = useCallback((_q: QuizQuestion[]) => {
-        console.warn("setQuestions is deprecated. State is managed by TanStack DB.");
+        logger.warn("setQuestions is deprecated. State is managed by TanStack DB.");
     }, []);
 
     // helper to extract a section id from question object (various shapes)

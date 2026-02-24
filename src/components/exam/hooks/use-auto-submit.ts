@@ -37,14 +37,18 @@ export function useAutoSubmit(
         submittingRef.current = true;
         setIsSubmitting(true);
 
+        const previousStatus = metadata?.submissionStatus;
+
         try {
             metadataCollection.update(metadata!.quizId, (draft) => {
                 draft.submissionStatus = "AUTO_SUBMITTED";
             });
             await submitQuizFn();
         } catch {
-            // If client-side submit fails (e.g., server already submitted), that's okay
-            // The server poll will detect the actual status
+            // Revert optimistic update if API submission fails
+            metadataCollection.update(metadata!.quizId, (draft) => {
+                draft.submissionStatus = previousStatus || "NOT_SUBMITTED";
+            });
             submittingRef.current = false;
             setIsSubmitting(false);
         }

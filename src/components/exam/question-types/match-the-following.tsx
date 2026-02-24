@@ -88,12 +88,14 @@ export function MatchTheFollowingQuestion({
     const [prevQuestionId, setPrevQuestionId] = useState(question.id);
     const [matches, setMatches] = useState<Record<string, string[]>>(readSaved);
 
-    // React-recommended pattern: adjust state during render when props change
-    // (avoids useEffect + setState cascading render lint warning)
-    if (question.id !== prevQuestionId) {
-        setPrevQuestionId(question.id);
-        setMatches(readSaved());
-    }
+    useEffect(() => {
+        if (question.id !== prevQuestionId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setPrevQuestionId(question.id);
+
+            setMatches(readSaved());
+        }
+    }, [question.id, prevQuestionId, readSaved]);
 
     const persist = useCallback(
         (next: Record<string, string[]>) => {

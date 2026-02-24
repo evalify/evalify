@@ -43,11 +43,17 @@ export default function QuizTimer({ endTime, startTime, durationMs, onExpire }: 
     const hasFiredRef = useRef(false);
 
     useEffect(() => {
-        if (!computeEnd) return;
+        hasFiredRef.current = false;
+        if (!computeEnd) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setRemainingMs(null);
+            return;
+        }
 
         const endMs = computeEnd.getTime();
         const update = () => {
             const ms = endMs - Date.now();
+
             setRemainingMs(Math.max(0, ms));
 
             if (ms <= 0 && !hasFiredRef.current) {

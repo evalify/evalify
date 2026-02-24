@@ -49,8 +49,8 @@ export function MatchingRenderer({
     };
 
     const totalMatches = leftOptions.length;
-    const completedMatches = Object.keys(matches).filter(
-        (k) => matches[k] && matches[k].length > 0
+    const completedMatches = leftOptions.filter(
+        (opt) => matches[opt.id] && matches[opt.id].length > 0
     ).length;
     const correctMatches = leftOptions.filter((left) => {
         const selectedRightIds = matches[left.id] || [];
@@ -215,9 +215,6 @@ export function MatchingRenderer({
                             const isFullyCorrect =
                                 selectedRightIds.length === correctRightIds.length &&
                                 selectedRightIds.every((id) => correctRightIds.includes(id));
-                            const isPartiallyCorrect =
-                                !isFullyCorrect &&
-                                selectedRightIds.some((id) => correctRightIds.includes(id));
 
                             return (
                                 <Card
