@@ -736,12 +736,10 @@ export const examRouter = createTRPCRouter({
 
                     let updated;
                     try {
+                        // Only update IP on resume — preserve original timing
                         [updated] = await db
                             .update(quizResponseTable)
                             .set({
-                                startTime: now,
-                                endTime: computedEndTime,
-                                duration: quiz.duration,
                                 ip: newIps,
                             })
                             .where(

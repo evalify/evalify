@@ -666,6 +666,11 @@ export const studentQuizRouter = createTRPCRouter({
                         studentQuizResponse.length > 0 ? studentQuizResponse[0].endTime : null,
                     studentDuration:
                         studentQuizResponse.length > 0 ? studentQuizResponse[0].duration : null,
+                    // Include submission status so client can detect server-side auto-submit
+                    studentSubmissionStatus:
+                        studentQuizResponse.length > 0
+                            ? studentQuizResponse[0].submissionStatus
+                            : null,
                 };
             } catch (error) {
                 if (error instanceof TRPCError) {
