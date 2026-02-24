@@ -7,7 +7,7 @@ import { QuestionFactory } from "./question-types/question-factory";
 import { Button } from "@/components/ui/button";
 import { Flag, CheckCircle } from "lucide-react";
 import type { StudentAnswer } from "./lib/types";
-import { QuestionType } from "@/types/questions";
+import { QuestionType, ProgrammingLanguage } from "@/types/questions";
 import { DBInspector } from "./debug/db-inspector";
 
 function getEmptyAnswer(type: QuestionType): StudentAnswer {
@@ -22,7 +22,7 @@ function getEmptyAnswer(type: QuestionType): StudentAnswer {
         case QuestionType.MATCHING:
             return { studentAnswer: {} };
         case QuestionType.CODING:
-            return { studentAnswer: { code: "", language: "PYTHON" as never } };
+            return { studentAnswer: { code: "", language: ProgrammingLanguage.PYTHON } };
         case QuestionType.FILE_UPLOAD:
             return { studentAnswer: { fileUrl: "", fileName: "", fileSize: 0 } };
         default:

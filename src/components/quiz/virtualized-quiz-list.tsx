@@ -225,7 +225,7 @@ function QuizCard({ quiz }: { quiz: VirtualizedQuiz }) {
                                     ) : (
                                         <div className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium">
                                             <GraduationCap className="size-4" />
-                                            <span>{quiz.courseName}</span>
+                                            <span>{quiz.courseName || "Unassigned Course"}</span>
                                             {quiz.courseCode && (
                                                 <span className="text-xs opacity-70">
                                                     ({quiz.courseCode})
@@ -345,7 +345,10 @@ function QuizCard({ quiz }: { quiz: VirtualizedQuiz }) {
                                     </div>
                                     <div className="flex items-start gap-3">
                                         <Avatar className="size-12 border-2 shrink-0">
-                                            <AvatarImage src={quiz.instructorImage || undefined} />
+                                            <AvatarImage
+                                                src={quiz.instructorImage || undefined}
+                                                alt={quiz.instructorName || "Instructor Avatar"}
+                                            />
                                             <AvatarFallback className="text-sm font-semibold">
                                                 {quiz.instructorName
                                                     .split(" ")
