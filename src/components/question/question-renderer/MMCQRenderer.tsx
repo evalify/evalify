@@ -25,7 +25,7 @@ export function MMCQRenderer({
     const getOptionStatus = (optionId: string) => {
         if (!showSolution) return null;
 
-        const isCorrect = question.solution.correctOptions.some(
+        const isCorrect = (question.solution?.correctOptions ?? []).some(
             (opt) => opt.id === optionId && opt.isCorrect
         );
 
@@ -60,7 +60,7 @@ export function MMCQRenderer({
                             <Card
                                 key={option.id}
                                 className={cn(
-                                    "transition-all cursor-pointer hover:border-primary/50",
+                                    "py-0 transition-all cursor-pointer hover:border-primary/50",
                                     isSelected && "border-primary bg-primary/5",
                                     status === "correct" &&
                                         "border-green-500 bg-green-50 dark:bg-green-950",
@@ -76,7 +76,7 @@ export function MMCQRenderer({
                                     }
                                 }}
                             >
-                                <CardContent className="p-4">
+                                <CardContent className="p-3">
                                     <div className="flex items-start gap-3">
                                         <div className="shrink-0 mt-1">
                                             <div

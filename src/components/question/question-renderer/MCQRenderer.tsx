@@ -24,7 +24,7 @@ export function MCQRenderer({
     const getOptionStatus = (optionId: string) => {
         if (!showSolution) return null;
 
-        const isCorrect = question.solution.correctOptions.some(
+        const isCorrect = (question.solution?.correctOptions ?? []).some(
             (opt) => opt.id === optionId && opt.isCorrect
         );
 
@@ -53,7 +53,7 @@ export function MCQRenderer({
                             <Card
                                 key={option.id}
                                 className={cn(
-                                    "transition-all cursor-pointer hover:border-primary/50",
+                                    "py-0 transition-all cursor-pointer hover:border-primary/50",
                                     isSelected && "border-primary bg-primary/5",
                                     status === "correct" &&
                                         "border-green-500 bg-green-50 dark:bg-green-950",
@@ -67,12 +67,12 @@ export function MCQRenderer({
                                     }
                                 }}
                             >
-                                <CardContent className="">
+                                <CardContent className="p-3">
                                     <div className="flex items-start gap-3">
-                                        <div className="shrink-0 mt-1">
+                                        <div className="shrink-0 mt-0.5">
                                             <div
                                                 className={cn(
-                                                    "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                                                    "w-4 h-4 rounded-full border-2 flex items-center justify-center",
                                                     isSelected && "border-primary bg-primary",
                                                     status === "correct" &&
                                                         "border-green-600 bg-green-600",
@@ -82,7 +82,7 @@ export function MCQRenderer({
                                                 )}
                                             >
                                                 {isSelected && (
-                                                    <div className="w-2 rounded-full bg-white" />
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
                                                 )}
                                             </div>
                                         </div>
