@@ -925,24 +925,6 @@ export function StudentResultView({ quizId, studentId }: StudentResultViewProps)
                 </Card>
             )}
 
-            {/* ── Answers progress bar ── */}
-            <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Answer Completion</span>
-                    <span>
-                        {questionStats.answered} / {formattedQuestions.length} answered
-                    </span>
-                </div>
-                <Progress
-                    value={
-                        formattedQuestions.length > 0
-                            ? (questionStats.answered / formattedQuestions.length) * 100
-                            : 0
-                    }
-                    className="h-2 [&>div]:bg-green-500"
-                />
-            </div>
-
             {/* ── Questions area with sidebar navigation ── */}
             <div className="flex gap-6">
                 {/* Sticky question nav sidebar (hidden on small screens) */}

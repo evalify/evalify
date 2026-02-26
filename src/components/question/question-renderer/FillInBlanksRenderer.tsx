@@ -87,61 +87,192 @@ export function FillInBlanksRenderer({
         }
     }
 
-    return (
-        <div className="space-y-6">
-            {/* Header Section */}
-            <Card className="border-2">
-                <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                                <FileText className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg">Fill in the Blanks</CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    {totalBlanks} {totalBlanks === 1 ? "blank" : "blanks"} to
-                                    complete
-                                </p>
-                            </div>
+    // ── Tabular solution view ──
+    if (showSolution) {
+        return (
+            <div className="space-y-3">
+                {/* Header */}
+                <div className="flex items-center justify-between flex-wrap gap-2 px-1">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <FileText className="h-3.5 w-3.5" />
+                        <span className="font-medium">
+                            {totalBlanks} {totalBlanks === 1 ? "blank" : "blanks"} to fill
+                        </span>
+                    </div>
+                    {compareWithStudentAnswer && (
+                        <div className="flex items-center gap-1.5">
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    "text-xs font-semibold",
+                                    correctAnswers === totalBlanks
+                                        ? "bg-green-50 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300"
+                                        : correctAnswers > 0
+                                          ? "bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-950 dark:text-yellow-300"
+                                          : "bg-red-50 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300"
+                                )}
+                            >
+                                {correctAnswers}/{totalBlanks} Correct
+                            </Badge>
+                            <Badge variant="outline" className="text-xs font-semibold">
+                                Score: {earnedScore}/{totalScore}
+                            </Badge>
                         </div>
-                        <div className="flex items-center gap-2">
-                            {showSolution && compareWithStudentAnswer ? (
-                                <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant="outline"
+                    )}
+                </div>
+
+                {/* Table */}
+                <div className="rounded-lg border overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="bg-muted/50 border-b">
+                                <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs w-10">
+                                    #
+                                </th>
+                                {compareWithStudentAnswer && (
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">
+                                        Student Answer
+                                    </th>
+                                )}
+                                <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">
+                                    Correct Answer(s)
+                                </th>
+                                {compareWithStudentAnswer && <th className="px-3 py-2 w-10"></th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {Array.from({ length: question.blankConfig.blankCount }, (_, i) => {
+                                const blankIndex = i + 1;
+                                const rawAnswer = answers[blankIndex];
+                                const userAnswer =
+                                    rawAnswer !== undefined && rawAnswer !== null
+                                        ? String(rawAnswer)
+                                        : "";
+                                const isCorrect = checkAnswer(blankIndex, userAnswer);
+                                const answerKey = i;
+                                const acceptableAnswers =
+                                    question.blankConfig.acceptableAnswers?.[answerKey];
+
+                                return (
+                                    <tr
+                                        key={blankIndex}
                                         className={cn(
-                                            "px-3 py-1.5 text-sm font-semibold",
-                                            correctAnswers === totalBlanks
-                                                ? "bg-green-50 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300"
-                                                : correctAnswers > 0
-                                                  ? "bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-950 dark:text-yellow-300"
-                                                  : "bg-red-50 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300"
+                                            "transition-colors",
+                                            compareWithStudentAnswer &&
+                                                isCorrect !== null &&
+                                                (isCorrect
+                                                    ? "bg-green-50/50 dark:bg-green-950/10"
+                                                    : "bg-red-50/50 dark:bg-red-950/10")
                                         )}
                                     >
-                                        {correctAnswers}/{totalBlanks} Correct
-                                    </Badge>
-                                    <Badge
-                                        variant="outline"
-                                        className="px-3 py-1.5 text-sm font-semibold"
-                                    >
-                                        Score: {earnedScore}/{totalScore}
-                                    </Badge>
-                                </div>
-                            ) : !isReadOnly ? (
-                                <Badge
-                                    variant={
-                                        answeredBlanks === totalBlanks ? "default" : "secondary"
-                                    }
-                                    className="px-3 py-1.5"
-                                >
-                                    {answeredBlanks}/{totalBlanks} Filled
-                                </Badge>
-                            ) : null}
+                                        <td className="px-3 py-2.5 align-top">
+                                            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary font-bold text-xs border border-primary/20">
+                                                {blankIndex}
+                                            </div>
+                                        </td>
+                                        {compareWithStudentAnswer && (
+                                            <td className="px-3 py-2.5 align-top">
+                                                <span
+                                                    className={cn(
+                                                        "font-mono text-sm",
+                                                        isCorrect
+                                                            ? "text-green-700 dark:text-green-300"
+                                                            : userAnswer
+                                                              ? "text-red-700 dark:text-red-300"
+                                                              : "text-muted-foreground italic"
+                                                    )}
+                                                >
+                                                    {userAnswer || "Not answered"}
+                                                </span>
+                                            </td>
+                                        )}
+                                        <td className="px-3 py-2.5 align-top">
+                                            <div className="flex flex-wrap gap-1">
+                                                {acceptableAnswers?.answers.map((answer, idx) => (
+                                                    <Badge
+                                                        key={idx}
+                                                        variant="secondary"
+                                                        className="font-mono text-xs font-normal"
+                                                    >
+                                                        {answer}
+                                                    </Badge>
+                                                )) ?? (
+                                                    <span className="text-muted-foreground text-xs">
+                                                        —
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        {compareWithStudentAnswer && (
+                                            <td className="px-3 py-2.5 align-top text-center">
+                                                {isCorrect !== null ? (
+                                                    isCorrect ? (
+                                                        <div className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/50">
+                                                            <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/50">
+                                                            <X className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                                        </div>
+                                                    )
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">
+                                                        —
+                                                    </span>
+                                                )}
+                                            </td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Interactive layout ──
+    return (
+        <div className="space-y-3">
+            {/* Compact Header */}
+            <div className="flex items-center justify-between flex-wrap gap-2 px-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="font-medium">
+                        {totalBlanks} {totalBlanks === 1 ? "blank" : "blanks"} to fill
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                    {showSolution && compareWithStudentAnswer ? (
+                        <div className="flex items-center gap-1.5">
+                            <Badge
+                                variant="outline"
+                                className={cn(
+                                    "text-xs font-semibold",
+                                    correctAnswers === totalBlanks
+                                        ? "bg-green-50 text-green-700 border-green-300 dark:bg-green-950 dark:text-green-300"
+                                        : correctAnswers > 0
+                                          ? "bg-yellow-50 text-yellow-700 border-yellow-300 dark:bg-yellow-950 dark:text-yellow-300"
+                                          : "bg-red-50 text-red-700 border-red-300 dark:bg-red-950 dark:text-red-300"
+                                )}
+                            >
+                                {correctAnswers}/{totalBlanks} Correct
+                            </Badge>
+                            <Badge variant="outline" className="text-xs font-semibold">
+                                Score: {earnedScore}/{totalScore}
+                            </Badge>
                         </div>
-                    </div>
-                </CardHeader>
-            </Card>
+                    ) : !isReadOnly ? (
+                        <Badge
+                            variant={answeredBlanks === totalBlanks ? "default" : "secondary"}
+                            className="text-xs"
+                        >
+                            {answeredBlanks}/{totalBlanks} Filled
+                        </Badge>
+                    ) : null}
+                </div>
+            </div>
 
             {/* Blanks Section */}
             <div className="space-y-4">
@@ -169,21 +300,18 @@ export function FillInBlanksRenderer({
                                         : "border-red-500/60 shadow-sm")
                             )}
                         >
-                            <CardContent className="p-6">
-                                <div className="space-y-4">
+                            <CardContent className="p-3">
+                                <div className="space-y-3">
                                     {/* Blank Header */}
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-linear-to-br from-primary/20 to-primary/10 text-primary font-bold text-sm border border-primary/20">
-                                                #{blankIndex}
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary font-bold text-xs border border-primary/20">
+                                                {blankIndex}
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5">
                                                 {weight !== 1 && (
-                                                    <Badge
-                                                        variant="outline"
-                                                        className="text-xs font-semibold"
-                                                    >
-                                                        {weight} {weight === 1 ? "mark" : "marks"}
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {weight}m
                                                     </Badge>
                                                 )}
                                                 {answerType && (
@@ -201,7 +329,7 @@ export function FillInBlanksRenderer({
                                             isCorrect !== null && (
                                                 <div
                                                     className={cn(
-                                                        "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold",
+                                                        "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold",
                                                         isCorrect
                                                             ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
                                                             : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
@@ -224,20 +352,15 @@ export function FillInBlanksRenderer({
 
                                     {/* Answer Input (Only if not showing solution or showing for reference) */}
                                     {!showSolution && (
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-muted-foreground">
-                                                Your Answer
-                                            </label>
-                                            <Input
-                                                value={userAnswer}
-                                                onChange={(e) =>
-                                                    onAnswerChange?.(blankIndex, e.target.value)
-                                                }
-                                                disabled={isReadOnly}
-                                                placeholder="Enter your answer here..."
-                                                className="h-11 text-base"
-                                            />
-                                        </div>
+                                        <Input
+                                            value={userAnswer}
+                                            onChange={(e) =>
+                                                onAnswerChange?.(blankIndex, e.target.value)
+                                            }
+                                            disabled={isReadOnly}
+                                            placeholder="Enter your answer..."
+                                            className="h-9 text-sm"
+                                        />
                                     )}
 
                                     {/* Solution Display */}
@@ -261,7 +384,7 @@ export function FillInBlanksRenderer({
                                                     </label>
                                                     <div
                                                         className={cn(
-                                                            "p-4 rounded-lg border-2 font-mono text-base",
+                                                            "px-3 py-2 rounded-md border font-mono text-sm",
                                                             isCorrect
                                                                 ? "bg-green-50/50 border-green-300 text-green-900 dark:bg-green-950/20 dark:border-green-700 dark:text-green-100"
                                                                 : userAnswer
@@ -305,11 +428,11 @@ export function FillInBlanksRenderer({
                                                         (answer, idx) => (
                                                             <div
                                                                 key={idx}
-                                                                className="group relative p-4 rounded-lg border-2 border-green-500 bg-linear-to-br from-green-50 via-emerald-50/50 to-green-50 dark:from-green-950/40 dark:via-emerald-950/20 dark:to-green-950/40 dark:border-green-600 transition-all hover:shadow-md"
+                                                                className="group relative px-3 py-2 rounded-md border border-green-500 bg-green-50/50 dark:bg-green-950/20 dark:border-green-600"
                                                             >
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="shrink-0 w-8 h-8 rounded-full bg-green-500 dark:bg-green-600 flex items-center justify-center shadow-sm">
-                                                                        <Check className="h-4 w-4 text-white" />
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="shrink-0 w-5 h-5 rounded-full bg-green-500 dark:bg-green-600 flex items-center justify-center">
+                                                                        <Check className="h-3 w-3 text-white" />
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
                                                                         {acceptableAnswers?.answers
@@ -321,7 +444,7 @@ export function FillInBlanksRenderer({
                                                                                 Option {idx + 1}
                                                                             </Badge>
                                                                         )}
-                                                                        <div className="font-mono text-base font-semibold text-green-900 dark:text-green-100 warp-break-words">
+                                                                        <div className="font-mono text-sm font-semibold text-green-900 dark:text-green-100 wrap-break-word">
                                                                             {answer}
                                                                         </div>
                                                                     </div>

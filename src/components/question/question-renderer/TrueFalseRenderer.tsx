@@ -56,24 +56,29 @@ export function TrueFalseRenderer({
                     }
                 }}
             >
-                <CardContent className="p-4">
+                <CardContent className="p-3">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5">
                             <div
                                 className={cn(
-                                    "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                                    "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0",
                                     isSelected && "border-primary bg-primary",
                                     status === "correct" && "border-green-600 bg-green-600",
                                     status === "incorrect" && "border-red-600 bg-red-600",
                                     !isSelected && !status && "border-gray-300"
                                 )}
                             >
-                                {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                                {isSelected && (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                )}
                             </div>
-                            <span className="font-medium">{label}</span>
+                            <span className="text-sm font-medium">{label}</span>
                         </div>
                         {status && (
-                            <Badge variant={status === "correct" ? "default" : "destructive"}>
+                            <Badge
+                                variant={status === "correct" ? "default" : "destructive"}
+                                className="text-xs"
+                            >
                                 {status === "correct" ? "Correct" : "Wrong"}
                             </Badge>
                         )}
@@ -84,7 +89,7 @@ export function TrueFalseRenderer({
     };
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-2">
             {renderOption(true, "True")}
             {renderOption(false, "False")}
         </div>

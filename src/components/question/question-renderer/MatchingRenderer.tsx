@@ -63,6 +63,179 @@ export function MatchingRenderer({
         );
     }).length;
 
+    // ── Tabular solution view ──
+    if (showSolution) {
+        return (
+            <div className="space-y-3">
+                {/* Header */}
+                <div className="flex items-center justify-between flex-wrap gap-2 px-1">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Shuffle className="h-3.5 w-3.5" />
+                        <span className="font-medium">Match the Following</span>
+                    </div>
+                    {compareWithStudentAnswer && completedMatches > 0 && (
+                        <Badge
+                            variant={correctMatches === totalMatches ? "default" : "outline"}
+                            className="text-xs"
+                        >
+                            {correctMatches}/{totalMatches} Correct
+                        </Badge>
+                    )}
+                </div>
+
+                {/* Table */}
+                <div className="rounded-lg border overflow-x-auto">
+                    <table className="w-full text-sm">
+                        <thead>
+                            <tr className="bg-muted/50 border-b">
+                                <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs w-10">
+                                    #
+                                </th>
+                                <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">
+                                    Item
+                                </th>
+                                <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">
+                                    Correct Answer
+                                </th>
+                                {compareWithStudentAnswer && (
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground text-xs">
+                                        Student Answer
+                                    </th>
+                                )}
+                                {compareWithStudentAnswer && <th className="px-3 py-2 w-10"></th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {leftOptions.map((leftOption, index) => {
+                                const correctRightIds = leftOption.matchPairIds || [];
+                                const correctMatchItems = rightOptions.filter((r) =>
+                                    correctRightIds.includes(r.id)
+                                );
+                                const selectedRightIds = matches[leftOption.id] || [];
+                                const selectedMatchItems = rightOptions.filter((r) =>
+                                    selectedRightIds.includes(r.id)
+                                );
+                                const isFullyCorrect =
+                                    selectedRightIds.length === correctRightIds.length &&
+                                    selectedRightIds.every((id) => correctRightIds.includes(id));
+                                const hasAnswer = selectedRightIds.length > 0;
+
+                                return (
+                                    <tr
+                                        key={leftOption.id}
+                                        className={cn(
+                                            "transition-colors",
+                                            compareWithStudentAnswer &&
+                                                hasAnswer &&
+                                                (isFullyCorrect
+                                                    ? "bg-green-50/50 dark:bg-green-950/10"
+                                                    : "bg-red-50/50 dark:bg-red-950/10")
+                                        )}
+                                    >
+                                        <td className="px-3 py-2.5 align-top">
+                                            <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground font-semibold text-xs">
+                                                {String.fromCharCode(65 + index)}
+                                            </div>
+                                        </td>
+                                        <td className="px-3 py-2.5 align-top">
+                                            <ContentPreview content={leftOption.text} noProse />
+                                        </td>
+                                        <td className="px-3 py-2.5 align-top">
+                                            <div className="space-y-1">
+                                                {correctMatchItems.map((item, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="flex items-start gap-1.5 text-green-700 dark:text-green-300"
+                                                    >
+                                                        <Badge
+                                                            variant="secondary"
+                                                            className="text-[10px] shrink-0 mt-0.5"
+                                                        >
+                                                            {rightOptions.indexOf(item) + 1}
+                                                        </Badge>
+                                                        <ContentPreview
+                                                            content={item.text}
+                                                            noProse
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </td>
+                                        {compareWithStudentAnswer && (
+                                            <td className="px-3 py-2.5 align-top">
+                                                {selectedMatchItems.length > 0 ? (
+                                                    <div className="space-y-1">
+                                                        {selectedMatchItems.map((item, idx) => {
+                                                            const isCorrectItem =
+                                                                correctRightIds.includes(item.id);
+                                                            return (
+                                                                <div
+                                                                    key={idx}
+                                                                    className={cn(
+                                                                        "flex items-start gap-1.5",
+                                                                        isCorrectItem
+                                                                            ? "text-green-700 dark:text-green-300"
+                                                                            : "text-red-700 dark:text-red-300"
+                                                                    )}
+                                                                >
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className={cn(
+                                                                            "text-[10px] shrink-0 mt-0.5",
+                                                                            isCorrectItem
+                                                                                ? "border-green-400 dark:border-green-700"
+                                                                                : "border-red-400 dark:border-red-700"
+                                                                        )}
+                                                                    >
+                                                                        {rightOptions.indexOf(
+                                                                            item
+                                                                        ) + 1}
+                                                                    </Badge>
+                                                                    <ContentPreview
+                                                                        content={item.text}
+                                                                        noProse
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground italic">
+                                                        Not answered
+                                                    </span>
+                                                )}
+                                            </td>
+                                        )}
+                                        {compareWithStudentAnswer && (
+                                            <td className="px-3 py-2.5 align-top text-center">
+                                                {hasAnswer ? (
+                                                    isFullyCorrect ? (
+                                                        <div className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/50">
+                                                            <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/50">
+                                                            <X className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                                        </div>
+                                                    )
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">
+                                                        —
+                                                    </span>
+                                                )}
+                                            </td>
+                                        )}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Interactive layout ──
     return (
         <div className="space-y-6">
             {/* Header Section */}
@@ -95,11 +268,10 @@ export function MatchingRenderer({
                             {leftOptions.length} items
                         </Badge>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         {leftOptions.map((leftOption, index) => {
                             const selectedRightIds = matches[leftOption.id] || [];
                             const hasMatch = selectedRightIds.length > 0;
-                            // Aggregate status: show correct only if ALL matches are correct
                             const statuses = selectedRightIds.map((rid) =>
                                 getMatchStatus(leftOption.id, rid)
                             );
@@ -123,9 +295,9 @@ export function MatchingRenderer({
                                             "border-red-500/50 bg-red-50/50 dark:bg-red-950/20"
                                     )}
                                 >
-                                    <CardContent className="p-4">
-                                        <div className="flex items-start gap-3">
-                                            <div className="flex items-center justify-center shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground font-semibold text-xs">
+                                    <CardContent className="p-3">
+                                        <div className="flex items-start gap-2.5">
+                                            <div className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground font-semibold text-xs">
                                                 {String.fromCharCode(65 + index)}
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -160,7 +332,7 @@ export function MatchingRenderer({
                             {rightOptions.length} items
                         </Badge>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         {rightOptions.map((rightOption, index) => {
                             const isMatched = Object.values(matches).some((ids) =>
                                 ids.includes(rightOption.id)
@@ -174,9 +346,9 @@ export function MatchingRenderer({
                                         isMatched && "border-secondary/50 bg-secondary/5"
                                     )}
                                 >
-                                    <CardContent className="p-4">
-                                        <div className="flex items-start gap-3">
-                                            <div className="flex items-center justify-center shrink-0 w-7 h-7 rounded-full bg-secondary text-secondary-foreground font-semibold text-xs">
+                                    <CardContent className="p-3">
+                                        <div className="flex items-start gap-2.5">
+                                            <div className="flex items-center justify-center shrink-0 w-6 h-6 rounded-full bg-secondary text-secondary-foreground font-semibold text-xs">
                                                 {index + 1}
                                             </div>
                                             <div className="flex-1 min-w-0">
@@ -202,7 +374,7 @@ export function MatchingRenderer({
                         <span className="font-semibold text-sm">Solution</span>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="grid grid-cols-1 gap-2">
                         {leftOptions.map((leftOption, index) => {
                             const correctRightIds = leftOption.matchPairIds || [];
                             const correctMatchItems = rightOptions.filter((r) =>
@@ -228,7 +400,7 @@ export function MatchingRenderer({
                                               : "border-l-blue-500 bg-blue-50/30 dark:bg-blue-950/20"
                                     )}
                                 >
-                                    <CardContent className="p-4">
+                                    <CardContent className="p-3">
                                         <div className="space-y-3">
                                             {/* Question Item */}
                                             <div className="flex items-center gap-3">

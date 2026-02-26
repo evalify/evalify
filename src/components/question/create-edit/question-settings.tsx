@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Question, BloomsLevel, Difficulty, CourseOutcome } from "@/types/questions";
+import { Question, BloomsLevel, Difficulty, CourseOutcome, QuestionType } from "@/types/questions";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -214,24 +214,26 @@ export default function QuestionSettings({
                     />
                 </div>
 
-                <div className="space-y-3">
-                    <Label
-                        htmlFor="negativeMarks"
-                        className="text-sm font-medium flex items-center gap-2"
-                    >
-                        <Hash className="h-4 w-4 text-red-500" />
-                        Negative Marks
-                    </Label>
-                    <Input
-                        id="negativeMarks"
-                        type="number"
-                        min={0}
-                        step={0.5}
-                        placeholder="0"
-                        value={value.negativeMarks}
-                        onChange={(e) => handleNegativeMarksChange(e.target.value)}
-                    />
-                </div>
+                {(value.type === QuestionType.MCQ || value.type === QuestionType.TRUE_FALSE) && (
+                    <div className="space-y-3">
+                        <Label
+                            htmlFor="negativeMarks"
+                            className="text-sm font-medium flex items-center gap-2"
+                        >
+                            <Hash className="h-4 w-4 text-red-500" />
+                            Negative Marks
+                        </Label>
+                        <Input
+                            id="negativeMarks"
+                            type="number"
+                            min={0}
+                            step={0.5}
+                            placeholder="0"
+                            value={value.negativeMarks}
+                            onChange={(e) => handleNegativeMarksChange(e.target.value)}
+                        />
+                    </div>
+                )}
 
                 <div className="space-y-3">
                     <Label
